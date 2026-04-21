@@ -1,0 +1,11 @@
+spring:
+  jpa:
+    show-sql: true
+  datasource:
+    url: jdbc:mysql://localhost:3306/qms_db_dev?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+
+logging:
+  level:
+    com.qms: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

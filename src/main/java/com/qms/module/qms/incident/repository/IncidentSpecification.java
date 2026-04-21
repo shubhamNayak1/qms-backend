@@ -1,0 +1,51 @@
+package com.qms.module.qms.incident.repository;
+
+import com.qms.common.enums.Priority;
+import com.qms.common.enums.QmsStatus;
+import com.qms.module.qms.incident.entity.Incident;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.jpa.domain.Specification;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public final class IncidentSpecification {
+
+    private IncidentSpecification() {}
+
+    public static Specification<Incident> filter(QmsStatus status, Priority priority,
+                                                  String severity, String incidentType,
+                                                  Long assignedTo, String department,
+                                                  String search) {
+        return (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.isFalse(root.get("isDeleted")));
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+            if (priority != null) {
+                predicates.add(cb.equal(root.get("priority"), priority));
+            }
+            if (severity != null && !severity.isBlank()) {
+                predicates.add(cb.equal(root.get("severity"), severity));
+            }
+            if (incidentType != null && !incidentType.isBlank()) {
+                predicates.add(cb.equal(root.get("incidentType"), incidentType));
+            }
+            if (assignedTo != null) {
+                predicates.add(cb.equal(root.get("assignedToId"), assignedTo));
+            }
+            if (department != null && !department.isBlank()) {
+                predicates.add(cb.equal(root.get("department"), department));
+            }
+            if (search != null && !search.isBlank()) {
+                String pattern = "%" + search.toLowerCase() + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(root.get("title")), pattern),
+                        cb.like(cb.lower(root.get("recordNumber")), pattern)
+                ));
+            }
+            return cb.and(predicates.toArray(Predicate[]::new));
+        };
+    }
+}
