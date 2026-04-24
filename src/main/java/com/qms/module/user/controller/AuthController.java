@@ -2,15 +2,18 @@ package com.qms.module.user.controller;
 
 import com.qms.common.response.ApiResponse;
 import com.qms.module.user.dto.request.*;
+import com.qms.module.user.dto.response.MeResponse;
 import com.qms.module.user.dto.response.TokenResponse;
 import com.qms.module.user.service.AuthService;
 import com.qms.module.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -21,6 +24,27 @@ public class AuthController {
 
     private final AuthService authService;
     private final UserService userService;
+
+    // ─────────────────────────────────────────────────────────
+    // GET /api/v1/auth/me
+    // ─────────────────────────────────────────────────────────
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(
+        summary = "Get current user profile and permissions",
+        description = """
+            Returns the authenticated user's profile together with their
+            complete permission payload in three formats optimised for the UI:
+
+            • **permissionSet** – flat Set for O(1) checks (`permissions.has('QMS_APPROVE')`)
+            • **permissionsByModule** – grouped map for page-level gating
+            • **moduleAccess** – boolean per module for nav-item visibility
+            """
+    )
+    public ResponseEntity<ApiResponse<MeResponse>> me() {
+        return ApiResponse.ok(userService.getMe());
+    }
 
     // ─────────────────────────────────────────────────────────
     // POST /api/v1/auth/login

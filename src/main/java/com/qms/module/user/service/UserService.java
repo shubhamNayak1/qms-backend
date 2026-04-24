@@ -9,7 +9,9 @@ import com.qms.module.audit.context.AuditContext;
 import com.qms.module.audit.context.AuditContextHolder;
 import com.qms.module.audit.service.AuditValueSerializer;
 import com.qms.module.user.dto.request.*;
+import com.qms.module.user.dto.response.MeResponse;
 import com.qms.module.user.dto.response.UserResponse;
+import com.qms.module.user.entity.Permission;
 import com.qms.module.user.entity.Role;
 import com.qms.module.user.entity.User;
 import com.qms.module.user.mapper.UserMapper;
@@ -21,14 +23,19 @@ import com.qms.module.user.repository.UserSpecification;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -267,6 +274,68 @@ public class UserService {
         user.setIsActive(false);
         userRepository.save(user);
         log.info("User soft-deleted: {} (id={})", user.getUsername(), id);
+    }
+
+    // ─── /me — current authenticated user ────────────────────
+
+    /**
+     * Returns the profile and full permission payload for the currently
+     * authenticated user.  Permissions are delivered in three shapes:
+     *   • permissionSet          – flat Set for O(1) contains() checks
+     *   • permissionsByModule    – grouped map for page-level gating
+     *   • moduleAccess           – boolean per module for nav-item visibility
+     */
+    public MeResponse getMe() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByUsernameAndIsDeletedFalse(username)
+                .orElseThrow(() -> AppException.notFound("User", username));
+
+        // Union of all permissions across every assigned role
+        Set<Permission> allPerms = user.getRoles().stream()
+                .flatMap(role -> role.getPermissions().stream())
+                .collect(Collectors.toSet());
+
+        // Flat name set — for quick front-end checks
+        Set<String> permissionSet = allPerms.stream()
+                .map(Permission::getName)
+                .collect(Collectors.toSet());
+
+        // Grouped by module — for show/hide at page level
+        Map<String, List<String>> permissionsByModule = allPerms.stream()
+                .collect(Collectors.groupingBy(
+                        Permission::getModule,
+                        Collectors.mapping(Permission::getName, Collectors.toList())
+                ));
+
+        // Boolean per module — for nav-item visibility
+        Map<String, Boolean> moduleAccess = new LinkedHashMap<>();
+        for (String mod : List.of("USER", "QMS", "DMS", "LMS", "REPORT", "AUDIT")) {
+            moduleAccess.put(mod, permissionsByModule.containsKey(mod));
+        }
+
+        Set<String> roles = user.getRoles().stream()
+                .map(Role::getName)
+                .collect(Collectors.toSet());
+
+        return MeResponse.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .phone(user.getPhone())
+                .department(user.getDepartment())
+                .designation(user.getDesignation())
+                .employeeId(user.getEmployeeId())
+                .profilePictureUrl(user.getProfilePictureUrl())
+                .isActive(user.getIsActive())
+                .lastLoginAt(user.getLastLoginAt())
+                .roles(roles)
+                .permissionSet(permissionSet)
+                .permissionsByModule(permissionsByModule)
+                .moduleAccess(moduleAccess)
+                .build();
     }
 
     // ─── Internal helpers ────────────────────────────────────
