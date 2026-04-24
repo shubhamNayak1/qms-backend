@@ -31,11 +31,18 @@ public class SecurityConfig {
     private final UserDetailsService userDetailsService;
 
     private static final String[] PUBLIC_URLS = {
-            "/api/v1/auth/**",
+            // Auth endpoints that do NOT require a token
+            "/api/v1/auth/login",
+            "/api/v1/auth/refresh",
+            "/api/v1/auth/logout",
+            "/api/v1/auth/forgot-password",
+            "/api/v1/auth/reset-password",
+            // Swagger / OpenAPI docs
             "/api-docs/**",
             "/v3/api-docs/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
+            // Health probe used by Render / load-balancers
             "/actuator/health"
     };
 
