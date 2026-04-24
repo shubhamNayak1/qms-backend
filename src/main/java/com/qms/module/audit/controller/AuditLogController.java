@@ -64,20 +64,20 @@ public class AuditLogController {
             """
     )
     public ResponseEntity<ApiResponse<PageResponse<AuditLogResponse>>> search(
-            @RequestParam(name = "request[userId]",     required = false) Long userId,
-            @RequestParam(name = "request[username]",   required = false) String username,
-            @RequestParam(name = "request[action]",     required = false) AuditAction action,
-            @RequestParam(name = "request[module]",     required = false) AuditModule module,
-            @RequestParam(name = "request[entityType]", required = false) String entityType,
-            @RequestParam(name = "request[entityId]",   required = false) Long entityId,
-            @RequestParam(name = "request[outcome]",    required = false) AuditOutcome outcome,
-            @RequestParam(name = "request[ipAddress]",  required = false) String ipAddress,
-            @RequestParam(name = "request[from]",       required = false)
+            @RequestParam(required = false) Long       userId,
+            @RequestParam(required = false) String     username,
+            @RequestParam(required = false) AuditAction action,
+            @RequestParam(required = false) AuditModule module,
+            @RequestParam(required = false) String     entityType,
+            @RequestParam(required = false) Long       entityId,
+            @RequestParam(required = false) AuditOutcome outcome,
+            @RequestParam(required = false) String     ipAddress,
+            @RequestParam(required = false)
                 @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
-            @RequestParam(name = "request[to]",         required = false)
+            @RequestParam(required = false)
                 @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
-            @RequestParam(name = "request[page]",  defaultValue = "0")  int page,
-            @RequestParam(name = "request[size]",  defaultValue = "50") int size) {
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
 
         AuditSearchRequest req = new AuditSearchRequest();
         req.setUserId(userId);
