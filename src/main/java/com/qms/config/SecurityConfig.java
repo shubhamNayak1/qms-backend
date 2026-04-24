@@ -68,6 +68,9 @@ public class SecurityConfig {
                     .requestMatchers(PUBLIC_URLS).permitAll()
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
+                    // Admin-only settings (password policy, etc.)
+                    .requestMatchers("/api/v1/admin/**").hasAnyRole("SUPER_ADMIN", "QA_MANAGER")
+
                     // User management - admin only
                     .requestMatchers("/api/v1/users/**").hasAnyRole("SUPER_ADMIN", "QA_MANAGER")
 

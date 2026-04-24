@@ -19,4 +19,12 @@ public class TokenResponse {
     private String  fullName;
     private Set<String> roles;
     private Set<String> permissions;
+
+    /**
+     * True when the user must change their password before proceeding.
+     * This happens on first login (account was just created) or after
+     * an admin has reset the password.
+     * The frontend should redirect to the change-password page immediately.
+     */
+    private boolean mustChangePassword;
 }

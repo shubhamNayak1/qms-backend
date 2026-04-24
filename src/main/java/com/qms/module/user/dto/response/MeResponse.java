@@ -36,6 +36,12 @@ public class MeResponse {
     private Boolean isActive;
     private LocalDateTime lastLoginAt;
 
+    /**
+     * True when the user must change their password before proceeding
+     * (first login after account creation, or after an admin password reset).
+     */
+    private Boolean mustChangePassword;
+
     // ── Roles ─────────────────────────────────────────────────
     /** e.g. ["QA_MANAGER", "AUDITOR"] */
     private Set<String> roles;

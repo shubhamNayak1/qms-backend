@@ -17,6 +17,7 @@ import com.qms.module.user.entity.User;
 import com.qms.module.user.mapper.UserMapper;
 import com.qms.module.user.repository.RoleRepository;
 import com.qms.module.user.repository.UserRepository;
+import com.qms.module.user.service.PasswordPolicyService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import com.qms.module.user.repository.UserSpecification;
@@ -43,11 +44,12 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class UserService {
 
-    private final UserRepository       userRepository;
-    private final RoleRepository       roleRepository;
-    private final UserMapper           userMapper;
-    private final PasswordEncoder      passwordEncoder;
-    private final AuditValueSerializer auditSerializer;
+    private final UserRepository        userRepository;
+    private final RoleRepository        roleRepository;
+    private final UserMapper            userMapper;
+    private final PasswordEncoder       passwordEncoder;
+    private final AuditValueSerializer  auditSerializer;
+    private final PasswordPolicyService passwordPolicyService;
 
     // ─── Queries ─────────────────────────────────────────────
 
@@ -90,12 +92,17 @@ public class UserService {
                     "Employee ID '" + req.getEmployeeId() + "' is already in use.");
         }
 
+        // Validate password against active policy
+        passwordPolicyService.enforcePolicy(req.getPassword());
+
         Set<Role> roles = resolveRoles(req.getRoleIds());
+
+        String passwordHash = passwordEncoder.encode(req.getPassword());
 
         User user = User.builder()
                 .username(req.getUsername())
                 .email(req.getEmail().toLowerCase())
-                .passwordHash(passwordEncoder.encode(req.getPassword()))
+                .passwordHash(passwordHash)
                 .firstName(req.getFirstName())
                 .lastName(req.getLastName())
                 .phone(req.getPhone())
@@ -105,10 +112,13 @@ public class UserService {
                 .isActive(true)
                 .isEmailVerified(false)
                 .failedLoginAttempts(0)
+                .mustChangePassword(true)   // first-login: user must change password
                 .roles(roles)
                 .build();
 
         User saved = userRepository.save(user);
+        // Track initial password in history so it can't be immediately reused
+        passwordPolicyService.recordPasswordHistory(saved.getId(), passwordHash);
         log.info("User created: {} (id={})", saved.getUsername(), saved.getId());
         return userMapper.toUserResponse(saved);
     }
@@ -173,14 +183,23 @@ public class UserService {
         if (!req.getNewPassword().equals(req.getConfirmPassword())) {
             throw AppException.badRequest("New password and confirm password do not match.");
         }
-        if (passwordEncoder.matches(req.getNewPassword(), user.getPasswordHash())) {
-            throw AppException.badRequest(
-                    "New password must be different from the current password.");
-        }
 
-        userRepository.updatePassword(userId,
-                passwordEncoder.encode(req.getNewPassword()),
-                LocalDateTime.now());
+        // Policy: complexity rules
+        passwordPolicyService.enforcePolicy(req.getNewPassword());
+
+        // Policy: cannot reuse recent passwords
+        passwordPolicyService.enforcePasswordHistory(userId, req.getNewPassword());
+
+        String newHash = passwordEncoder.encode(req.getNewPassword());
+
+        userRepository.updatePassword(userId, newHash, LocalDateTime.now());
+
+        // Record new hash in history + prune old entries
+        passwordPolicyService.recordPasswordHistory(userId, newHash);
+
+        // Clear force-change flag now that the user has chosen their own password
+        user.setMustChangePassword(false);
+        userRepository.save(user);
 
         log.info("Password changed for user '{}'", user.getUsername());
     }
@@ -191,9 +210,15 @@ public class UserService {
     @Transactional
     public void adminResetPassword(Long userId, String newPassword) {
         User user = findById(userId);
-        userRepository.updatePassword(userId,
-                passwordEncoder.encode(newPassword), LocalDateTime.now());
-        log.info("Admin reset password for user '{}'", user.getUsername());
+        String newHash = passwordEncoder.encode(newPassword);
+        userRepository.updatePassword(userId, newHash, LocalDateTime.now());
+
+        // Force the user to change their password on next login
+        user.setMustChangePassword(true);
+        userRepository.save(user);
+
+        passwordPolicyService.recordPasswordHistory(userId, newHash);
+        log.info("Admin reset password for user '{}' — mustChangePassword set", user.getUsername());
     }
 
     @Transactional
@@ -231,11 +256,18 @@ public class UserService {
                 .orElseThrow(() -> AppException.badRequest(
                         "Password reset token is invalid or has expired."));
 
-        userRepository.updatePassword(user.getId(),
-                passwordEncoder.encode(req.getNewPassword()), LocalDateTime.now());
+        // Enforce complexity and history rules
+        passwordPolicyService.enforcePolicy(req.getNewPassword());
+        passwordPolicyService.enforcePasswordHistory(user.getId(), req.getNewPassword());
+
+        String newHash = passwordEncoder.encode(req.getNewPassword());
+        userRepository.updatePassword(user.getId(), newHash, LocalDateTime.now());
+
+        passwordPolicyService.recordPasswordHistory(user.getId(), newHash);
 
         user.setPasswordResetToken(null);
         user.setPasswordResetTokenExpiry(null);
+        user.setMustChangePassword(false);
         userRepository.save(user);
 
         log.info("Password successfully reset for '{}'", user.getUsername());
@@ -317,6 +349,10 @@ public class UserService {
                 .map(Role::getName)
                 .collect(Collectors.toSet());
 
+        // mustChangePassword: true if flag is set OR password has expired per policy
+        boolean mustChange = Boolean.TRUE.equals(user.getMustChangePassword())
+                || isPasswordExpiredForUser(user);
+
         return MeResponse.builder()
                 .id(user.getId())
                 .username(user.getUsername())
@@ -331,6 +367,7 @@ public class UserService {
                 .profilePictureUrl(user.getProfilePictureUrl())
                 .isActive(user.getIsActive())
                 .lastLoginAt(user.getLastLoginAt())
+                .mustChangePassword(mustChange)
                 .roles(roles)
                 .permissionSet(permissionSet)
                 .permissionsByModule(permissionsByModule)
@@ -339,6 +376,13 @@ public class UserService {
     }
 
     // ─── Internal helpers ────────────────────────────────────
+
+    private boolean isPasswordExpiredForUser(User user) {
+        int validPeriod = passwordPolicyService.getActiveValidPeriod();
+        if (validPeriod <= 0) return false;
+        if (user.getPasswordChangedAt() == null) return true;
+        return user.getPasswordChangedAt().plusDays(validPeriod).isBefore(LocalDateTime.now());
+    }
 
     User findById(Long id) {
         return userRepository.findByIdAndIsDeletedFalse(id)

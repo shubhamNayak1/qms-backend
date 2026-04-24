@@ -27,6 +27,7 @@ public class UserPrincipal implements UserDetails {
 
     private final boolean enabled;
     private final boolean accountNonLocked;
+    private final boolean mustChangePassword;
     private final Collection<? extends GrantedAuthority> authorities;
 
     // ─── Factory ────────────────────────────────────────────
@@ -55,6 +56,7 @@ public class UserPrincipal implements UserDetails {
                 user.getPasswordHash(),
                 user.getIsActive(),
                 !user.isAccountLocked(),
+                Boolean.TRUE.equals(user.getMustChangePassword()),
                 allAuthorities
         );
     }

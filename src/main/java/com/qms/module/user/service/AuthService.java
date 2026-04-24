@@ -9,6 +9,7 @@ import com.qms.module.user.dto.request.RefreshTokenRequest;
 import com.qms.module.user.dto.response.TokenResponse;
 import com.qms.module.user.entity.User;
 import com.qms.module.user.repository.UserRepository;
+import com.qms.module.user.service.PasswordPolicyService;
 import com.qms.security.JwtTokenProvider;
 import com.qms.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,7 @@ public class AuthService {
     private final JwtTokenProvider      jwtTokenProvider;
     private final UserRepository        userRepository;
     private final PasswordEncoder       passwordEncoder;
+    private final PasswordPolicyService passwordPolicyService;
 
     @Value("${app.security.max-failed-attempts:5}")
     private int maxFailedAttempts;
@@ -178,6 +180,10 @@ public class AuthService {
     private TokenResponse buildTokenResponse(UserPrincipal principal,
                                               String accessToken,
                                               String refreshToken) {
+        // mustChangePassword is true if the flag is set OR if the password has expired
+        boolean mustChange = principal.isMustChangePassword()
+                || isPasswordExpired(principal.getId());
+
         return TokenResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
@@ -190,6 +196,25 @@ public class AuthService {
                 .fullName(principal.getFullName())
                 .roles(principal.getRoleNames())
                 .permissions(principal.getPermissionNames())
+                .mustChangePassword(mustChange)
                 .build();
+    }
+
+    /**
+     * Returns true if the user's password has exceeded the active policy's validPeriod.
+     * Always false when validPeriod = 0 (passwords never expire).
+     */
+    private boolean isPasswordExpired(Long userId) {
+        int validPeriod = passwordPolicyService.getActiveValidPeriod();
+        if (validPeriod <= 0) return false;
+
+        return userRepository.findByIdAndIsDeletedFalse(userId)
+                .map(user -> {
+                    if (user.getPasswordChangedAt() == null) return true; // never changed → treat as expired
+                    return user.getPasswordChangedAt()
+                            .plusDays(validPeriod)
+                            .isBefore(LocalDateTime.now());
+                })
+                .orElse(false);
     }
 }

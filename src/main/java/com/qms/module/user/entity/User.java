@@ -103,6 +103,15 @@ public class User extends BaseEntity {
     @Column(name = "password_reset_token_expiry")
     private LocalDateTime passwordResetTokenExpiry;
 
+    /**
+     * True when the user must change their password before doing anything else.
+     * Set to true on account creation (first-login flow) and after an admin resets
+     * the password.  Cleared to false once the user successfully changes their password.
+     */
+    @Column(name = "must_change_password", nullable = false)
+    @Builder.Default
+    private Boolean mustChangePassword = false;
+
     // ─── Roles (Many-to-Many owner side) ──────────────────────
     /**
      * A user can hold multiple roles.
