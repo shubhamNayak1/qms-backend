@@ -27,7 +27,7 @@ public class MarketComplaintController {
     private final MarketComplaintService complaintService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR','EMPLOYEE')")
     public ResponseEntity<ApiResponse<PageResponse<MarketComplaintResponse>>> search(
             @RequestParam(required = false) QmsStatus status,
             @RequestParam(required = false) Priority  priority,
@@ -42,7 +42,7 @@ public class MarketComplaintController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR','EMPLOYEE')")
     public ResponseEntity<ApiResponse<MarketComplaintResponse>> getById(@PathVariable Long id) {
         return ApiResponse.ok(complaintService.getById(id));
     }
@@ -55,7 +55,7 @@ public class MarketComplaintController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','EMPLOYEE')")
     public ResponseEntity<ApiResponse<MarketComplaintResponse>> update(@PathVariable Long id, @Valid @RequestBody MarketComplaintRequest req) {
         return ApiResponse.ok("Complaint updated", complaintService.update(id, req));
     }

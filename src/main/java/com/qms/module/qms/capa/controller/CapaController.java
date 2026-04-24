@@ -31,7 +31,7 @@ public class CapaController {
     private final CapaService capaService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR','EMPLOYEE')")
     @Operation(summary = "Search / list CAPAs with optional filters")
     public ResponseEntity<ApiResponse<PageResponse<CapaResponse>>> search(
             @RequestParam(required = false) QmsStatus status,
@@ -47,14 +47,14 @@ public class CapaController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR','EMPLOYEE')")
     @Operation(summary = "Get a CAPA by database ID")
     public ResponseEntity<ApiResponse<CapaResponse>> getById(@PathVariable Long id) {
         return ApiResponse.ok(capaService.getById(id));
     }
 
     @GetMapping("/number/{recordNumber}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR','EMPLOYEE')")
     @Operation(summary = "Get a CAPA by record number e.g. CAPA-202404-0001")
     public ResponseEntity<ApiResponse<CapaResponse>> getByRecordNumber(
             @PathVariable String recordNumber) {
@@ -62,7 +62,7 @@ public class CapaController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','EMPLOYEE')")
     @Operation(summary = "Open a new CAPA record")
     public ResponseEntity<ApiResponse<CapaResponse>> create(
             @Valid @RequestBody CapaRequest request) {
@@ -70,7 +70,7 @@ public class CapaController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','EMPLOYEE')")
     @Operation(summary = "Update CAPA fields — null fields are ignored")
     public ResponseEntity<ApiResponse<CapaResponse>> update(
             @PathVariable Long id,

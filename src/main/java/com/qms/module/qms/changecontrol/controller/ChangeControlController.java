@@ -27,7 +27,7 @@ public class ChangeControlController {
     private final ChangeControlService changeControlService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR','EMPLOYEE')")
     public ResponseEntity<ApiResponse<PageResponse<ChangeControlResponse>>> search(
             @RequestParam(required = false) QmsStatus status,
             @RequestParam(required = false) Priority  priority,
@@ -43,20 +43,20 @@ public class ChangeControlController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR','EMPLOYEE')")
     public ResponseEntity<ApiResponse<ChangeControlResponse>> getById(@PathVariable Long id) {
         return ApiResponse.ok(changeControlService.getById(id));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','EMPLOYEE')")
     @Operation(summary = "Raise a new Change Control request")
     public ResponseEntity<ApiResponse<ChangeControlResponse>> create(@Valid @RequestBody ChangeControlRequest req) {
         return ApiResponse.created("Change Control created", changeControlService.create(req));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','EMPLOYEE')")
     public ResponseEntity<ApiResponse<ChangeControlResponse>> update(@PathVariable Long id, @Valid @RequestBody ChangeControlRequest req) {
         return ApiResponse.ok("Change Control updated", changeControlService.update(id, req));
     }

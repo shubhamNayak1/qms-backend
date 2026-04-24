@@ -67,8 +67,8 @@ public class SecurityConfig {
                     // Audit logs - auditors and above
                     .requestMatchers("/api/v1/audit/**").hasAnyRole("SUPER_ADMIN", "QA_MANAGER", "AUDITOR")
 
-                    // QMS modules - QA roles
-                    .requestMatchers("/api/v1/qms/**").hasAnyRole("SUPER_ADMIN", "QA_MANAGER", "QA_OFFICER")
+                    // QMS modules - QA roles + Employee (create/edit own records)
+                    .requestMatchers("/api/v1/qms/**").hasAnyRole("SUPER_ADMIN", "QA_MANAGER", "QA_OFFICER", "EMPLOYEE")
 
                     // DMS - doc controllers and QA
                     .requestMatchers("/api/v1/dms/**").hasAnyRole("SUPER_ADMIN", "QA_MANAGER", "DOC_CONTROLLER", "EMPLOYEE")

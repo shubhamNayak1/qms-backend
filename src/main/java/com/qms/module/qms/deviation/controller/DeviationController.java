@@ -27,7 +27,7 @@ public class DeviationController {
     private final DeviationService deviationService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR','EMPLOYEE')")
     public ResponseEntity<ApiResponse<PageResponse<DeviationResponse>>> search(
             @RequestParam(required = false) QmsStatus status,
             @RequestParam(required = false) Priority  priority,
@@ -41,20 +41,20 @@ public class DeviationController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR','EMPLOYEE')")
     public ResponseEntity<ApiResponse<DeviationResponse>> getById(@PathVariable Long id) {
         return ApiResponse.ok(deviationService.getById(id));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','EMPLOYEE')")
     @Operation(summary = "Report a new deviation")
     public ResponseEntity<ApiResponse<DeviationResponse>> create(@Valid @RequestBody DeviationRequest req) {
         return ApiResponse.created("Deviation created", deviationService.create(req));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','EMPLOYEE')")
     public ResponseEntity<ApiResponse<DeviationResponse>> update(@PathVariable Long id, @Valid @RequestBody DeviationRequest req) {
         return ApiResponse.ok("Deviation updated", deviationService.update(id, req));
     }
