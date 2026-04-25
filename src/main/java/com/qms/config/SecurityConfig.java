@@ -71,8 +71,8 @@ public class SecurityConfig {
                     // Admin settings — individual endpoints are guarded by @PreAuthorize
                     .requestMatchers("/api/v1/admin/**").authenticated()
 
-                    // User management - admin only
-                    .requestMatchers("/api/v1/users/**").hasAnyRole("SUPER_ADMIN", "QA_MANAGER")
+                    // User management — individual endpoints guarded by @PreAuthorize
+                    .requestMatchers("/api/v1/users/**").authenticated()
 
                     // Audit logs - auditors and above
                     .requestMatchers("/api/v1/audit/**").hasAnyRole("SUPER_ADMIN", "QA_MANAGER", "AUDITOR")
