@@ -1,6 +1,9 @@
 package com.qms.module.user.service;
 
+import com.qms.common.enums.AuditAction;
+import com.qms.common.enums.AuditModule;
 import com.qms.common.exception.AppException;
+import com.qms.module.audit.annotation.Audited;
 import com.qms.module.user.dto.request.PasswordPolicyRequest;
 import com.qms.module.user.dto.response.PasswordPolicyResponse;
 import com.qms.module.user.entity.PasswordHistory;
@@ -53,6 +56,8 @@ public class PasswordPolicyService {
 
     // ─── Commands ────────────────────────────────────────────
 
+    @Audited(action = AuditAction.CREATE, module = AuditModule.PASSWORD_POLICY,
+             entityType = "PasswordPolicy", description = "Password policy created")
     @Transactional
     public PasswordPolicyResponse create(PasswordPolicyRequest req) {
         validateRequest(req, null);
@@ -75,6 +80,9 @@ public class PasswordPolicyService {
         return toResponse(saved, !saved.getEffectiveDate().isAfter(LocalDate.now()));
     }
 
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.PASSWORD_POLICY,
+             entityType = "PasswordPolicy", entityIdArgIndex = 0,
+             description = "Password policy updated")
     @Transactional
     public PasswordPolicyResponse update(Long id, PasswordPolicyRequest req) {
         PasswordPolicy policy = findById(id);
@@ -96,6 +104,9 @@ public class PasswordPolicyService {
         return toResponse(saved, !saved.getEffectiveDate().isAfter(LocalDate.now()));
     }
 
+    @Audited(action = AuditAction.DELETE, module = AuditModule.PASSWORD_POLICY,
+             entityType = "PasswordPolicy", entityIdArgIndex = 0,
+             captureNewValue = false, description = "Password policy deleted")
     @Transactional
     public void delete(Long id) {
         PasswordPolicy policy = findById(id);
