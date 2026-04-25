@@ -68,8 +68,8 @@ public class SecurityConfig {
                     .requestMatchers(PUBLIC_URLS).permitAll()
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                    // Admin-only settings (password policy, etc.)
-                    .requestMatchers("/api/v1/admin/**").hasAnyRole("SUPER_ADMIN", "QA_MANAGER")
+                    // Admin settings — individual endpoints are guarded by @PreAuthorize
+                    .requestMatchers("/api/v1/admin/**").authenticated()
 
                     // User management - admin only
                     .requestMatchers("/api/v1/users/**").hasAnyRole("SUPER_ADMIN", "QA_MANAGER")
