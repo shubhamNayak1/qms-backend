@@ -11,7 +11,7 @@ import lombok.Data;
 public class WorkflowRequest {
 
     @NotNull(message = "Target status is required")
-    @Schema(description = "The status to transition to", example = "IN_PROGRESS")
+    @Schema(description = "The status to transition to", example = "PENDING_HOD")
     private QmsStatus targetStatus;
 
     @Size(max = 1000, message = "Comment must not exceed 1000 characters")

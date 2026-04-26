@@ -56,6 +56,22 @@ public class ChangeControl extends QmsRecord {
     @Column(name = "rollback_plan", columnDefinition = "TEXT")
     private String rollbackPlan;
 
+    /**
+     * Whether this change requires Site Head approval (routes through PENDING_SITE_HEAD).
+     */
+    @Column(name = "site_head_required")
+    private Boolean siteHeadRequired = false;
+
+    /**
+     * Whether customer notification/comment is required (routes through PENDING_CUSTOMER_COMMENT).
+     */
+    @Column(name = "customer_comment_required")
+    private Boolean customerCommentRequired = false;
+
+    /** Customer comment text (filled in during PENDING_CUSTOMER_COMMENT stage). */
+    @Column(name = "customer_comment", columnDefinition = "TEXT")
+    private String customerComment;
+
     @PrePersist
     private void prePersist() { setRecordType(QmsRecordType.CHANGE_CONTROL); }
 }

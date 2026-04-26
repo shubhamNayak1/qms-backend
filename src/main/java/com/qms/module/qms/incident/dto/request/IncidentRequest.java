@@ -28,4 +28,13 @@ public class IncidentRequest extends QmsBaseRequest {
     private String    capaReference;
     private Boolean   injuryInvolved;
     private String    injuryDetails;
+
+    @Schema(example = "LABORATORY", description = "LABORATORY (OOS/OOT) or GENERAL incident sub-type")
+    private String  incidentSubType;
+
+    @Schema(description = "Whether lab retesting is required — routes through PENDING_ATTACHMENTS step")
+    private Boolean retestingRequired;
+
+    @Schema(description = "Whether a Deviation record must be raised as a result of this incident")
+    private Boolean deviationRequired;
 }

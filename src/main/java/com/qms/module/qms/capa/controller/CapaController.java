@@ -82,7 +82,7 @@ public class CapaController {
 
     @PostMapping("/{id}/transition")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER')")
-    @Operation(summary = "Generic status transition — use for IN_PROGRESS, CANCELLED, REOPENED etc.")
+    @Operation(summary = "Generic status transition — specify any allowed targetStatus (PENDING_SITE_HEAD, PENDING_ATTACHMENTS, CANCELLED, etc.)")
     public ResponseEntity<ApiResponse<CapaResponse>> transition(
             @PathVariable Long id,
             @Valid @RequestBody WorkflowRequest request) {
@@ -91,7 +91,7 @@ public class CapaController {
 
     @PostMapping("/{id}/submit")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER')")
-    @Operation(summary = "Submit CAPA for approval (IN_PROGRESS → PENDING_APPROVAL)")
+    @Operation(summary = "Submit CAPA — DRAFT → PENDING_HOD (Head of Department review)")
     public ResponseEntity<ApiResponse<CapaResponse>> submit(
             @PathVariable Long id,
             @RequestParam(required = false) String comment) {
@@ -100,7 +100,7 @@ public class CapaController {
 
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    @Operation(summary = "Approve a CAPA (PENDING_APPROVAL → APPROVED)")
+    @Operation(summary = "Approve — advances to canonical next step per workflow (e.g. PENDING_HOD→PENDING_QA_REVIEW, PENDING_HEAD_QA→CLOSED)")
     public ResponseEntity<ApiResponse<CapaResponse>> approve(
             @PathVariable Long id,
             @RequestParam(required = false) String comment) {
@@ -109,7 +109,7 @@ public class CapaController {
 
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    @Operation(summary = "Reject a CAPA back for rework (PENDING_APPROVAL → REJECTED)")
+    @Operation(summary = "Reject — moves to REJECTED from any pending state, returns to DRAFT for rework")
     public ResponseEntity<ApiResponse<CapaResponse>> reject(
             @PathVariable Long id,
             @RequestParam(required = false) String comment) {
@@ -118,7 +118,7 @@ public class CapaController {
 
     @PostMapping("/{id}/close")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    @Operation(summary = "Close a CAPA (APPROVED → CLOSED)")
+    @Operation(summary = "Close — PENDING_HEAD_QA → CLOSED (final closure by Head of QA)")
     public ResponseEntity<ApiResponse<CapaResponse>> close(
             @PathVariable Long id,
             @RequestParam(required = false) String comment) {
@@ -136,7 +136,7 @@ public class CapaController {
 
     @PostMapping("/{id}/reopen")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    @Operation(summary = "Reopen a closed CAPA for further action (CLOSED → REOPENED)")
+    @Operation(summary = "Reopen a closed CAPA — CLOSED → DRAFT (reset for rework)")
     public ResponseEntity<ApiResponse<CapaResponse>> reopen(
             @PathVariable Long id,
             @RequestParam(required = false) String comment) {

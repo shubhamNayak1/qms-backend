@@ -75,7 +75,7 @@ public class IncidentService {
 
         Incident i = Incident.builder().build();
         i.setRecordNumber(recordNumberGenerator.generate(QmsRecordType.INCIDENT, TABLE));
-        i.setStatus(QmsStatus.OPEN);
+        i.setStatus(QmsStatus.DRAFT);
         i.setRaisedByName(username);
         recordMapper.applyRequest(req, i);
         applyFields(req, i);
@@ -181,6 +181,9 @@ public class IncidentService {
         if (req.getCapaReference()       != null) i.setCapaReference(req.getCapaReference());
         if (req.getInjuryInvolved()      != null) i.setInjuryInvolved(req.getInjuryInvolved());
         if (req.getInjuryDetails()       != null) i.setInjuryDetails(req.getInjuryDetails());
+        if (req.getIncidentSubType()    != null) i.setIncidentSubType(req.getIncidentSubType());
+        if (req.getRetestingRequired()  != null) i.setRetestingRequired(req.getRetestingRequired());
+        if (req.getDeviationRequired()  != null) i.setDeviationRequired(req.getDeviationRequired());
     }
 
     private IncidentResponse toResponse(Incident i) {
@@ -196,6 +199,9 @@ public class IncidentService {
         r.setCapaReference(i.getCapaReference());
         r.setInjuryInvolved(i.getInjuryInvolved());
         r.setInjuryDetails(i.getInjuryDetails());
+        r.setIncidentSubType(i.getIncidentSubType());
+        r.setRetestingRequired(i.getRetestingRequired());
+        r.setDeviationRequired(i.getDeviationRequired());
         return r;
     }
 }

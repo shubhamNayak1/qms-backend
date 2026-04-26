@@ -74,7 +74,7 @@ public class DeviationService {
 
         Deviation d = Deviation.builder().build();
         d.setRecordNumber(recordNumberGenerator.generate(QmsRecordType.DEVIATION, TABLE));
-        d.setStatus(QmsStatus.OPEN);
+        d.setStatus(QmsStatus.DRAFT);
         d.setRaisedByName(username);
         recordMapper.applyRequest(req, d);
         applyFields(req, d);

@@ -75,7 +75,7 @@ public class ChangeControlService {
 
         ChangeControl cc = ChangeControl.builder().build();
         cc.setRecordNumber(recordNumberGenerator.generate(QmsRecordType.CHANGE_CONTROL, TABLE));
-        cc.setStatus(QmsStatus.OPEN);
+        cc.setStatus(QmsStatus.DRAFT);
         cc.setRaisedByName(username);
         recordMapper.applyRequest(req, cc);
         applyFields(req, cc);
@@ -183,6 +183,9 @@ public class ChangeControlService {
         if (req.getRegulatorySubmissionRequired()  != null) cc.setRegulatorySubmissionRequired(req.getRegulatorySubmissionRequired());
         if (req.getRegulatorySubmissionReference() != null) cc.setRegulatorySubmissionReference(req.getRegulatorySubmissionReference());
         if (req.getRollbackPlan()                  != null) cc.setRollbackPlan(req.getRollbackPlan());
+        if (req.getSiteHeadRequired()          != null) cc.setSiteHeadRequired(req.getSiteHeadRequired());
+        if (req.getCustomerCommentRequired()   != null) cc.setCustomerCommentRequired(req.getCustomerCommentRequired());
+        if (req.getCustomerComment()           != null) cc.setCustomerComment(req.getCustomerComment());
     }
 
     private ChangeControlResponse toResponse(ChangeControl cc) {
@@ -200,6 +203,9 @@ public class ChangeControlService {
         r.setRegulatorySubmissionRequired(cc.getRegulatorySubmissionRequired());
         r.setRegulatorySubmissionReference(cc.getRegulatorySubmissionReference());
         r.setRollbackPlan(cc.getRollbackPlan());
+        r.setSiteHeadRequired(cc.getSiteHeadRequired());
+        r.setCustomerCommentRequired(cc.getCustomerCommentRequired());
+        r.setCustomerComment(cc.getCustomerComment());
         return r;
     }
 }

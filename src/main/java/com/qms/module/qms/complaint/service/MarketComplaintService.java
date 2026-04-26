@@ -78,7 +78,7 @@ public class MarketComplaintService {
 
         MarketComplaint mc = MarketComplaint.builder().build();
         mc.setRecordNumber(recordNumberGenerator.generate(QmsRecordType.MARKET_COMPLAINT, TABLE));
-        mc.setStatus(QmsStatus.OPEN);
+        mc.setStatus(QmsStatus.DRAFT);
         mc.setRaisedByName(username);
         if (req.getReceivedDate() == null) mc.setReceivedDate(LocalDate.now());
         recordMapper.applyRequest(req, mc);

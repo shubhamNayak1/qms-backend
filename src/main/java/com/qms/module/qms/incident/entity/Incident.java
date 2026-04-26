@@ -52,6 +52,22 @@ public class Incident extends QmsRecord {
     @Column(name = "injury_details", columnDefinition = "TEXT")
     private String injuryDetails;
 
+    /**
+     * Incident sub-type for routing.
+     * LABORATORY — OOS/OOT laboratory investigation flow
+     * GENERAL — general safety/quality incident flow
+     */
+    @Column(name = "incident_sub_type", length = 20)
+    private String incidentSubType;  // LABORATORY | GENERAL
+
+    /** Whether lab retesting / additional analysis is required (routes through PENDING_ATTACHMENTS). */
+    @Column(name = "retesting_required")
+    private Boolean retestingRequired = false;
+
+    /** Whether a Deviation record needs to be raised as a result of this incident. */
+    @Column(name = "deviation_required")
+    private Boolean deviationRequired = false;
+
     @PrePersist
     private void prePersist() { setRecordType(QmsRecordType.INCIDENT); }
 }

@@ -64,7 +64,7 @@ public class QmsRecordMapper {
         response.setCorrectiveAction(record.getCorrectiveAction());
         response.setComments(record.getComments());
         response.setOverdue(record.isOverdue());
-        response.setAllowedTransitions(WorkflowTransition.allowedFrom(record.getStatus()));
+        response.setAllowedTransitions(WorkflowTransition.allowedFrom(record.getRecordType(), record.getStatus()));
         response.setStatusHistory(deserializeHistory(record.getStatusHistory()));
         response.setCreatedAt(record.getCreatedAt());
         response.setUpdatedAt(record.getUpdatedAt());

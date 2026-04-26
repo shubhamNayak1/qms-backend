@@ -68,7 +68,7 @@ public abstract class QmsRecord extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
-    private QmsStatus status = QmsStatus.OPEN;
+    private QmsStatus status = QmsStatus.DRAFT;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "priority", nullable = false, length = 20)

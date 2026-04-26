@@ -21,4 +21,7 @@ public class ChangeControlResponse extends QmsBaseResponse {
     private Boolean   regulatorySubmissionRequired;
     private String    regulatorySubmissionReference;
     private String    rollbackPlan;
+    private Boolean siteHeadRequired;
+    private Boolean customerCommentRequired;
+    private String  customerComment;
 }

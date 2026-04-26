@@ -18,30 +18,27 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Generic workflow engine — handles status transitions for every QMS sub-module.
+ * Generic workflow engine — handles per-module status transitions.
  *
- * Usage (from any sub-module service):
- * <pre>
- *   workflowEngine.transition(capaRecord, QmsStatus.IN_PROGRESS, "Starting investigation");
- *   workflowEngine.approve(capaRecord, "Approved — root cause verified");
- *   workflowEngine.close(capaRecord, "Corrective actions verified effective");
- * </pre>
+ * Each QmsRecord carries its recordType, which is used to look up the
+ * correct transition graph in WorkflowTransition.
  *
- * The engine:
- *  1. Validates the transition against WorkflowTransition rules
- *  2. Updates the entity status field
- *  3. Appends a StatusHistoryEntry to the JSON log
- *  4. Sets appropriate date fields (closedDate, approvedAt)
- *  5. Records who made the change (from SecurityContext)
+ * Shorthand methods:
+ *  submit()  — DRAFT → PENDING_HOD (start review)
+ *  approve() — advance to canonical next step per module (skips optional branches)
+ *  reject()  — current → REJECTED
+ *  close()   — current → CLOSED (only if CLOSED is an allowed next status)
+ *  cancel()  — current → CANCELLED
+ *  reopen()  — CLOSED → DRAFT
  *
- * Callers are responsible for persisting the entity after calling transition().
+ * For optional branches (PENDING_SITE_HEAD, PENDING_CUSTOMER_COMMENT,
+ * PENDING_ATTACHMENTS) use transition() with an explicit targetStatus.
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class QmsWorkflowEngine {
 
-    /** Injected Spring bean — picks up JavaTimeModule and other global Jackson config. */
     private final ObjectMapper mapper;
     private static final TypeReference<List<StatusHistoryEntry>> HISTORY_TYPE =
             new TypeReference<>() {};
@@ -49,60 +46,75 @@ public class QmsWorkflowEngine {
     // ── Public API ────────────────────────────────────────────
 
     /**
-     * Generic transition — validates and applies any allowed status change.
+     * Generic transition — validates per-module rules and applies the status change.
      */
     public void transition(QmsRecord record, QmsStatus newStatus, String comment) {
         QmsStatus current = record.getStatus();
-
         if (current == newStatus) {
-            throw AppException.badRequest(
-                    "Record is already in status " + current);
+            throw AppException.badRequest("Record is already in status " + current);
         }
-        if (!WorkflowTransition.isAllowed(current, newStatus)) {
+        if (!WorkflowTransition.isAllowed(record.getRecordType(), current, newStatus)) {
             throw AppException.badRequest(
-                    WorkflowTransition.transitionError(current, newStatus));
+                    WorkflowTransition.transitionError(record.getRecordType(), current, newStatus));
         }
-
         applyTransition(record, current, newStatus, comment);
+
+        // Set approval metadata when reaching certain statuses
+        if (newStatus == QmsStatus.CLOSED || newStatus == QmsStatus.PENDING_HEAD_QA) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated()) {
+                record.setApprovedByName(auth.getName());
+                record.setApprovedAt(LocalDateTime.now());
+            }
+            if (newStatus == QmsStatus.CLOSED) {
+                record.setClosedDate(LocalDate.now());
+                record.setApprovalComments(comment);
+            }
+        }
     }
 
     /**
-     * Submit for approval — shorthand for IN_PROGRESS → PENDING_APPROVAL.
+     * Submit — DRAFT → PENDING_HOD.
      */
     public void submit(QmsRecord record, String comment) {
-        transition(record, QmsStatus.PENDING_APPROVAL, comment);
+        transition(record, QmsStatus.PENDING_HOD, comment);
     }
 
     /**
-     * Approve — shorthand for PENDING_APPROVAL → APPROVED.
-     * Also sets approvedBy fields from the current security context.
+     * Approve — advances to the canonical next step for this module.
+     * For optional branches, callers must use transition() with an explicit targetStatus.
      */
     public void approve(QmsRecord record, String comment) {
-        transition(record, QmsStatus.APPROVED, comment);
-
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.isAuthenticated()) {
-            record.setApprovedByName(auth.getName());
-            record.setApprovedAt(LocalDateTime.now());
-        }
-        record.setApprovalComments(comment);
+        QmsStatus target = WorkflowTransition
+                .primaryApprovalTarget(record.getRecordType(), record.getStatus())
+                .orElseThrow(() -> AppException.badRequest(
+                        "No primary approval path defined from " + record.getStatus() +
+                        " for " + record.getRecordType() + ". Use /transition with an explicit targetStatus."));
+        transition(record, target, comment);
     }
 
     /**
-     * Reject — shorthand for PENDING_APPROVAL → REJECTED.
+     * Reject — moves to REJECTED from any pending state.
      */
     public void reject(QmsRecord record, String comment) {
+        if (!WorkflowTransition.isAllowed(record.getRecordType(), record.getStatus(), QmsStatus.REJECTED)) {
+            throw AppException.badRequest(
+                    "Cannot reject a record in status " + record.getStatus());
+        }
         transition(record, QmsStatus.REJECTED, comment);
         record.setApprovalComments(comment);
     }
 
     /**
-     * Close — shorthand for APPROVED → CLOSED.
-     * Sets closedDate to today.
+     * Close — moves to CLOSED (only when CLOSED is an allowed next status from current state).
      */
     public void close(QmsRecord record, String comment) {
+        if (!WorkflowTransition.isAllowed(record.getRecordType(), record.getStatus(), QmsStatus.CLOSED)) {
+            throw AppException.badRequest(
+                    "Cannot close a record in status " + record.getStatus() +
+                    ". Allowed transitions: " + WorkflowTransition.allowedFrom(record.getRecordType(), record.getStatus()));
+        }
         transition(record, QmsStatus.CLOSED, comment);
-        record.setClosedDate(LocalDate.now());
     }
 
     /**
@@ -117,13 +129,13 @@ public class QmsWorkflowEngine {
     }
 
     /**
-     * Reopen a closed record for further action.
+     * Reopen a closed record — CLOSED → DRAFT.
      */
     public void reopen(QmsRecord record, String comment) {
         if (record.getStatus() != QmsStatus.CLOSED) {
             throw AppException.badRequest("Only CLOSED records can be reopened");
         }
-        transition(record, QmsStatus.REOPENED, comment);
+        transition(record, QmsStatus.DRAFT, comment);
         record.setClosedDate(null);
     }
 
@@ -141,15 +153,13 @@ public class QmsWorkflowEngine {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         String username = (auth != null && auth.isAuthenticated()) ? auth.getName() : "SYSTEM";
 
-        // Append history entry
         List<StatusHistoryEntry> history = deserializeHistory(record.getStatusHistory());
         history.add(StatusHistoryEntry.of(from, to, username, null, comment));
         record.setStatusHistory(serializeHistory(history));
-
-        // Apply the new status
         record.setStatus(to);
-        log.debug("QMS workflow: record {} transitioned {} → {} by {}",
-                record.getRecordNumber(), from, to, username);
+
+        log.debug("QMS workflow: {} record {} transitioned {} → {} by {}",
+                record.getRecordType(), record.getRecordNumber(), from, to, username);
     }
 
     private List<StatusHistoryEntry> deserializeHistory(String json) {

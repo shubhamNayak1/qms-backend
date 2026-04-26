@@ -89,7 +89,7 @@ public class CapaService {
 
         Capa capa = Capa.builder().build();
         capa.setRecordNumber(recordNumberGenerator.generate(QmsRecordType.CAPA, TABLE));
-        capa.setStatus(QmsStatus.OPEN);
+        capa.setStatus(QmsStatus.DRAFT);
         capa.setRaisedByName(username);
         recordMapper.applyRequest(req, capa);
         applyCapaFields(req, capa);

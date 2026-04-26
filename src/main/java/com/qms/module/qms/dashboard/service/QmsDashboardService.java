@@ -22,8 +22,8 @@ import java.util.Map;
  * Aggregates KPI counts from all five QMS sub-module repositories
  * into a single dashboard response.
  *
- * All queries are read-only and run in a single transaction for
- * a consistent snapshot (no phantom reads between sub-modules).
+ * "Active" records = any status that is not CLOSED or CANCELLED.
+ * "Pending review" = any PENDING_* status.
  */
 @Slf4j
 @Service
@@ -31,61 +31,93 @@ import java.util.Map;
 @Transactional(readOnly = true)
 public class QmsDashboardService {
 
-    private final CapaRepository          capaRepository;
-    private final DeviationRepository     deviationRepository;
-    private final IncidentRepository      incidentRepository;
-    private final ChangeControlRepository changeControlRepository;
-    private final MarketComplaintRepository complaintRepository;
+    private final CapaRepository             capaRepository;
+    private final DeviationRepository        deviationRepository;
+    private final IncidentRepository         incidentRepository;
+    private final ChangeControlRepository    changeControlRepository;
+    private final MarketComplaintRepository  complaintRepository;
 
     public QmsDashboardResponse getDashboard() {
         LocalDate today = LocalDate.now();
 
         // ── CAPA ──────────────────────────────────────────────
-        long capaOpen        = capaRepository.countByStatusAndIsDeletedFalse(QmsStatus.OPEN);
-        long capaInProgress  = capaRepository.countByStatusAndIsDeletedFalse(QmsStatus.IN_PROGRESS);
-        long capaPending     = capaRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_APPROVAL);
+        long capaDraft       = capaRepository.countByStatusAndIsDeletedFalse(QmsStatus.DRAFT);
+        long capaPending     = capaRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_HOD)
+                             + capaRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_QA_REVIEW)
+                             + capaRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_DEPT_COMMENT)
+                             + capaRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_HEAD_QA);
         long capaClosed      = capaRepository.countByStatusAndIsDeletedFalse(QmsStatus.CLOSED);
         long capaOverdue     = capaRepository.countOverdue(today);
         long capaCritical    = capaRepository.countByPriorityAndIsDeletedFalse(Priority.CRITICAL);
 
         // ── Deviation ─────────────────────────────────────────
-        long devOpen         = deviationRepository.countByStatusAndIsDeletedFalse(QmsStatus.OPEN);
-        long devInProgress   = deviationRepository.countByStatusAndIsDeletedFalse(QmsStatus.IN_PROGRESS);
+        long devDraft        = deviationRepository.countByStatusAndIsDeletedFalse(QmsStatus.DRAFT);
+        long devPending      = deviationRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_HOD)
+                             + deviationRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_QA_REVIEW)
+                             + deviationRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_RA_REVIEW)
+                             + deviationRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_SITE_HEAD)
+                             + deviationRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_INVESTIGATION)
+                             + deviationRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_VERIFICATION);
         long devClosed       = deviationRepository.countByStatusAndIsDeletedFalse(QmsStatus.CLOSED);
         long devOverdue      = deviationRepository.countOverdue(today);
 
         // ── Incident ──────────────────────────────────────────
-        long incOpen         = incidentRepository.countByStatusAndIsDeletedFalse(QmsStatus.OPEN);
-        long incInProgress   = incidentRepository.countByStatusAndIsDeletedFalse(QmsStatus.IN_PROGRESS);
+        long incDraft        = incidentRepository.countByStatusAndIsDeletedFalse(QmsStatus.DRAFT);
+        long incPending      = incidentRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_HOD)
+                             + incidentRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_INVESTIGATION)
+                             + incidentRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_ATTACHMENTS)
+                             + incidentRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_VERIFICATION)
+                             + incidentRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_HEAD_QA);
         long incClosed       = incidentRepository.countByStatusAndIsDeletedFalse(QmsStatus.CLOSED);
         long incOverdue      = incidentRepository.countOverdue(today);
         long incCritical     = incidentRepository.countBySeverityAndIsDeletedFalse("Critical");
 
         // ── Change Control ────────────────────────────────────
-        long ccOpen          = changeControlRepository.countByStatusAndIsDeletedFalse(QmsStatus.OPEN);
-        long ccPending       = changeControlRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_APPROVAL);
+        long ccDraft         = changeControlRepository.countByStatusAndIsDeletedFalse(QmsStatus.DRAFT);
+        long ccPending       = changeControlRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_HOD)
+                             + changeControlRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_QA_REVIEW)
+                             + changeControlRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_DEPT_COMMENT)
+                             + changeControlRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_RA_REVIEW)
+                             + changeControlRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_SITE_HEAD)
+                             + changeControlRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_CUSTOMER_COMMENT)
+                             + changeControlRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_HEAD_QA)
+                             + changeControlRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_VERIFICATION);
         long ccClosed        = changeControlRepository.countByStatusAndIsDeletedFalse(QmsStatus.CLOSED);
         long ccOverdue       = changeControlRepository.countOverdue(today);
 
         // ── Market Complaint ──────────────────────────────────
-        long mcOpen          = complaintRepository.countByStatusAndIsDeletedFalse(QmsStatus.OPEN);
-        long mcInProgress    = complaintRepository.countByStatusAndIsDeletedFalse(QmsStatus.IN_PROGRESS);
+        long mcDraft         = complaintRepository.countByStatusAndIsDeletedFalse(QmsStatus.DRAFT);
+        long mcPending       = complaintRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_HOD)
+                             + complaintRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_INVESTIGATION)
+                             + complaintRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_ATTACHMENTS)
+                             + complaintRepository.countByStatusAndIsDeletedFalse(QmsStatus.PENDING_VERIFICATION);
         long mcClosed        = complaintRepository.countByStatusAndIsDeletedFalse(QmsStatus.CLOSED);
         long mcOverdue       = complaintRepository.countOverdue(today);
         long mcReportable    = complaintRepository.countByReportableToAuthorityTrueAndIsDeletedFalse();
 
         // ── Cross-module aggregates ───────────────────────────
-        long totalOpen   = capaOpen + devOpen + incOpen + ccOpen + mcOpen;
-        long totalOverdue = capaOverdue + devOverdue + incOverdue + ccOverdue + mcOverdue;
+        long totalDraft   = capaDraft   + devDraft   + incDraft   + ccDraft   + mcDraft;
+        long totalPending = capaPending + devPending  + incPending + ccPending + mcPending;
+        long totalClosed  = capaClosed  + devClosed   + incClosed  + ccClosed  + mcClosed;
+        long totalOverdue = capaOverdue + devOverdue  + incOverdue + ccOverdue + mcOverdue;
 
-        // Status breakdown across all modules
         Map<String, Long> statusBreakdown = new LinkedHashMap<>();
-        statusBreakdown.put("OPEN",             capaOpen    + devOpen      + incOpen      + ccOpen    + mcOpen);
-        statusBreakdown.put("IN_PROGRESS",      capaInProgress + devInProgress + incInProgress + 0L  + mcInProgress);
-        statusBreakdown.put("PENDING_APPROVAL", capaPending + 0L           + 0L           + ccPending + 0L);
-        statusBreakdown.put("CLOSED",           capaClosed  + devClosed    + incClosed    + ccClosed  + mcClosed);
+        statusBreakdown.put("DRAFT",           totalDraft);
+        statusBreakdown.put("PENDING_REVIEW",  totalPending);
+        statusBreakdown.put("CLOSED",          totalClosed);
+        statusBreakdown.put("CANCELLED",
+                capaRepository.countByStatusAndIsDeletedFalse(QmsStatus.CANCELLED)
+              + deviationRepository.countByStatusAndIsDeletedFalse(QmsStatus.CANCELLED)
+              + incidentRepository.countByStatusAndIsDeletedFalse(QmsStatus.CANCELLED)
+              + changeControlRepository.countByStatusAndIsDeletedFalse(QmsStatus.CANCELLED)
+              + complaintRepository.countByStatusAndIsDeletedFalse(QmsStatus.CANCELLED));
+        statusBreakdown.put("REJECTED",
+                capaRepository.countByStatusAndIsDeletedFalse(QmsStatus.REJECTED)
+              + deviationRepository.countByStatusAndIsDeletedFalse(QmsStatus.REJECTED)
+              + incidentRepository.countByStatusAndIsDeletedFalse(QmsStatus.REJECTED)
+              + changeControlRepository.countByStatusAndIsDeletedFalse(QmsStatus.REJECTED)
+              + complaintRepository.countByStatusAndIsDeletedFalse(QmsStatus.REJECTED));
 
-        // Priority breakdown (CAPA only — most comprehensive priority tracking)
         Map<String, Long> priorityBreakdown = new LinkedHashMap<>();
         for (Priority p : Priority.values()) {
             priorityBreakdown.put(p.name(), capaRepository.countByPriorityAndIsDeletedFalse(p));
@@ -94,25 +126,25 @@ public class QmsDashboardService {
         return QmsDashboardResponse.builder()
                 .generatedAt(LocalDateTime.now())
                 // CAPA
-                .capaOpen(capaOpen).capaInProgress(capaInProgress)
+                .capaOpen(capaDraft).capaInProgress(capaPending)
                 .capaPendingApproval(capaPending).capaClosed(capaClosed)
                 .capaOverdue(capaOverdue).capaCritical(capaCritical)
                 // Deviation
-                .deviationOpen(devOpen).deviationInProgress(devInProgress)
+                .deviationOpen(devDraft).deviationInProgress(devPending)
                 .deviationClosed(devClosed).deviationOverdue(devOverdue)
                 // Incident
-                .incidentOpen(incOpen).incidentInProgress(incInProgress)
+                .incidentOpen(incDraft).incidentInProgress(incPending)
                 .incidentClosed(incClosed).incidentOverdue(incOverdue)
                 .incidentCriticalSeverity(incCritical)
                 // Change Control
-                .changeControlOpen(ccOpen).changeControlPendingApproval(ccPending)
+                .changeControlOpen(ccDraft).changeControlPendingApproval(ccPending)
                 .changeControlClosed(ccClosed).changeControlOverdue(ccOverdue)
                 // Complaint
-                .complaintOpen(mcOpen).complaintInProgress(mcInProgress)
+                .complaintOpen(mcDraft).complaintInProgress(mcPending)
                 .complaintClosed(mcClosed).complaintOverdue(mcOverdue)
                 .complaintReportableToAuthority(mcReportable)
                 // Aggregates
-                .totalOpenRecords(totalOpen)
+                .totalOpenRecords(totalDraft + totalPending)
                 .totalOverdueRecords(totalOverdue)
                 .statusBreakdown(statusBreakdown)
                 .priorityBreakdown(priorityBreakdown)

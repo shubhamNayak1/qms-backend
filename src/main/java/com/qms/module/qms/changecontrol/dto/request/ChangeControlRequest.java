@@ -29,4 +29,13 @@ public class ChangeControlRequest extends QmsBaseRequest {
     private Boolean   regulatorySubmissionRequired;
     private String    regulatorySubmissionReference;
     private String    rollbackPlan;
+
+    @Schema(description = "Whether Site Head approval is required — routes through PENDING_SITE_HEAD step")
+    private Boolean siteHeadRequired;
+
+    @Schema(description = "Whether customer comment is required — routes through PENDING_CUSTOMER_COMMENT step")
+    private Boolean customerCommentRequired;
+
+    @Schema(description = "Customer comment text — filled during PENDING_CUSTOMER_COMMENT stage")
+    private String customerComment;
 }

@@ -182,25 +182,35 @@ public class ReportQueryService {
 
                 // CAPA
                 .capaTotal(countTable("qms_capa", null))
-                .capaOpen(countByStatus("qms_capa", "OPEN"))
-                .capaInProgress(countByStatus("qms_capa", "IN_PROGRESS"))
-                .capaPendingApproval(countByStatus("qms_capa", "PENDING_APPROVAL"))
+                .capaOpen(countByStatus("qms_capa", "DRAFT"))
+                .capaInProgress(countByStatus("qms_capa", "PENDING_HOD")
+                        + countByStatus("qms_capa", "PENDING_QA_REVIEW")
+                        + countByStatus("qms_capa", "PENDING_DEPT_COMMENT"))
+                .capaPendingApproval(countByStatus("qms_capa", "PENDING_HEAD_QA"))
                 .capaClosed(countByStatus("qms_capa", "CLOSED"))
                 .capaOverdue(countOverdue("qms_capa", today))
                 .capaCritical(countByPriority("qms_capa", "CRITICAL"))
 
                 // Deviation
                 .deviationTotal(countTable("qms_deviation", null))
-                .deviationOpen(countByStatus("qms_deviation", "OPEN"))
-                .deviationInProgress(countByStatus("qms_deviation", "IN_PROGRESS"))
+                .deviationOpen(countByStatus("qms_deviation", "DRAFT"))
+                .deviationInProgress(countByStatus("qms_deviation", "PENDING_HOD")
+                        + countByStatus("qms_deviation", "PENDING_QA_REVIEW")
+                        + countByStatus("qms_deviation", "PENDING_RA_REVIEW")
+                        + countByStatus("qms_deviation", "PENDING_INVESTIGATION")
+                        + countByStatus("qms_deviation", "PENDING_VERIFICATION"))
                 .deviationClosed(countByStatus("qms_deviation", "CLOSED"))
                 .deviationOverdue(countOverdue("qms_deviation", today))
                 .deviationRegulatoryReportable(countFlag("qms_deviation", "regulatory_reportable"))
 
                 // Incident
                 .incidentTotal(countTable("qms_incident", null))
-                .incidentOpen(countByStatus("qms_incident", "OPEN"))
-                .incidentInProgress(countByStatus("qms_incident", "IN_PROGRESS"))
+                .incidentOpen(countByStatus("qms_incident", "DRAFT"))
+                .incidentInProgress(countByStatus("qms_incident", "PENDING_HOD")
+                        + countByStatus("qms_incident", "PENDING_INVESTIGATION")
+                        + countByStatus("qms_incident", "PENDING_ATTACHMENTS")
+                        + countByStatus("qms_incident", "PENDING_VERIFICATION")
+                        + countByStatus("qms_incident", "PENDING_HEAD_QA"))
                 .incidentClosed(countByStatus("qms_incident", "CLOSED"))
                 .incidentOverdue(countOverdue("qms_incident", today))
                 .incidentCriticalSeverity(countBySingleField("qms_incident", "severity", "Critical"))
@@ -208,26 +218,30 @@ public class ReportQueryService {
 
                 // Change Control
                 .changeControlTotal(countTable("qms_change_control", null))
-                .changeControlOpen(countByStatus("qms_change_control", "OPEN"))
-                .changeControlPendingApproval(countByStatus("qms_change_control", "PENDING_APPROVAL"))
+                .changeControlOpen(countByStatus("qms_change_control", "DRAFT"))
+                .changeControlPendingApproval(countByStatus("qms_change_control", "PENDING_HEAD_QA")
+                        + countByStatus("qms_change_control", "PENDING_VERIFICATION"))
                 .changeControlClosed(countByStatus("qms_change_control", "CLOSED"))
                 .changeControlOverdue(countOverdue("qms_change_control", today))
 
                 // Complaint
                 .complaintTotal(countTable("qms_market_complaint", null))
-                .complaintOpen(countByStatus("qms_market_complaint", "OPEN"))
-                .complaintInProgress(countByStatus("qms_market_complaint", "IN_PROGRESS"))
+                .complaintOpen(countByStatus("qms_market_complaint", "DRAFT"))
+                .complaintInProgress(countByStatus("qms_market_complaint", "PENDING_HOD")
+                        + countByStatus("qms_market_complaint", "PENDING_INVESTIGATION")
+                        + countByStatus("qms_market_complaint", "PENDING_ATTACHMENTS")
+                        + countByStatus("qms_market_complaint", "PENDING_VERIFICATION"))
                 .complaintClosed(countByStatus("qms_market_complaint", "CLOSED"))
                 .complaintOverdue(countOverdue("qms_market_complaint", today))
                 .complaintReportableToAuthority(countFlag("qms_market_complaint", "reportable_to_authority"))
 
                 // Cross-module aggregates
                 .totalOpenRecords(
-                        countByStatus("qms_capa", "OPEN") +
-                        countByStatus("qms_deviation", "OPEN") +
-                        countByStatus("qms_incident", "OPEN") +
-                        countByStatus("qms_change_control", "OPEN") +
-                        countByStatus("qms_market_complaint", "OPEN"))
+                        countByStatus("qms_capa", "DRAFT") +
+                        countByStatus("qms_deviation", "DRAFT") +
+                        countByStatus("qms_incident", "DRAFT") +
+                        countByStatus("qms_change_control", "DRAFT") +
+                        countByStatus("qms_market_complaint", "DRAFT"))
                 .totalOverdueRecords(
                         countOverdue("qms_capa", today) +
                         countOverdue("qms_deviation", today) +
@@ -236,7 +250,7 @@ public class ReportQueryService {
                         countOverdue("qms_market_complaint", today))
 
                 // Trend & breakdown (CAPA-focused as the primary QMS module)
-                .monthlyOpenTrend(combinedMonthlyTrend("OPEN"))
+                .monthlyOpenTrend(combinedMonthlyTrend("DRAFT"))
                 .openByDepartment(combinedOpenByDepartment())
                 .avgCapaResolutionDays(avgResolutionDays("qms_capa"))
                 .avgDeviationResolutionDays(avgResolutionDays("qms_deviation"))
@@ -368,8 +382,8 @@ public class ReportQueryService {
         String baseWhere = " WHERE is_deleted = FALSE" + buildWhereClause(f, table);
         long total       = ((Number) em.createNativeQuery("SELECT COUNT(*) FROM " + table + baseWhere)
                                        .getSingleResult()).longValue();
-        long open        = countByStatusFiltered(table, "OPEN",        f);
-        long inProgress  = countByStatusFiltered(table, "IN_PROGRESS", f);
+        long open        = countByStatusFiltered(table, "DRAFT",       f);
+        long inProgress  = countByStatusFiltered(table, "PENDING_HOD", f);
         long closed      = countByStatusFiltered(table, "CLOSED",      f);
         long overdue     = countOverdue(table, LocalDate.now());
         long critical    = countByPriorityFiltered(table, "CRITICAL",  f);
