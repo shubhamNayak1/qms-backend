@@ -192,14 +192,16 @@ public class UserService {
 
         String newHash = passwordEncoder.encode(req.getNewPassword());
 
-        userRepository.updatePassword(userId, newHash, LocalDateTime.now());
+        // Set all fields on the entity and save in ONE call.
+        // Do NOT use the @Modifying updatePassword() + save() pattern — that
+        // causes the stale in-memory entity to overwrite the new hash in the DB.
+        user.setPasswordHash(newHash);
+        user.setPasswordChangedAt(LocalDateTime.now());
+        user.setMustChangePassword(false);
+        userRepository.save(user);
 
         // Record new hash in history + prune old entries
         passwordPolicyService.recordPasswordHistory(userId, newHash);
-
-        // Clear force-change flag now that the user has chosen their own password
-        user.setMustChangePassword(false);
-        userRepository.save(user);
 
         log.info("Password changed for user '{}'", user.getUsername());
     }
@@ -211,10 +213,11 @@ public class UserService {
     public void adminResetPassword(Long userId, String newPassword) {
         User user = findById(userId);
         String newHash = passwordEncoder.encode(newPassword);
-        userRepository.updatePassword(userId, newHash, LocalDateTime.now());
 
-        // Force the user to change their password on next login
-        user.setMustChangePassword(true);
+        // Single save — avoids stale-entity overwrite of new hash
+        user.setPasswordHash(newHash);
+        user.setPasswordChangedAt(LocalDateTime.now());
+        user.setMustChangePassword(true); // Force user to choose their own password on next login
         userRepository.save(user);
 
         passwordPolicyService.recordPasswordHistory(userId, newHash);
@@ -261,14 +264,16 @@ public class UserService {
         passwordPolicyService.enforcePasswordHistory(user.getId(), req.getNewPassword());
 
         String newHash = passwordEncoder.encode(req.getNewPassword());
-        userRepository.updatePassword(user.getId(), newHash, LocalDateTime.now());
 
-        passwordPolicyService.recordPasswordHistory(user.getId(), newHash);
-
+        // Single save — avoids stale-entity overwrite of new hash
+        user.setPasswordHash(newHash);
+        user.setPasswordChangedAt(LocalDateTime.now());
         user.setPasswordResetToken(null);
         user.setPasswordResetTokenExpiry(null);
         user.setMustChangePassword(false);
         userRepository.save(user);
+
+        passwordPolicyService.recordPasswordHistory(user.getId(), newHash);
 
         log.info("Password successfully reset for '{}'", user.getUsername());
     }
