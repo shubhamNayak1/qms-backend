@@ -193,8 +193,12 @@ public class DocumentService {
                                                   DocumentCategory category,
                                                   String department, Long ownerId,
                                                   String search, int page, int size) {
+        // Pre-build the wildcard pattern in Java so the repository query receives a typed
+        // varchar value — avoids Hibernate 6 binding null as bytea in PostgreSQL.
+        String searchPattern = (search != null && !search.isBlank())
+                ? "%" + search.toLowerCase() + "%" : null;
         return PageResponse.of(
-                documentRepository.search(status, category, department, ownerId, search,
+                documentRepository.search(status, category, department, ownerId, searchPattern,
                         PageRequest.of(page, size, Sort.by("createdAt").descending()))
                         .map(this::toResponse));
     }

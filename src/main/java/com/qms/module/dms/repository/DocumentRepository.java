@@ -45,6 +45,12 @@ public interface DocumentRepository extends JpaRepository<Document, Long>, JpaSp
 
     // ── Search ────────────────────────────────────────────────
 
+    /**
+     * @param search Pre-built lower-cased wildcard pattern, e.g. {@code %sop%},
+     *               or {@code null} to skip text filtering.
+     *               Built by the service layer to avoid Hibernate 6 binding a null
+     *               String as {@code bytea} ("function lower(bytea) does not exist").
+     */
     @Query("""
             SELECT d FROM Document d
             WHERE d.isDeleted = false
@@ -53,9 +59,9 @@ public interface DocumentRepository extends JpaRepository<Document, Long>, JpaSp
               AND (:department IS NULL OR d.department = :department)
               AND (:ownerId    IS NULL OR d.ownerId    = :ownerId)
               AND (:search     IS NULL
-                   OR LOWER(d.title)      LIKE LOWER(CONCAT('%', :search, '%'))
-                   OR LOWER(d.docNumber)  LIKE LOWER(CONCAT('%', :search, '%'))
-                   OR LOWER(d.tags)       LIKE LOWER(CONCAT('%', :search, '%')))
+                   OR LOWER(d.title)     LIKE :search
+                   OR LOWER(d.docNumber) LIKE :search
+                   OR LOWER(d.tags)      LIKE :search)
             """)
     Page<Document> search(@Param("status")     DocumentStatus   status,
                           @Param("category")   DocumentCategory category,

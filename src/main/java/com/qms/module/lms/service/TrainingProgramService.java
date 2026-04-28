@@ -44,8 +44,12 @@ public class TrainingProgramService {
     public PageResponse<ProgramResponse> search(ProgramStatus status, String category,
                                                  String department, Boolean mandatory,
                                                  String search, int page, int size) {
+        // Pre-build the wildcard pattern in Java so the repository query receives a typed
+        // varchar value — avoids Hibernate 6 binding null as bytea in PostgreSQL.
+        String searchPattern = (search != null && !search.isBlank())
+                ? "%" + search.toLowerCase() + "%" : null;
         return PageResponse.of(
-                programRepository.search(status, category, department, mandatory, search,
+                programRepository.search(status, category, department, mandatory, searchPattern,
                         PageRequest.of(page, size, Sort.by("createdAt").descending()))
                         .map(this::toResponse));
     }

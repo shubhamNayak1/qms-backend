@@ -19,17 +19,24 @@ public interface TrainingProgramRepository extends JpaRepository<TrainingProgram
     Optional<TrainingProgram> findByCodeAndIsDeletedFalse(String code);
     boolean existsByCodeAndIsDeletedFalse(String code);
 
+    /**
+     * @param search Pre-built lower-cased wildcard pattern, e.g. {@code %gmp%},
+     *               or {@code null} to skip text filtering.
+     *               The pattern is built by the service layer to avoid Hibernate 6
+     *               binding a null String as {@code bytea}, which causes
+     *               "function lower(bytea) does not exist" in PostgreSQL.
+     */
     @Query("""
             SELECT p FROM TrainingProgram p
             WHERE p.isDeleted = false
-              AND (:status     IS NULL OR p.status     = :status)
-              AND (:category   IS NULL OR p.category   = :category)
-              AND (:department IS NULL OR p.department = :department)
+              AND (:status     IS NULL OR p.status      = :status)
+              AND (:category   IS NULL OR p.category    = :category)
+              AND (:department IS NULL OR p.department  = :department)
               AND (:mandatory  IS NULL OR p.isMandatory = :mandatory)
               AND (:search     IS NULL
-                   OR LOWER(p.title)    LIKE LOWER(CONCAT('%', :search, '%'))
-                   OR LOWER(p.code)     LIKE LOWER(CONCAT('%', :search, '%'))
-                   OR LOWER(p.tags)     LIKE LOWER(CONCAT('%', :search, '%')))
+                   OR LOWER(p.title) LIKE :search
+                   OR LOWER(p.code)  LIKE :search
+                   OR LOWER(p.tags)  LIKE :search)
             """)
     Page<TrainingProgram> search(@Param("status")     ProgramStatus status,
                                  @Param("category")   String        category,
