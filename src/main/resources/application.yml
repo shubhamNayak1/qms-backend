@@ -19,9 +19,9 @@ spring:
 #      idle-timeout: 300000
 
   jpa:
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update      # local dev only — auto-sync schema changes
+    open-in-view: false
 
 #  jpa:
 #    hibernate:

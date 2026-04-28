@@ -8,5 +8,5 @@ RUN mvn clean package -Dmaven.test.skip=true -q
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/qms-backend-1.0.0.jar app.jar
-EXPOSE ${PORT:-8080}
+EXPOSE 8080
 ENTRYPOINT ["java", "-Dspring.profiles.active=prod", "-jar", "app.jar"]
