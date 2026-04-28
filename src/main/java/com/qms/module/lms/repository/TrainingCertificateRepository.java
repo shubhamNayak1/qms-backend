@@ -40,4 +40,28 @@ public interface TrainingCertificateRepository extends JpaRepository<TrainingCer
               AND c.expiryDate < :today
             """)
     List<TrainingCertificate> findLapsed(@Param("today") LocalDate today);
+
+    // ── Notification queries (per-user) ───────────────────────
+
+    /** ACTIVE certificates for a user expiring within the warning window. */
+    @Query("""
+            SELECT c FROM TrainingCertificate c
+            WHERE c.status = 'ACTIVE'
+              AND c.userId = :userId
+              AND c.expiryDate BETWEEN :today AND :warningDate
+            ORDER BY c.expiryDate ASC
+            """)
+    List<TrainingCertificate> findExpiringSoonForUser(@Param("userId")      Long      userId,
+                                                      @Param("today")       LocalDate today,
+                                                      @Param("warningDate") LocalDate warningDate);
+
+    /** ACTIVE certificates for a user that have already lapsed (expiryDate < today). */
+    @Query("""
+            SELECT c FROM TrainingCertificate c
+            WHERE c.status = 'ACTIVE'
+              AND c.userId = :userId
+              AND c.expiryDate < :today
+            """)
+    List<TrainingCertificate> findExpiredForUser(@Param("userId") Long      userId,
+                                                 @Param("today")  LocalDate today);
 }

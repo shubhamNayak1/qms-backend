@@ -98,6 +98,34 @@ public interface DocumentRepository extends JpaRepository<Document, Long>, JpaSp
     List<Document> findDueForReview(@Param("today")       LocalDate today,
                                     @Param("warningDate") LocalDate warningDate);
 
+    // ── Notification queries (per-owner) ─────────────────────
+
+    /** EFFECTIVE documents owned by the user that are expiring soon. */
+    @Query("""
+            SELECT d FROM Document d
+            WHERE d.isDeleted = false
+              AND d.status = 'EFFECTIVE'
+              AND d.ownerId = :ownerId
+              AND d.expiryDate BETWEEN :today AND :warningDate
+            ORDER BY d.expiryDate ASC
+            """)
+    List<Document> findExpiringSoonForOwner(@Param("ownerId")     Long      ownerId,
+                                            @Param("today")       LocalDate today,
+                                            @Param("warningDate") LocalDate warningDate);
+
+    /** EFFECTIVE documents owned by the user that are due for periodic review. */
+    @Query("""
+            SELECT d FROM Document d
+            WHERE d.isDeleted = false
+              AND d.status = 'EFFECTIVE'
+              AND d.ownerId = :ownerId
+              AND d.reviewDate BETWEEN :today AND :warningDate
+            ORDER BY d.reviewDate ASC
+            """)
+    List<Document> findDueForReviewForOwner(@Param("ownerId")     Long      ownerId,
+                                            @Param("today")       LocalDate today,
+                                            @Param("warningDate") LocalDate warningDate);
+
     // ── Atomic download count increment ───────────────────────
 
     @Modifying

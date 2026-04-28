@@ -80,4 +80,31 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long>, J
             WHERE e.program.id = :programId AND e.isDeleted = false
             """)
     Double getComplianceRateForProgram(@Param("programId") Long programId);
+
+    // ── Notification queries (per-user) ───────────────────────
+
+    /** Overdue enrollments for a specific user. */
+    @Query("""
+            SELECT e FROM Enrollment e
+            WHERE e.isDeleted = false
+              AND e.userId = :userId
+              AND e.dueDate < :today
+              AND e.status NOT IN ('COMPLETED','WAIVED','CANCELLED')
+            ORDER BY e.dueDate ASC
+            """)
+    List<Enrollment> findOverdueForUser(@Param("userId") Long userId,
+                                        @Param("today")  LocalDate today);
+
+    /** Enrollments due within the warning window for a specific user. */
+    @Query("""
+            SELECT e FROM Enrollment e
+            WHERE e.isDeleted = false
+              AND e.userId = :userId
+              AND e.dueDate BETWEEN :today AND :warningDate
+              AND e.status NOT IN ('COMPLETED','WAIVED','CANCELLED')
+            ORDER BY e.dueDate ASC
+            """)
+    List<Enrollment> findDueSoonForUser(@Param("userId")      Long      userId,
+                                        @Param("today")       LocalDate today,
+                                        @Param("warningDate") LocalDate warningDate);
 }
