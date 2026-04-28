@@ -7,6 +7,11 @@ import com.qms.module.lms.entity.Enrollment;
 import com.qms.module.lms.entity.TrainingCertificate;
 import com.qms.module.lms.enums.CertificateStatus;
 import com.qms.module.lms.repository.TrainingCertificateRepository;
+import com.qms.common.enums.AuditAction;
+import com.qms.common.enums.AuditModule;
+import com.qms.module.audit.annotation.Audited;
+import com.qms.module.audit.context.AuditContext;
+import com.qms.module.audit.context.AuditContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -54,6 +59,8 @@ public class CertificateService {
 
     // ── Issue (called by EnrollmentService on completion) ────
 
+    @Audited(action = AuditAction.CREATE, module = AuditModule.TRAINING, entityType = "TrainingCertificate",
+             description = "Training certificate issued on enrollment completion")
     @Transactional
     public void issue(Enrollment enrollment, Integer score) {
         // Idempotent — don't issue twice for the same enrollment
@@ -93,10 +100,16 @@ public class CertificateService {
 
     // ── Revoke ───────────────────────────────────────────────
 
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.TRAINING, entityType = "TrainingCertificate",
+             entityIdArgIndex = 0, captureOldValue = true, description = "Training certificate revoked")
     @Transactional
     public CertificateResponse revoke(Long id, String reason) {
         TrainingCertificate cert = certificateRepository.findById(id)
                 .orElseThrow(() -> AppException.notFound("Certificate", id));
+        AuditContextHolder.set(AuditContext.builder()
+                .entityId(id)
+                .description("Certificate " + cert.getCertificateNumber() + " revoked — reason: " + reason)
+                .build());
         if (cert.getStatus() == CertificateStatus.REVOKED) {
             throw AppException.badRequest("Certificate is already revoked");
         }

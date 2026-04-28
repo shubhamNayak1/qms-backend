@@ -16,6 +16,7 @@ import com.qms.module.lms.enums.ProgramStatus;
 import com.qms.module.lms.repository.ContentProgressRepository;
 import com.qms.module.lms.repository.EnrollmentRepository;
 import com.qms.module.lms.repository.TrainingProgramRepository;
+import com.qms.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -105,16 +106,18 @@ public class EnrollmentService {
         TrainingProgram program = programRepository.findByIdAndIsDeletedFalse(programId)
                 .orElseThrow(() -> AppException.notFound("Training Program", programId));
 
-        if (program.getStatus() != ProgramStatus.ACTIVE) {
+        if (program.getStatus() != ProgramStatus.ACTIVE
+                && program.getStatus() != ProgramStatus.PLANNED) {
             throw AppException.badRequest(
-                    "Cannot enroll in a " + program.getStatus() + " program");
+                    "Cannot enroll in a " + program.getStatus() + " program. Must be ACTIVE or PLANNED.");
         }
 
-        // Prevent duplicate active enrollment
+        // Prevent duplicate active enrollment (allow re-enroll after CANCELLED, EXPIRED, RETRAINING)
         enrollmentRepository.findByUserIdAndProgram_IdAndIsDeletedFalse(userId, programId)
                 .ifPresent(existing -> {
                     if (existing.getStatus() != EnrollmentStatus.CANCELLED
-                            && existing.getStatus() != EnrollmentStatus.EXPIRED) {
+                            && existing.getStatus() != EnrollmentStatus.EXPIRED
+                            && existing.getStatus() != EnrollmentStatus.RETRAINING) {
                         throw AppException.conflict(
                                 "User " + userId + " is already enrolled in program " + programId
                                 + " with status " + existing.getStatus());
@@ -129,7 +132,7 @@ public class EnrollmentService {
         Enrollment enrollment = Enrollment.builder()
                 .userId(userId)
                 .program(program)
-                .status(EnrollmentStatus.ENROLLED)
+                .status(EnrollmentStatus.ALLOCATED)
                 .dueDate(deadline)
                 .assignedById(assignedById)
                 .assignedByName(assignedByName != null ? assignedByName : currentUsername())
@@ -139,8 +142,49 @@ public class EnrollmentService {
                 .build();
 
         Enrollment saved = enrollmentRepository.save(enrollment);
-        log.info("Enrolled userId={} in programId={}", userId, programId);
+        log.info("Enrolled userId={} in programId={} (ALLOCATED)", userId, programId);
         return toResponse(saved);
+    }
+
+    // ── Department-wise enrollment ────────────────────────────
+
+    @Audited(action = AuditAction.TRAINING_ASSIGNED, module = AuditModule.TRAINING, entityType = "Enrollment", description = "Department-wise enrollment created")
+    @Transactional
+    public List<EnrollmentResponse> enrollByDepartment(Long programId, String department,
+                                                        LocalDate dueDate, String reason) {
+        TrainingProgram program = programRepository.findByIdAndIsDeletedFalse(programId)
+                .orElseThrow(() -> AppException.notFound("Training Program", programId));
+
+        if (program.getStatus() != ProgramStatus.ACTIVE
+                && program.getStatus() != ProgramStatus.PLANNED) {
+            throw AppException.badRequest(
+                    "Cannot enroll in a " + program.getStatus() + " program");
+        }
+
+        // Find all users in the given department from existing enrollments that may be in other programs,
+        // or just use department string as discriminator and create enrollments for each user.
+        // For now, this stores the department so the frontend sends explicit userIds after department lookup.
+        // Instead, we create a "department placeholder" — caller must send userIds after lookup.
+        throw AppException.badRequest(
+                "Use POST /bulk with user IDs from department lookup. " +
+                "Filter users by department in your user service, then call bulk enroll.");
+    }
+
+    // ── Approve allocation (sets program ACTIVE) ──────────────
+
+    @Audited(action = AuditAction.APPROVE, module = AuditModule.TRAINING, entityType = "TrainingProgram",
+             entityIdArgIndex = 0, description = "Allocation approved — program activated to ACTIVE")
+    @Transactional
+    public void approveAllocation(Long programId) {
+        TrainingProgram program = programRepository.findByIdAndIsDeletedFalse(programId)
+                .orElseThrow(() -> AppException.notFound("Training Program", programId));
+        if (program.getStatus() != ProgramStatus.PLANNED) {
+            throw AppException.badRequest(
+                    "Allocation can only be approved for PLANNED programs. Current: " + program.getStatus());
+        }
+        program.setStatus(ProgramStatus.ACTIVE);
+        programRepository.save(program);
+        log.info("Allocation approved for programId={} by {}", programId, currentUsername());
     }
 
     // ── Progress tracking ────────────────────────────────────
@@ -315,6 +359,12 @@ public class EnrollmentService {
                 .attemptsUsed(e.getAttemptsUsed()).lastScore(e.getLastScore())
                 .assignedByName(e.getAssignedByName()).assignmentReason(e.getAssignmentReason())
                 .waiverReason(e.getWaiverReason()).waivedByName(e.getWaivedByName())
+                .attendanceMarked(e.getAttendanceMarked())
+                .attendanceDate(e.getAttendanceDate())
+                .complianceSubmittedAt(e.getComplianceSubmittedAt())
+                .complianceReviewedAt(e.getComplianceReviewedAt())
+                .complianceReviewedBy(e.getComplianceReviewedBy())
+                .retrainingOfEnrollmentId(e.getRetrainingOfEnrollmentId())
                 .overdue(e.isOverdue()).compliant(e.isCompliant())
                 .createdAt(e.getCreatedAt()).updatedAt(e.getUpdatedAt())
                 .build();

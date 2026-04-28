@@ -2,6 +2,8 @@ package com.qms.module.lms.entity;
 
 import com.qms.common.base.BaseEntity;
 import com.qms.module.lms.enums.ProgramStatus;
+import com.qms.module.lms.enums.TrainingType;
+import com.qms.module.lms.enums.TrainingSubType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -55,8 +57,58 @@ public class TrainingProgram extends BaseEntity {
     @Column(name = "department", length = 100)
     private String department;
 
+    /** Comma-separated for INDUCTION (multi-department). */
+    @Column(name = "departments", length = 1000)
+    private String departments;
+
     @Column(name = "tags", length = 500)
     private String tags;  // comma-separated keywords
+
+    // ── Training type ────────────────────────────────────────
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "training_type", length = 20)
+    private TrainingType trainingType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "training_sub_type", length = 20)
+    private TrainingSubType trainingSubType;
+
+    // ── Trainer / coordinator / location ────────────────────
+
+    @Column(name = "trainer_id")
+    private Long trainerId;
+
+    @Column(name = "trainer_name", length = 150)
+    private String trainerName;
+
+    /** For external / vendor trainers. */
+    @Column(name = "vendor_name", length = 150)
+    private String vendorName;
+
+    @Column(name = "coordinator_id")
+    private Long coordinatorId;
+
+    @Column(name = "coordinator_name", length = 150)
+    private String coordinatorName;
+
+    @Column(name = "location", length = 300)
+    private String location;
+
+    @Column(name = "conference_link", length = 500)
+    private String conferenceLink;
+
+    // ── Exam toggle ──────────────────────────────────────────
+
+    /** Whether an exam/assessment is attached. Controls the exam step in the flow. */
+    @Column(name = "exam_enabled", nullable = false)
+    @Builder.Default
+    private Boolean examEnabled = false;
+
+    // ── Review / rejection ───────────────────────────────────
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    private String rejectionReason;
 
     // ── Status & visibility ─────────────────────────────────
 
@@ -130,9 +182,25 @@ public class TrainingProgram extends BaseEntity {
               orphanRemoval = true, fetch = FetchType.LAZY)
     private Assessment assessment;
 
+    @OneToMany(mappedBy = "program", cascade = CascadeType.ALL,
+               orphanRemoval = true, fetch = FetchType.LAZY)
+    @OrderBy("sessionDate ASC")
+    @Builder.Default
+    private List<TrainingSession> sessions = new ArrayList<>();
+
     // ── Helpers ─────────────────────────────────────────────
 
     public boolean isPublishable() {
         return !contents.isEmpty() && status == ProgramStatus.DRAFT;
+    }
+
+    /** True when program can accept new enrollments. */
+    public boolean isEnrollable() {
+        return status == ProgramStatus.ACTIVE;
+    }
+
+    /** True when program is in a terminal state (no further actions). */
+    public boolean isTerminal() {
+        return status == ProgramStatus.ARCHIVED || status == ProgramStatus.COMPLETED;
     }
 }

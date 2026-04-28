@@ -1,21 +1,33 @@
 package com.qms.module.lms.enums;
 
 /**
- * Lifecycle of one user's enrollment in a TrainingProgram.
+ * Lifecycle of one trainee's enrollment in a TrainingProgram.
  *
- *  ENROLLED → IN_PROGRESS → COMPLETED (passed)
- *                         → FAILED    (below pass mark)
- *  FAILED   → IN_PROGRESS             (re-attempt allowed up to maxAttempts)
- *  COMPLETED → EXPIRED                (certificate validity lapsed)
- *  ENROLLED  → WAIVED                 (manager-approved exemption)
- *  Any       → CANCELLED              (admin revokes assignment)
+ *  ALLOCATED            — assigned by manager, not yet started
+ *  IN_PROGRESS          — trainee is attending / reading / watching
+ *  PENDING_REVIEW       — trainee submitted compliance; awaiting coordinator review
+ *  PENDING_HR_REVIEW    — induction only: awaiting HR review
+ *  PENDING_QA_APPROVAL  — induction only: awaiting QA Head approval
+ *  COMPLETED            — all done and passed (exam + compliance)
+ *  FAILED               — compliance rejected OR exam failed (attempts exhausted)
+ *  RETRAINING           — failed; a new retraining enrollment has been created
+ *  EXPIRED              — was COMPLETED; certificate validity has lapsed
+ *  WAIVED               — manager-approved exemption; counts as compliant
+ *  CANCELLED            — revoked by admin; does NOT count as compliant
+ *
+ *  Note: ENROLLED kept for backward compatibility with existing data.
  */
 public enum EnrollmentStatus {
-    ENROLLED,       // assigned but not started
-    IN_PROGRESS,    // at least one content item viewed or quiz started
-    COMPLETED,      // all required items done AND assessment passed (or no assessment)
-    FAILED,         // assessment submitted but score < pass mark
-    EXPIRED,        // was COMPLETED; certificate validity period has lapsed
-    WAIVED,         // exempted — counts as compliant for reporting
-    CANCELLED       // revoked by an admin; does not count as compliant
+    ENROLLED,             // legacy alias for ALLOCATED
+    ALLOCATED,            // assigned, not yet started
+    IN_PROGRESS,
+    PENDING_REVIEW,
+    PENDING_HR_REVIEW,
+    PENDING_QA_APPROVAL,
+    COMPLETED,
+    FAILED,
+    RETRAINING,
+    EXPIRED,
+    WAIVED,
+    CANCELLED
 }

@@ -9,8 +9,12 @@ import com.qms.module.lms.entity.*;
 import com.qms.module.lms.enums.AssessmentStatus;
 import com.qms.module.lms.enums.EnrollmentStatus;
 import com.qms.module.lms.enums.QuestionType;
+import com.qms.common.enums.AuditAction;
+import com.qms.common.enums.AuditModule;
+import com.qms.module.audit.annotation.Audited;
 import com.qms.module.lms.repository.AssessmentAttemptRepository;
 import com.qms.module.lms.repository.EnrollmentRepository;
+import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -34,6 +38,8 @@ public class AssessmentService {
 
     // ── Start an attempt ─────────────────────────────────────
 
+    @Audited(action = AuditAction.TRAINING_STARTED, module = AuditModule.TRAINING, entityType = "AssessmentAttempt",
+             entityIdArgIndex = 0, description = "Assessment attempt started")
     @Transactional
     public AssessmentAttemptResponse startAttempt(Long enrollmentId) {
         Enrollment enrollment = enrollmentService.findById(enrollmentId);
@@ -44,7 +50,11 @@ public class AssessmentService {
         }
         if (enrollment.getStatus() == EnrollmentStatus.COMPLETED
                 || enrollment.getStatus() == EnrollmentStatus.CANCELLED
-                || enrollment.getStatus() == EnrollmentStatus.WAIVED) {
+                || enrollment.getStatus() == EnrollmentStatus.WAIVED
+                || enrollment.getStatus() == EnrollmentStatus.RETRAINING
+                || enrollment.getStatus() == EnrollmentStatus.PENDING_REVIEW
+                || enrollment.getStatus() == EnrollmentStatus.PENDING_HR_REVIEW
+                || enrollment.getStatus() == EnrollmentStatus.PENDING_QA_APPROVAL) {
             throw AppException.badRequest("Cannot start assessment for a " + enrollment.getStatus() + " enrollment");
         }
 
@@ -72,7 +82,9 @@ public class AssessmentService {
                 .build();
 
         enrollment.setAttemptsUsed(nextAttempt);
-        if (enrollment.getStatus() == EnrollmentStatus.ENROLLED) {
+        if (enrollment.getStatus() == EnrollmentStatus.ENROLLED
+                || enrollment.getStatus() == EnrollmentStatus.ALLOCATED
+                || enrollment.getStatus() == EnrollmentStatus.FAILED) {
             enrollment.setStatus(EnrollmentStatus.IN_PROGRESS);
             enrollment.setStartedAt(LocalDateTime.now());
         }
@@ -84,6 +96,8 @@ public class AssessmentService {
 
     // ── Submit answers ────────────────────────────────────────
 
+    @Audited(action = AuditAction.SUBMIT, module = AuditModule.TRAINING, entityType = "AssessmentAttempt",
+             entityIdArgIndex = 0, description = "Assessment answers submitted for grading")
     @Transactional
     public AssessmentAttemptResponse submitAttempt(Long enrollmentId, AssessmentAnswerRequest req) {
         Enrollment enrollment = enrollmentService.findById(enrollmentId);
@@ -127,10 +141,20 @@ public class AssessmentService {
                 enrollmentService.completeEnrollment(enrollment, percent);
                 log.info("Assessment PASSED: enrollmentId={} score={}%", enrollmentId, percent);
             } else {
-                enrollment.setStatus(EnrollmentStatus.FAILED);
-                enrollmentRepository.save(enrollment);
-                log.info("Assessment FAILED: enrollmentId={} score={}% (pass={}%)",
-                        enrollmentId, percent, assessment.getPassScore());
+                // Check if max attempts exhausted → trigger retraining
+                long totalAttempts = attemptRepository.countByEnrollment_Id(enrollmentId);
+                if (totalAttempts >= enrollment.getProgram().getMaxAttempts()) {
+                    enrollment.setStatus(EnrollmentStatus.RETRAINING);
+                    enrollmentRepository.save(enrollment);
+                    createRetrainingEnrollment(enrollment);
+                    log.info("Max attempts exhausted for enrollmentId={} — retraining created", enrollmentId);
+                } else {
+                    enrollment.setStatus(EnrollmentStatus.FAILED);
+                    enrollmentRepository.save(enrollment);
+                    log.info("Assessment FAILED: enrollmentId={} score={}% (pass={}%, attempt={}/{})",
+                            enrollmentId, percent, assessment.getPassScore(), totalAttempts,
+                            enrollment.getProgram().getMaxAttempts());
+                }
             }
         }
 
@@ -139,6 +163,8 @@ public class AssessmentService {
 
     // ── Manual review (SHORT_ANSWER) ─────────────────────────
 
+    @Audited(action = AuditAction.APPROVE, module = AuditModule.TRAINING, entityType = "AssessmentAttempt",
+             entityIdArgIndex = 0, description = "Assessment attempt manually reviewed and scored")
     @Transactional
     public AssessmentAttemptResponse reviewAttempt(Long attemptId, int scorePercent, String comments) {
         AssessmentAttempt attempt = attemptRepository.findById(attemptId)
@@ -165,8 +191,15 @@ public class AssessmentService {
         if (passed) {
             enrollmentService.completeEnrollment(enrollment, scorePercent);
         } else {
-            enrollment.setStatus(EnrollmentStatus.FAILED);
-            enrollmentRepository.save(enrollment);
+            long totalAttempts = attemptRepository.countByEnrollment_Id(enrollment.getId());
+            if (totalAttempts >= enrollment.getProgram().getMaxAttempts()) {
+                enrollment.setStatus(EnrollmentStatus.RETRAINING);
+                enrollmentRepository.save(enrollment);
+                createRetrainingEnrollment(enrollment);
+            } else {
+                enrollment.setStatus(EnrollmentStatus.FAILED);
+                enrollmentRepository.save(enrollment);
+            }
         }
         return toResponse(attemptRepository.save(attempt));
     }
@@ -179,6 +212,28 @@ public class AssessmentService {
     public List<AssessmentAttemptResponse> getAttemptsByEnrollment(Long enrollmentId) {
         return attemptRepository.findByEnrollment_IdOrderByAttemptNumberDesc(enrollmentId)
                 .stream().map(this::toResponse).toList();
+    }
+
+    // ── Retraining creation ───────────────────────────────────
+
+    private void createRetrainingEnrollment(Enrollment failed) {
+        Enrollment retraining = Enrollment.builder()
+                .userId(failed.getUserId())
+                .userName(failed.getUserName())
+                .userEmail(failed.getUserEmail())
+                .userDepartment(failed.getUserDepartment())
+                .program(failed.getProgram())
+                .status(EnrollmentStatus.ALLOCATED)
+                .retrainingOfEnrollmentId(failed.getId())
+                .assignedByName("SYSTEM")
+                .assignmentReason("Auto-retraining: exam max attempts exhausted")
+                .dueDate(failed.getProgram().getCompletionDeadlineDays() != null
+                        ? LocalDate.now().plusDays(failed.getProgram().getCompletionDeadlineDays())
+                        : null)
+                .progressPercent(0)
+                .attemptsUsed(0)
+                .build();
+        enrollmentRepository.save(retraining);
     }
 
     // ── Auto-grading ──────────────────────────────────────────

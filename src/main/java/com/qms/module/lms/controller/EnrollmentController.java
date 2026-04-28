@@ -73,11 +73,29 @@ public class EnrollmentController {
 
     @PostMapping("/bulk")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER')")
-    @Operation(summary = "Assign a training program to multiple users at once",
-               description = "Users who are already actively enrolled are silently skipped.")
+    @Operation(summary = "STEP 4a — Assign a training program to multiple users at once",
+               description = """
+                   Users already actively enrolled are silently skipped.
+
+                   Enrollments are created with status **ALLOCATED**.
+
+                   After all users are enrolled, call
+                   **POST /programs/{programId}/activate** to approve the
+                   allocation and make the program live.
+                   """)
     public ResponseEntity<ApiResponse<List<EnrollmentResponse>>> bulkEnroll(
             @Valid @RequestBody BulkEnrollmentRequest req) {
         return ApiResponse.created("Bulk enrollment complete", enrollmentService.bulkEnroll(req));
+    }
+
+    @PostMapping("/programs/{programId}/approve-allocation")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','MANAGER')")
+    @Operation(summary = "STEP 4b — Approve allocation and activate the program (PLANNED → ACTIVE)",
+               description = "After enrollments are created, the manager approves the allocation. " +
+                             "This transitions the program to ACTIVE so trainees can start.")
+    public ResponseEntity<ApiResponse<Void>> approveAllocation(@PathVariable Long programId) {
+        enrollmentService.approveAllocation(programId);
+        return ApiResponse.noContent("Allocation approved — program is now ACTIVE");
     }
 
     // ── Progress reporting ───────────────────────────────────

@@ -38,6 +38,18 @@ public class EnrollmentResponse {
     private String           waiverReason;
     private String           waivedByName;
 
+    // ── Attendance ────────────────────────────────────────────
+    private Boolean          attendanceMarked;
+    private LocalDate        attendanceDate;
+
+    // ── Compliance ────────────────────────────────────────────
+    private LocalDateTime    complianceSubmittedAt;
+    private LocalDateTime    complianceReviewedAt;
+    private String           complianceReviewedBy;
+
+    // ── Retraining link ───────────────────────────────────────
+    private Long             retrainingOfEnrollmentId;
+
     private boolean          overdue;
     private boolean          compliant;
 

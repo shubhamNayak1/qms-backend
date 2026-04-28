@@ -10,7 +10,9 @@ import com.qms.module.lms.entity.TrainingProgram;
 import com.qms.module.lms.enums.ContentType;
 import com.qms.module.lms.enums.ProgramStatus;
 import com.qms.module.lms.repository.EnrollmentRepository;
+import com.qms.module.lms.repository.TrainingAttendanceRepository;
 import com.qms.module.lms.repository.TrainingProgramRepository;
+import com.qms.module.lms.repository.TrainingSessionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -35,17 +37,17 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class TrainingProgramService {
 
-    private final TrainingProgramRepository programRepository;
-    private final EnrollmentRepository      enrollmentRepository;
-    private final AuditValueSerializer      auditSerializer;
+    private final TrainingProgramRepository  programRepository;
+    private final EnrollmentRepository       enrollmentRepository;
+    private final TrainingSessionRepository  sessionRepository;
+    private final TrainingAttendanceRepository attendanceRepository;
+    private final AuditValueSerializer       auditSerializer;
 
     // ── Queries ──────────────────────────────────────────────
 
     public PageResponse<ProgramResponse> search(ProgramStatus status, String category,
                                                  String department, Boolean mandatory,
                                                  String search, int page, int size) {
-        // Pre-build the wildcard pattern in Java so the repository query receives a typed
-        // varchar value — avoids Hibernate 6 binding null as bytea in PostgreSQL.
         String searchPattern = (search != null && !search.isBlank())
                 ? "%" + search.toLowerCase() + "%" : null;
         return PageResponse.of(
@@ -63,7 +65,7 @@ public class TrainingProgramService {
                 .orElseThrow(() -> AppException.notFound("Training Program with code: " + code)));
     }
 
-    // ── Commands ─────────────────────────────────────────────
+    // ── Create ───────────────────────────────────────────────
 
     @Audited(action = AuditAction.CREATE, module = AuditModule.TRAINING, entityType = "TrainingProgram", description = "TrainingProgram record created")
     @Transactional
@@ -72,20 +74,33 @@ public class TrainingProgramService {
             throw AppException.conflict("A program with code '" + req.getCode() + "' already exists");
         }
         String username = currentUsername();
+        boolean examEnabled = Boolean.TRUE.equals(req.getExamEnabled())
+                || Boolean.TRUE.equals(req.getAssessmentRequired());
+
         TrainingProgram program = TrainingProgram.builder()
                 .code(req.getCode().toUpperCase())
                 .title(req.getTitle())
                 .description(req.getDescription())
+                .trainingType(req.getTrainingType())
+                .trainingSubType(req.getTrainingSubType())
                 .category(req.getCategory())
                 .department(req.getDepartment())
+                .departments(req.getDepartments())
                 .tags(req.getTags())
                 .status(ProgramStatus.DRAFT)
                 .isMandatory(req.getIsMandatory() != null ? req.getIsMandatory() : false)
+                .trainerId(req.getTrainerId())
+                .trainerName(req.getTrainerName())
+                .vendorName(req.getVendorName())
+                .coordinatorId(req.getCoordinatorId())
+                .coordinatorName(req.getCoordinatorName())
+                .location(req.getLocation())
+                .conferenceLink(req.getConferenceLink())
+                .examEnabled(examEnabled)
+                .assessmentRequired(examEnabled)
                 .estimatedDurationMinutes(req.getEstimatedDurationMinutes())
                 .certificateValidityYears(req.getCertificateValidityYears())
                 .completionDeadlineDays(req.getCompletionDeadlineDays())
-                .assessmentRequired(req.getAssessmentRequired() != null
-                        ? req.getAssessmentRequired() : false)
                 .passScore(req.getPassScore() != null ? req.getPassScore() : 80)
                 .maxAttempts(req.getMaxAttempts() != null ? req.getMaxAttempts() : 3)
                 .ownerId(req.getOwnerId())
@@ -97,6 +112,8 @@ public class TrainingProgramService {
         log.info("Training program created: {} by {}", saved.getCode(), username);
         return toResponse(saved);
     }
+
+    // ── Update ───────────────────────────────────────────────
 
     @Audited(action = AuditAction.UPDATE, module = AuditModule.TRAINING, entityType = "TrainingProgram", entityIdArgIndex = 0)
     @Transactional
@@ -115,20 +132,101 @@ public class TrainingProgramService {
         if (req.getCode()                       != null) p.setCode(req.getCode().toUpperCase());
         if (req.getTitle()                      != null) p.setTitle(req.getTitle());
         if (req.getDescription()                != null) p.setDescription(req.getDescription());
+        if (req.getTrainingType()               != null) p.setTrainingType(req.getTrainingType());
+        if (req.getTrainingSubType()            != null) p.setTrainingSubType(req.getTrainingSubType());
         if (req.getCategory()                   != null) p.setCategory(req.getCategory());
         if (req.getDepartment()                 != null) p.setDepartment(req.getDepartment());
+        if (req.getDepartments()                != null) p.setDepartments(req.getDepartments());
         if (req.getTags()                       != null) p.setTags(req.getTags());
         if (req.getIsMandatory()                != null) p.setIsMandatory(req.getIsMandatory());
+        if (req.getTrainerId()                  != null) p.setTrainerId(req.getTrainerId());
+        if (req.getTrainerName()                != null) p.setTrainerName(req.getTrainerName());
+        if (req.getVendorName()                 != null) p.setVendorName(req.getVendorName());
+        if (req.getCoordinatorId()              != null) p.setCoordinatorId(req.getCoordinatorId());
+        if (req.getCoordinatorName()            != null) p.setCoordinatorName(req.getCoordinatorName());
+        if (req.getLocation()                   != null) p.setLocation(req.getLocation());
+        if (req.getConferenceLink()             != null) p.setConferenceLink(req.getConferenceLink());
+        if (req.getExamEnabled()                != null) {
+            p.setExamEnabled(req.getExamEnabled());
+            p.setAssessmentRequired(req.getExamEnabled());
+        }
         if (req.getEstimatedDurationMinutes()   != null) p.setEstimatedDurationMinutes(req.getEstimatedDurationMinutes());
         if (req.getCertificateValidityYears()   != null) p.setCertificateValidityYears(req.getCertificateValidityYears());
         if (req.getCompletionDeadlineDays()     != null) p.setCompletionDeadlineDays(req.getCompletionDeadlineDays());
-        if (req.getAssessmentRequired()         != null) p.setAssessmentRequired(req.getAssessmentRequired());
         if (req.getPassScore()                  != null) p.setPassScore(req.getPassScore());
         if (req.getMaxAttempts()                != null) p.setMaxAttempts(req.getMaxAttempts());
         if (req.getOwnerId()                    != null) p.setOwnerId(req.getOwnerId());
         return toResponse(programRepository.save(p));
     }
 
+    // ── Status transitions ───────────────────────────────────
+
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.TRAINING, entityType = "TrainingProgram", entityIdArgIndex = 0)
+    @Transactional
+    public ProgramResponse raiseForReview(Long id) {
+        TrainingProgram p = findById(id);
+        if (p.getStatus() != ProgramStatus.DRAFT && p.getStatus() != ProgramStatus.REJECTED) {
+            throw AppException.badRequest("Only DRAFT or REJECTED programs can be submitted for review. Current: " + p.getStatus());
+        }
+        p.setStatus(ProgramStatus.UNDER_REVIEW);
+        p.setRejectionReason(null);
+        log.info("Training program {} raised for review by {}", p.getCode(), currentUsername());
+        return toResponse(programRepository.save(p));
+    }
+
+    @Audited(action = AuditAction.APPROVE, module = AuditModule.TRAINING, entityType = "TrainingProgram", entityIdArgIndex = 0)
+    @Transactional
+    public ProgramResponse approve(Long id) {
+        TrainingProgram p = findById(id);
+        if (p.getStatus() != ProgramStatus.UNDER_REVIEW) {
+            throw AppException.badRequest("Only UNDER_REVIEW programs can be approved. Current: " + p.getStatus());
+        }
+        p.setStatus(ProgramStatus.APPROVED);
+        log.info("Training program {} approved by {}", p.getCode(), currentUsername());
+        return toResponse(programRepository.save(p));
+    }
+
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.TRAINING, entityType = "TrainingProgram", entityIdArgIndex = 0)
+    @Transactional
+    public ProgramResponse reject(Long id, String reason) {
+        TrainingProgram p = findById(id);
+        if (p.getStatus() != ProgramStatus.UNDER_REVIEW) {
+            throw AppException.badRequest("Only UNDER_REVIEW programs can be rejected. Current: " + p.getStatus());
+        }
+        p.setStatus(ProgramStatus.REJECTED);
+        p.setRejectionReason(reason);
+        log.info("Training program {} rejected by {}", p.getCode(), currentUsername());
+        return toResponse(programRepository.save(p));
+    }
+
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.TRAINING, entityType = "TrainingProgram", entityIdArgIndex = 0)
+    @Transactional
+    public ProgramResponse markPlanned(Long id) {
+        TrainingProgram p = findById(id);
+        if (p.getStatus() != ProgramStatus.APPROVED) {
+            throw AppException.badRequest("Only APPROVED programs can be planned. Current: " + p.getStatus());
+        }
+        if (sessionRepository.countActiveSessionsByProgram(id) == 0) {
+            throw AppException.badRequest("Add at least one training session before marking as Planned");
+        }
+        p.setStatus(ProgramStatus.PLANNED);
+        log.info("Training program {} marked as PLANNED", p.getCode());
+        return toResponse(programRepository.save(p));
+    }
+
+    @Audited(action = AuditAction.PUBLISH, module = AuditModule.TRAINING, entityType = "TrainingProgram", entityIdArgIndex = 0)
+    @Transactional
+    public ProgramResponse activate(Long id) {
+        TrainingProgram p = findById(id);
+        if (p.getStatus() != ProgramStatus.PLANNED) {
+            throw AppException.badRequest("Only PLANNED programs can be activated. Current: " + p.getStatus());
+        }
+        p.setStatus(ProgramStatus.ACTIVE);
+        log.info("Training program {} activated", p.getCode());
+        return toResponse(programRepository.save(p));
+    }
+
+    /** Legacy publish — kept for backward compatibility. Equivalent to raiseForReview → approve → activate. */
     @Audited(action = AuditAction.PUBLISH, module = AuditModule.TRAINING, entityType = "TrainingProgram", entityIdArgIndex = 0)
     @Transactional
     public ProgramResponse publish(Long id) {
@@ -140,7 +238,19 @@ public class TrainingProgramService {
             throw AppException.badRequest("Cannot publish a program with no content items");
         }
         p.setStatus(ProgramStatus.ACTIVE);
-        log.info("Training program published: {}", p.getCode());
+        log.info("Training program published (legacy): {}", p.getCode());
+        return toResponse(programRepository.save(p));
+    }
+
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.TRAINING, entityType = "TrainingProgram", entityIdArgIndex = 0)
+    @Transactional
+    public ProgramResponse complete(Long id) {
+        TrainingProgram p = findById(id);
+        if (p.getStatus() != ProgramStatus.ACTIVE) {
+            throw AppException.badRequest("Only ACTIVE programs can be completed. Current: " + p.getStatus());
+        }
+        p.setStatus(ProgramStatus.COMPLETED);
+        log.info("Training program {} marked as COMPLETED", p.getCode());
         return toResponse(programRepository.save(p));
     }
 
@@ -156,6 +266,8 @@ public class TrainingProgramService {
         return toResponse(programRepository.save(p));
     }
 
+    // ── Content management ───────────────────────────────────
+
     @Audited(action = AuditAction.UPDATE, module = AuditModule.TRAINING, entityType = "TrainingProgram", entityIdArgIndex = 0)
     @Transactional
     public ProgramResponse addContent(Long programId, String title, ContentType type,
@@ -163,8 +275,8 @@ public class TrainingProgramService {
                                        String dmsDocVersion, String inlineContent,
                                        Integer durationMinutes, Boolean required) {
         TrainingProgram p = findById(programId);
-        if (p.getStatus() == ProgramStatus.ARCHIVED) {
-            throw AppException.badRequest("Cannot add content to an archived program");
+        if (p.isTerminal()) {
+            throw AppException.badRequest("Cannot add content to a " + p.getStatus() + " program");
         }
         int nextOrder = p.getContents().size() + 1;
         ProgramContent item = ProgramContent.builder()
@@ -185,12 +297,13 @@ public class TrainingProgramService {
     public ProgramResponse removeContent(Long programId, Long contentId) {
         TrainingProgram p = findById(programId);
         p.getContents().removeIf(c -> c.getId().equals(contentId));
-        // Re-number display order
         for (int i = 0; i < p.getContents().size(); i++) {
             p.getContents().get(i).setDisplayOrder(i + 1);
         }
         return toResponse(programRepository.save(p));
     }
+
+    // ── DMS document linking ─────────────────────────────────
 
     @Audited(action = AuditAction.UPDATE, module = AuditModule.TRAINING, entityType = "TrainingProgram", entityIdArgIndex = 0)
     @Transactional
@@ -220,6 +333,8 @@ public class TrainingProgramService {
         p.getDocumentLinks().removeIf(l -> l.getId().equals(linkId));
         return toResponse(programRepository.save(p));
     }
+
+    // ── Delete ───────────────────────────────────────────────
 
     @Audited(action = AuditAction.DELETE, module = AuditModule.TRAINING, entityType = "TrainingProgram", entityIdArgIndex = 0, captureNewValue = false, description = "TrainingProgram record deleted")
     @Transactional
@@ -278,19 +393,40 @@ public class TrainingProgramService {
                         .build())
                 .toList();
 
+        List<ProgramResponse.SessionSummary> sessionSummaries = p.getSessions().stream()
+                .map(s -> ProgramResponse.SessionSummary.builder()
+                        .id(s.getId())
+                        .sessionDate(s.getSessionDate() != null ? s.getSessionDate().toString() : null)
+                        .sessionEndDate(s.getSessionEndDate() != null ? s.getSessionEndDate().toString() : null)
+                        .venue(s.getVenue()).meetingLink(s.getMeetingLink())
+                        .trainerName(s.getTrainerName())
+                        .status(s.getStatus() != null ? s.getStatus().name() : null)
+                        .presentCount(attendanceRepository.countPresentBySession(
+                                s.getId() != null ? s.getId() : 0L))
+                        .build())
+                .toList();
+
         return ProgramResponse.builder()
                 .id(p.getId()).code(p.getCode()).title(p.getTitle())
-                .description(p.getDescription()).category(p.getCategory())
-                .department(p.getDepartment()).tags(p.getTags()).status(p.getStatus())
+                .description(p.getDescription())
+                .trainingType(p.getTrainingType()).trainingSubType(p.getTrainingSubType())
+                .category(p.getCategory()).department(p.getDepartment())
+                .departments(p.getDepartments()).tags(p.getTags()).status(p.getStatus())
                 .isMandatory(p.getIsMandatory())
+                .trainerId(p.getTrainerId()).trainerName(p.getTrainerName())
+                .vendorName(p.getVendorName())
+                .coordinatorId(p.getCoordinatorId()).coordinatorName(p.getCoordinatorName())
+                .location(p.getLocation()).conferenceLink(p.getConferenceLink())
+                .examEnabled(p.getExamEnabled()).assessmentRequired(p.getAssessmentRequired())
                 .estimatedDurationMinutes(p.getEstimatedDurationMinutes())
                 .certificateValidityYears(p.getCertificateValidityYears())
                 .completionDeadlineDays(p.getCompletionDeadlineDays())
-                .assessmentRequired(p.getAssessmentRequired())
                 .passScore(p.getPassScore()).maxAttempts(p.getMaxAttempts())
+                .rejectionReason(p.getRejectionReason())
                 .ownerName(p.getOwnerName())
                 .totalEnrollments(totalEnrollments).completedEnrollments(completed)
                 .complianceRate(rate).contents(contentSummaries).documentLinks(linkSummaries)
+                .sessions(sessionSummaries)
                 .hasAssessment(p.getAssessment() != null)
                 .createdAt(p.getCreatedAt()).updatedAt(p.getUpdatedAt()).createdBy(p.getCreatedBy())
                 .build();

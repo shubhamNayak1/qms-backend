@@ -116,6 +116,33 @@ public class Enrollment extends BaseEntity {
     @Column(name = "assignment_reason", length = 500)
     private String assignmentReason;
 
+    // ── Attendance ──────────────────────────────────────────
+
+    @Column(name = "attendance_marked", nullable = false)
+    @Builder.Default
+    private Boolean attendanceMarked = false;
+
+    /** Actual date on which the trainee attended (within ±2 days of session date). */
+    @Column(name = "attendance_date")
+    private LocalDate attendanceDate;
+
+    // ── Compliance submission ────────────────────────────────
+
+    @Column(name = "compliance_submitted_at")
+    private LocalDateTime complianceSubmittedAt;
+
+    @Column(name = "compliance_reviewed_at")
+    private LocalDateTime complianceReviewedAt;
+
+    @Column(name = "compliance_reviewed_by", length = 150)
+    private String complianceReviewedBy;
+
+    // ── Retraining link ──────────────────────────────────────
+
+    /** If this enrollment was created as a retraining, stores the original enrollment ID. */
+    @Column(name = "retraining_of_enrollment_id")
+    private Long retrainingOfEnrollmentId;
+
     // ── Waiver (if status = WAIVED) ─────────────────────────
 
     @Column(name = "waiver_reason", length = 500)
@@ -142,6 +169,10 @@ public class Enrollment extends BaseEntity {
     @OneToOne(mappedBy = "enrollment", cascade = CascadeType.ALL,
               orphanRemoval = true, fetch = FetchType.LAZY)
     private TrainingCertificate certificate;
+
+    @OneToOne(mappedBy = "enrollment", cascade = CascadeType.ALL,
+              orphanRemoval = true, fetch = FetchType.LAZY)
+    private ComplianceSubmission complianceSubmission;
 
     // ── Helpers ─────────────────────────────────────────────
 
