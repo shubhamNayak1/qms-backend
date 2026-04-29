@@ -3,7 +3,10 @@ package com.qms.module.lms.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.qms.common.enums.AuditAction;
+import com.qms.common.enums.AuditModule;
 import com.qms.common.exception.AppException;
+import com.qms.module.audit.annotation.Audited;
 import com.qms.module.lms.dto.request.AssessmentQuestionRequest;
 import com.qms.module.lms.dto.request.AssessmentSetupRequest;
 import com.qms.module.lms.dto.response.AssessmentDetailResponse;
@@ -42,6 +45,9 @@ public class ProgramAssessmentService {
 
     // ── Create / update assessment metadata ────────────────────
 
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.TRAINING,
+             entityType = "Assessment", entityIdArgIndex = 0,
+             description = "Assessment settings updated for training program")
     @Transactional
     public AssessmentDetailResponse setupAssessment(Long programId, AssessmentSetupRequest req) {
         Assessment assessment = findOrCreateAssessment(programId);
@@ -60,9 +66,20 @@ public class ProgramAssessmentService {
 
     // ── Add question ─────────────────────────────────────────
 
+    @Audited(action = AuditAction.CREATE, module = AuditModule.TRAINING,
+             entityType = "AssessmentQuestion", entityIdArgIndex = 0,
+             description = "Question added to training assessment")
     @Transactional
     public AssessmentDetailResponse addQuestion(Long programId, AssessmentQuestionRequest req) {
         Assessment assessment = findOrCreateAssessment(programId);
+
+        // On create, questionType and questionText are mandatory
+        if (req.getQuestionType() == null) {
+            throw AppException.badRequest("questionType is required");
+        }
+        if (req.getQuestionText() == null || req.getQuestionText().isBlank()) {
+            throw AppException.badRequest("questionText is required");
+        }
         validateQuestionRequest(req);
 
         // Auto-assign display order if not provided
@@ -80,16 +97,18 @@ public class ProgramAssessmentService {
                 .displayOrder(order)
                 .build();
 
-        questionRepository.save(question);
+        questionRepository.saveAndFlush(question);
         log.info("Question added to assessment for programId={}", programId);
 
-        // Reload to reflect updated list
-        return toDetailResponse(assessmentRepository.findByProgram_Id(programId)
-                .orElseThrow(() -> AppException.notFound("Assessment for program", programId)));
+        // Reload fresh to reflect updated list
+        return toDetailResponseFresh(assessment.getId());
     }
 
     // ── Update question ──────────────────────────────────────
 
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.TRAINING,
+             entityType = "AssessmentQuestion", entityIdArgIndex = 1,
+             captureOldValue = true, description = "Assessment question updated")
     @Transactional
     public AssessmentDetailResponse updateQuestion(Long programId, Long questionId,
                                                     AssessmentQuestionRequest req) {
@@ -108,14 +127,17 @@ public class ProgramAssessmentService {
 
         validateQuestionRequest(req.getQuestionType() != null ? req : buildFullRequest(q));
 
-        questionRepository.save(q);
+        questionRepository.saveAndFlush(q);
         log.info("Question {} updated for programId={}", questionId, programId);
-        return toDetailResponse(assessmentRepository.findByProgram_Id(programId)
-                .orElseThrow(() -> AppException.notFound("Assessment for program", programId)));
+        // Reload fresh from DB to bypass first-level cache
+        return toDetailResponseFresh(assessment.getId());
     }
 
     // ── Delete question ──────────────────────────────────────
 
+    @Audited(action = AuditAction.DELETE, module = AuditModule.TRAINING,
+             entityType = "AssessmentQuestion", entityIdArgIndex = 1,
+             captureNewValue = false, description = "Assessment question deleted")
     @Transactional
     public void deleteQuestion(Long programId, Long questionId) {
         Assessment assessment = findOrCreateAssessment(programId);
@@ -198,9 +220,24 @@ public class ProgramAssessmentService {
 
     // ── Response mappers ──────────────────────────────────────
 
+    /** Loads questions fresh from the repository (bypasses Hibernate L1 cache). */
+    private AssessmentDetailResponse toDetailResponseFresh(Long assessmentId) {
+        Assessment a = assessmentRepository.findById(assessmentId)
+                .orElseThrow(() -> AppException.notFound("Assessment", assessmentId));
+        List<AssessmentQuestion> freshQuestions =
+                questionRepository.findByAssessment_IdOrderByDisplayOrderAsc(assessmentId);
+        return buildDetailResponse(a, freshQuestions);
+    }
+
     private AssessmentDetailResponse toDetailResponse(Assessment a) {
+        List<AssessmentQuestion> questions =
+                questionRepository.findByAssessment_IdOrderByDisplayOrderAsc(a.getId());
+        return buildDetailResponse(a, questions);
+    }
+
+    private AssessmentDetailResponse buildDetailResponse(Assessment a, List<AssessmentQuestion> questionList) {
         List<AssessmentDetailResponse.QuestionWithAnswerResponse> questions =
-                a.getQuestions().stream()
+                questionList.stream()
                         .map(q -> AssessmentDetailResponse.QuestionWithAnswerResponse.builder()
                                 .id(q.getId())
                                 .questionType(q.getQuestionType() != null ? q.getQuestionType().name() : null)
@@ -223,7 +260,7 @@ public class ProgramAssessmentService {
                 .passScore(a.getPassScore())
                 .randomiseQuestions(a.getRandomiseQuestions())
                 .randomiseAnswers(a.getRandomiseAnswers())
-                .totalMarks(a.getTotalMarks())
+                .totalMarks(questionList.stream().mapToInt(q -> q.getMarks() != null ? q.getMarks() : 1).sum())
                 .questionCount(questions.size())
                 .createdAt(a.getCreatedAt())
                 .updatedAt(a.getUpdatedAt())

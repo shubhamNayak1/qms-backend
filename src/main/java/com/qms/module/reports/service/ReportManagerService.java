@@ -1,7 +1,10 @@
 package com.qms.module.reports.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.qms.common.enums.AuditAction;
+import com.qms.common.enums.AuditModule;
 import com.qms.common.exception.AppException;
+import com.qms.module.audit.annotation.Audited;
 import com.qms.common.response.PageResponse;
 import com.qms.module.reports.aggregation.DynamicReportBuilder;
 import com.qms.module.reports.aggregation.ModuleFieldRegistry;
@@ -50,6 +53,8 @@ public class ReportManagerService {
 
     // ── Create ────────────────────────────────────────────────
 
+    @Audited(action = AuditAction.CREATE, module = AuditModule.REPORT,
+             entityType = "SavedReport", description = "Dynamic report created and executed")
     @Transactional
     public ReportResponse create(CreateReportRequest req) {
         ModuleFieldRegistry.validateFields(req.getModule(), req.getDimensions(), req.getMetrics());
@@ -78,6 +83,9 @@ public class ReportManagerService {
 
     // ── Update ────────────────────────────────────────────────
 
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.REPORT,
+             entityType = "SavedReport", entityIdArgIndex = 0,
+             captureOldValue = true, description = "Report configuration updated and re-executed")
     @Transactional
     public ReportResponse update(Long id, UpdateReportRequest req) {
         SavedReport report = findById(id);
@@ -104,6 +112,9 @@ public class ReportManagerService {
 
     // ── Disable / Enable ──────────────────────────────────────
 
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.REPORT,
+             entityType = "SavedReport", entityIdArgIndex = 0,
+             description = "Report disabled")
     @Transactional
     public ReportResponse disable(Long id) {
         SavedReport report = findById(id);
@@ -112,6 +123,9 @@ public class ReportManagerService {
         return toResponse(reportRepository.save(report));
     }
 
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.REPORT,
+             entityType = "SavedReport", entityIdArgIndex = 0,
+             description = "Report enabled")
     @Transactional
     public ReportResponse enable(Long id) {
         SavedReport report = findById(id);
@@ -122,6 +136,9 @@ public class ReportManagerService {
 
     // ── Re-run ────────────────────────────────────────────────
 
+    @Audited(action = AuditAction.EXPORT, module = AuditModule.REPORT,
+             entityType = "SavedReport", entityIdArgIndex = 0,
+             description = "Report manually re-executed")
     @Transactional
     public ReportResponse reRun(Long id) {
         SavedReport report = findById(id);
@@ -164,6 +181,9 @@ public class ReportManagerService {
 
     // ── Download ──────────────────────────────────────────────
 
+    @Audited(action = AuditAction.DOWNLOAD, module = AuditModule.REPORT,
+             entityType = "SavedReport", entityIdArgIndex = 0,
+             captureNewValue = false, description = "Report file downloaded")
     public byte[] download(Long id) {
         SavedReport report = findById(id);
         if (report.getFilePath() == null || report.getStatus() != ReportStatus.COMPLETED) {
