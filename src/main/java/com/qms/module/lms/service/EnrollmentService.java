@@ -84,19 +84,36 @@ public class EnrollmentService {
     @Audited(action = AuditAction.TRAINING_ASSIGNED, module = AuditModule.TRAINING, entityType = "Enrollment", description = "Enrollment record created")
     @Transactional
     public List<EnrollmentResponse> bulkEnroll(BulkEnrollmentRequest req) {
+        // Pre-validate program exists and status is valid BEFORE the loop.
+        // Without this, every user gets silently skipped and the response is [].
+        TrainingProgram program = programRepository.findByIdAndIsDeletedFalse(req.getProgramId())
+                .orElseThrow(() -> AppException.notFound("Training Program", req.getProgramId()));
+        if (program.getStatus() != ProgramStatus.ACTIVE
+                && program.getStatus() != ProgramStatus.PLANNED) {
+            throw AppException.badRequest(
+                    "Cannot bulk enroll in a " + program.getStatus()
+                    + " program. Program must be ACTIVE or PLANNED first.");
+        }
+        if (req.getUserIds() == null || req.getUserIds().isEmpty()) {
+            throw AppException.badRequest("userIds list must not be empty");
+        }
+
         String assignedBy = currentUsername();
         List<EnrollmentResponse> results = new ArrayList<>();
+        List<Long> skipped = new ArrayList<>();
 
         for (Long userId : req.getUserIds()) {
             try {
                 results.add(doEnroll(req.getProgramId(), userId, null, assignedBy,
                         req.getDueDate(), req.getAssignmentReason()));
             } catch (AppException e) {
+                // Only skip per-user errors (e.g. already enrolled). Program errors already thrown above.
+                skipped.add(userId);
                 log.warn("Skipping userId={} in bulk enroll: {}", userId, e.getMessage());
             }
         }
-        log.info("Bulk enrollment: programId={} — {}/{} successful",
-                req.getProgramId(), results.size(), req.getUserIds().size());
+        log.info("Bulk enrollment: programId={} — {}/{} enrolled, {} skipped",
+                req.getProgramId(), results.size(), req.getUserIds().size(), skipped.size());
         return results;
     }
 
