@@ -21,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -101,11 +102,8 @@ class AuditLogServiceTest {
             req.setSize(20);
 
             var pageResult = new PageImpl<>(List.of(sampleLog));
-            when(auditLogRepository.search(
-                    eq(42L), isNull(), eq(AuditAction.CREATE), eq(AuditModule.CAPA),
-                    isNull(), isNull(), isNull(), isNull(), isNull(), isNull(),
-                    any(Pageable.class)
-            )).thenReturn(pageResult);
+            when(auditLogRepository.findAll(any(Specification.class), any(Pageable.class)))
+                    .thenReturn(pageResult);
 
             PageResponse<AuditLogResponse> result = auditLogService.search(req);
 
@@ -118,9 +116,8 @@ class AuditLogServiceTest {
         void mapsToResponseCorrectly() {
             AuditSearchRequest req = new AuditSearchRequest();
             var page = new PageImpl<>(List.of(sampleLog));
-            when(auditLogRepository.search(
-                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()
-            )).thenReturn(page);
+            when(auditLogRepository.findAll(any(Specification.class), any(Pageable.class)))
+                    .thenReturn(page);
 
             PageResponse<AuditLogResponse> result = auditLogService.search(req);
             AuditLogResponse response = result.getContent().get(0);

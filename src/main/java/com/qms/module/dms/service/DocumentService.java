@@ -316,7 +316,10 @@ public class DocumentService {
 
     // ─── Download ─────────────────────────────────────────────
 
-    @Audited(action = AuditAction.DOWNLOAD, module = AuditModule.DOCUMENT, entityType = "Document", entityIdArgIndex = 0)
+    @Audited(action = AuditAction.DOWNLOAD, module = AuditModule.DOCUMENT,
+             entityType = "Document", entityIdArgIndex = 0,
+             captureNewValue = false, captureOldValue = false,
+             description = "Document file downloaded")
     @Transactional
     public ResponseEntity<InputStreamResource> download(Long id, HttpServletRequest request) {
         Document doc = findById(id);
