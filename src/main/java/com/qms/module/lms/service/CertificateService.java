@@ -39,6 +39,14 @@ public class CertificateService {
 
     // ── Queries ──────────────────────────────────────────────
 
+    public PageResponse<CertificateResponse> getAll(int page, int size, CertificateStatus status) {
+        PageRequest pr = PageRequest.of(page, size, Sort.by("issuedDate").descending());
+        return PageResponse.of(
+                status != null
+                        ? certificateRepository.findByStatusOrderByIssuedDateDesc(status, pr).map(this::toResponse)
+                        : certificateRepository.findAllByOrderByIssuedDateDesc(pr).map(this::toResponse));
+    }
+
     public PageResponse<CertificateResponse> getByUser(Long userId, int page, int size) {
         return PageResponse.of(
                 certificateRepository.findByUserIdOrderByIssuedDateDesc(userId,

@@ -3,6 +3,7 @@ package com.qms.module.lms.controller;
 import com.qms.common.response.ApiResponse;
 import com.qms.common.response.PageResponse;
 import com.qms.module.lms.dto.response.CertificateResponse;
+import com.qms.module.lms.enums.CertificateStatus;
 import com.qms.module.lms.service.CertificateService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -20,6 +21,17 @@ import org.springframework.web.bind.annotation.*;
 public class CertificateController {
 
     private final CertificateService certificateService;
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','AUDITOR')")
+    @Operation(summary = "List all certificates (paginated)",
+               description = "Managers can list all certificates, optionally filtered by status.")
+    public ResponseEntity<ApiResponse<PageResponse<CertificateResponse>>> getAll(
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false)    CertificateStatus status) {
+        return ApiResponse.ok(certificateService.getAll(page, size, status));
+    }
 
     @GetMapping("/user/{userId}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','AUDITOR') or #userId == authentication.principal.id")

@@ -18,6 +18,10 @@ public interface TrainingCertificateRepository extends JpaRepository<TrainingCer
 
     Optional<TrainingCertificate> findByCertificateNumber(String certificateNumber);
 
+    Page<TrainingCertificate> findAllByOrderByIssuedDateDesc(Pageable pageable);
+
+    Page<TrainingCertificate> findByStatusOrderByIssuedDateDesc(CertificateStatus status, Pageable pageable);
+
     Optional<TrainingCertificate> findByEnrollment_Id(Long enrollmentId);
 
     Page<TrainingCertificate> findByUserIdOrderByIssuedDateDesc(Long userId, Pageable pageable);
