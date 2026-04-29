@@ -6,5 +6,6 @@ public enum ReportModule {
     INCIDENT,
     CHANGE_CONTROL,
     COMPLAINT,
-    LMS_ENROLLMENT
+    LMS_ENROLLMENT,
+    USER
 }

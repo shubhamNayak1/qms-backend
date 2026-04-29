@@ -159,6 +159,31 @@ public class ModuleFieldRegistry {
             met("attempts_used",   "Attempts Used",     "attempts_used"),
             met("overdue",         "Overdue?",          "CASE WHEN due_date < NOW() AND status NOT IN ('COMPLETED','WAIVED','CANCELLED') THEN 'Yes' ELSE 'No' END")
         ));
+
+        // ── USER ──────────────────────────────────────────────────
+        TABLE_MAP.put(ReportModule.USER, "users");
+        FIELD_MAP.put(ReportModule.USER, List.of(
+            // Dimensions (group-by fields)
+            dim("department",          "Department",        "department"),
+            dim("designation",         "Designation",       "designation"),
+            dim("is_active",           "Account Status",    "CASE WHEN is_active THEN 'Active' ELSE 'Inactive' END"),
+            dim("is_email_verified",   "Email Verified",    "CASE WHEN is_email_verified THEN 'Yes' ELSE 'No' END"),
+            dim("must_change_password","Must Change Pwd",   "CASE WHEN must_change_password THEN 'Yes' ELSE 'No' END"),
+            dim("month",               "Month Joined",      "TO_CHAR(created_at,'YYYY-MM')"),
+            dim("year",                "Year Joined",       "EXTRACT(YEAR FROM created_at)::TEXT"),
+            // Metrics (detail fields)
+            met("username",            "Username",          "username"),
+            met("email",               "Email",             "email"),
+            met("first_name",          "First Name",        "first_name"),
+            met("last_name",           "Last Name",         "last_name"),
+            met("employee_id",         "Employee ID",       "employee_id"),
+            met("phone",               "Phone",             "phone"),
+            met("last_login_at",       "Last Login",        "last_login_at"),
+            met("failed_login_attempts","Failed Logins",    "failed_login_attempts"),
+            met("locked_until",        "Locked Until",      "locked_until"),
+            met("password_changed_at", "Pwd Last Changed",  "password_changed_at"),
+            met("created_at",          "Joined On",         "created_at")
+        ));
     }
 
     private static FieldDef dim(String key, String label, String sql) {
