@@ -9,7 +9,8 @@ public enum QmsRecordType {
     DEVIATION        ("DEV"),
     INCIDENT         ("INC"),
     CHANGE_CONTROL   ("CC"),
-    MARKET_COMPLAINT ("MC");
+    MARKET_COMPLAINT ("MC"),
+    AUDIT_SCHEDULE   ("AUD");
 
     private final String prefix;
 

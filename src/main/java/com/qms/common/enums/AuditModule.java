@@ -18,6 +18,7 @@ public enum AuditModule {
     COURSE,
     TRAINING,
     REPORT,
+    QMS_AUDIT,
     PASSWORD_POLICY,
     SYSTEM
 }

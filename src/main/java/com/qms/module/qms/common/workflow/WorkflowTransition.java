@@ -188,6 +188,7 @@ public final class WorkflowTransition {
             case INCIDENT         -> INCIDENT_T;
             case CHANGE_CONTROL   -> CC_T;
             case MARKET_COMPLAINT -> MC_T;
+            default               -> Map.of();
         };
     }
 
