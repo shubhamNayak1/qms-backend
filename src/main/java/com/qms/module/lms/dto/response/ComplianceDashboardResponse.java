@@ -17,13 +17,15 @@ public class ComplianceDashboardResponse {
 
     // ── Enrollment KPIs ──────────────────────────────────────
     private long totalEnrollments;
-    private long enrolledCount;
+    /** Assigned but not yet started (ALLOCATED + legacy ENROLLED). */
+    private long allocatedCount;
     private long inProgressCount;
     private long completedCount;
     private long failedCount;
     private long expiredCount;
     private long waivedCount;
     private long cancelledCount;
+    private long retrainingCount;
     private long overdueCount;
 
     /** Overall compliance rate across all non-cancelled enrollments (%). */

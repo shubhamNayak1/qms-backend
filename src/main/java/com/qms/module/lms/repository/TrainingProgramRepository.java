@@ -46,4 +46,8 @@ public interface TrainingProgramRepository extends JpaRepository<TrainingProgram
                                  Pageable pageable);
 
     long countByStatusAndIsDeletedFalse(ProgramStatus status);
+
+    long countByIsDeletedFalse();
+
+    long countByIsMandatoryTrueAndIsDeletedFalse();
 }

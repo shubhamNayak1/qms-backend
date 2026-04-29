@@ -36,29 +36,35 @@ public class LmsComplianceService {
         LocalDate warningDate = today.plusDays(overdueWarningDays);
 
         // ── Enrollment counts ─────────────────────────────────
-        long total       = enrollmentRepository.count();
-        long enrolled    = enrollmentRepository.countByStatusAndIsDeletedFalse(EnrollmentStatus.ENROLLED);
-        long inProgress  = enrollmentRepository.countByStatusAndIsDeletedFalse(EnrollmentStatus.IN_PROGRESS);
-        long completed   = enrollmentRepository.countByStatusAndIsDeletedFalse(EnrollmentStatus.COMPLETED);
-        long failed      = enrollmentRepository.countByStatusAndIsDeletedFalse(EnrollmentStatus.FAILED);
-        long expired     = enrollmentRepository.countByStatusAndIsDeletedFalse(EnrollmentStatus.EXPIRED);
-        long waived      = enrollmentRepository.countByStatusAndIsDeletedFalse(EnrollmentStatus.WAIVED);
-        long cancelled   = enrollmentRepository.countByStatusAndIsDeletedFalse(EnrollmentStatus.CANCELLED);
+        // Use countByIsDeletedFalse to exclude soft-deleted rows
+        long total      = enrollmentRepository.countByIsDeletedFalse();
+        // Bug fix: new enrollments use ALLOCATED, not the legacy ENROLLED status.
+        // Count both together so old and new data are both represented.
+        long allocated  = enrollmentRepository.countByStatusAndIsDeletedFalse(EnrollmentStatus.ALLOCATED)
+                        + enrollmentRepository.countByStatusAndIsDeletedFalse(EnrollmentStatus.ENROLLED);
+        long inProgress = enrollmentRepository.countByStatusAndIsDeletedFalse(EnrollmentStatus.IN_PROGRESS);
+        long completed  = enrollmentRepository.countByStatusAndIsDeletedFalse(EnrollmentStatus.COMPLETED);
+        long failed     = enrollmentRepository.countByStatusAndIsDeletedFalse(EnrollmentStatus.FAILED);
+        long expired    = enrollmentRepository.countByStatusAndIsDeletedFalse(EnrollmentStatus.EXPIRED);
+        long waived     = enrollmentRepository.countByStatusAndIsDeletedFalse(EnrollmentStatus.WAIVED);
+        long cancelled  = enrollmentRepository.countByStatusAndIsDeletedFalse(EnrollmentStatus.CANCELLED);
+        long retraining = enrollmentRepository.countByStatusAndIsDeletedFalse(EnrollmentStatus.RETRAINING);
 
         List<Enrollment> overdueList = enrollmentRepository.findOverdue(today);
         long overdueCount = overdueList.size();
 
         List<Enrollment> dueSoon = enrollmentRepository.findDueSoon(today, warningDate);
 
-        // Overall compliance rate: (COMPLETED + WAIVED) / non-cancelled
+        // Compliance rate: (COMPLETED + WAIVED) / non-cancelled
         long nonCancelled = total - cancelled;
         double complianceRate = nonCancelled == 0 ? 0.0
                 : Math.round((completed + waived) * 10000.0 / nonCancelled) / 100.0;
 
         // ── Program counts ────────────────────────────────────
-        long totalPrograms     = programRepository.countByStatusAndIsDeletedFalse(ProgramStatus.ACTIVE)
-                               + programRepository.countByStatusAndIsDeletedFalse(ProgramStatus.DRAFT);
-        long activePrograms    = programRepository.countByStatusAndIsDeletedFalse(ProgramStatus.ACTIVE);
+        // Bug fix: count all non-deleted programs, not just ACTIVE+DRAFT
+        long totalPrograms    = programRepository.countByIsDeletedFalse();
+        long activePrograms   = programRepository.countByStatusAndIsDeletedFalse(ProgramStatus.ACTIVE);
+        long mandatoryPrograms = programRepository.countByIsMandatoryTrueAndIsDeletedFalse();
 
         // ── Certificate counts ────────────────────────────────
         long activeCerts  = certificateRepository.findExpiringSoon(today, today.plusYears(10)).stream()
@@ -71,17 +77,19 @@ public class LmsComplianceService {
         return ComplianceDashboardResponse.builder()
                 .generatedAt(LocalDateTime.now())
                 .totalEnrollments(total)
-                .enrolledCount(enrolled)
+                .allocatedCount(allocated)
                 .inProgressCount(inProgress)
                 .completedCount(completed)
                 .failedCount(failed)
                 .expiredCount(expired)
                 .waivedCount(waived)
                 .cancelledCount(cancelled)
+                .retrainingCount(retraining)
                 .overdueCount(overdueCount)
                 .overallComplianceRate(complianceRate)
                 .totalPrograms(totalPrograms)
                 .activePrograms(activePrograms)
+                .mandatoryPrograms(mandatoryPrograms)
                 .activeCertificates(activeCerts)
                 .expiredCertificates(expiredCerts)
                 .overdueEnrollments(overdueList.stream()

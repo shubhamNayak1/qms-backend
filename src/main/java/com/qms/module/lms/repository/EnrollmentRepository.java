@@ -42,6 +42,8 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long>, J
 
     // ── Dashboard & compliance queries ────────────────────────
 
+    long countByIsDeletedFalse();
+
     long countByStatusAndIsDeletedFalse(EnrollmentStatus status);
 
     long countByProgram_IdAndStatusAndIsDeletedFalse(Long programId, EnrollmentStatus status);
