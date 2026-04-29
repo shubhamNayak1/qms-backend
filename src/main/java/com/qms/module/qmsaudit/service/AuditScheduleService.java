@@ -48,7 +48,7 @@ public class AuditScheduleService {
         String auditorName = resolveAuditorName(req.getLeadAuditorId(), req.getLeadAuditorName());
 
         AuditSchedule audit = AuditSchedule.builder()
-                .auditNumber(recordNumberGenerator.generate(QmsRecordType.AUDIT_SCHEDULE, TABLE))
+                .recordNumber(recordNumberGenerator.generate(QmsRecordType.AUDIT_SCHEDULE, TABLE))
                 .title(req.getTitle())
                 .auditType(req.getAuditType())
                 .scope(req.getScope())
@@ -62,7 +62,7 @@ public class AuditScheduleService {
                 .build();
 
         audit = repository.save(audit);
-        log.info("Audit scheduled: {} ({})", audit.getAuditNumber(), audit.getAuditType());
+        log.info("Audit scheduled: {} ({})", audit.getRecordNumber(), audit.getAuditType());
         return toResponse(audit);
     }
 
@@ -152,7 +152,7 @@ public class AuditScheduleService {
         AuditSchedule audit = findById(id);
         audit.setIsDeleted(true);
         repository.save(audit);
-        log.info("Audit {} soft-deleted", audit.getAuditNumber());
+        log.info("Audit {} soft-deleted", audit.getRecordNumber());
     }
 
     // ── Queries ───────────────────────────────────────────────
@@ -198,7 +198,7 @@ public class AuditScheduleService {
 
         return AuditScheduleResponse.builder()
                 .id(a.getId())
-                .auditNumber(a.getAuditNumber())
+                .recordNumber(a.getRecordNumber())
                 .title(a.getTitle())
                 .auditType(a.getAuditType())
                 .scope(a.getScope())

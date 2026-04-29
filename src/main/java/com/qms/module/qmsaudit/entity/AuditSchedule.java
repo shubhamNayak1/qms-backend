@@ -21,7 +21,7 @@ import java.time.LocalDate;
         @Index(name = "idx_qms_audit_type",    columnList = "audit_type"),
         @Index(name = "idx_qms_audit_status",  columnList = "status"),
         @Index(name = "idx_qms_audit_sched",   columnList = "scheduled_date"),
-        @Index(name = "idx_qms_audit_number",  columnList = "audit_number", unique = true)
+        @Index(name = "idx_qms_audit_number",  columnList = "record_number", unique = true)
     }
 )
 @Getter
@@ -31,8 +31,8 @@ import java.time.LocalDate;
 @Builder
 public class AuditSchedule extends BaseEntity {
 
-    @Column(name = "audit_number", nullable = false, unique = true, length = 30)
-    private String auditNumber;
+    @Column(name = "record_number", nullable = false, unique = true, length = 30)
+    private String recordNumber;
 
     @Column(name = "title", nullable = false, length = 255)
     private String title;

@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 public class AuditScheduleResponse {
 
     private Long                 id;
-    private String               auditNumber;        // AUD-202504-0001
+    private String               recordNumber;       // AUD-202504-0001
     private String               title;
     private AuditType            auditType;
     private String               scope;
