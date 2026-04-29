@@ -352,6 +352,10 @@ public class DocumentService {
                 .body(new InputStreamResource(stream));
     }
 
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.DOCUMENT,
+             entityType = "DocumentDownloadLog", entityIdArgIndex = 0,
+             captureNewValue = false,
+             description = "Controlled document reading acknowledged by user")
     @Transactional
     public void acknowledge(Long downloadLogId) {
         Authentication auth = currentAuth();
