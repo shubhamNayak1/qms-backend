@@ -65,4 +65,6 @@ public class QmsBaseResponse {
     private LocalDateTime updatedAt;
     private String        createdBy;
     private String        updatedBy;
+
+    private boolean disabled;
 }

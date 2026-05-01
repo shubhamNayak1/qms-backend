@@ -26,10 +26,9 @@ public interface PasswordPolicyRepository extends JpaRepository<PasswordPolicy, 
             """)
     Optional<PasswordPolicy> findActivePolicy(@Param("today") LocalDate today);
 
-    /** All non-deleted policies ordered newest first (for history view). */
+    /** All policies ordered newest first (for history view). */
     @Query("""
             SELECT p FROM PasswordPolicy p
-            WHERE p.isDeleted = false
             ORDER BY p.effectiveDate DESC
             """)
     List<PasswordPolicy> findAllActive();

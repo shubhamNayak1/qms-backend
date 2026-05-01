@@ -390,7 +390,7 @@ public class UserService {
     }
 
     User findById(Long id) {
-        return userRepository.findByIdAndIsDeletedFalse(id)
+        return userRepository.findById(id)
                 .orElseThrow(() -> AppException.notFound("User", id));
     }
 

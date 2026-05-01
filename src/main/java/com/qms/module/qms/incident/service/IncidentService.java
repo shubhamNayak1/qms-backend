@@ -166,7 +166,7 @@ public class IncidentService {
     }
 
     private Incident findById(Long id) {
-        return incidentRepository.findByIdAndIsDeletedFalse(id)
+        return incidentRepository.findById(id)
                 .orElseThrow(() -> AppException.notFound("Incident", id));
     }
 

@@ -18,7 +18,6 @@ public final class CapaSpecification {
                                               String source, String search) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.isFalse(root.get("isDeleted")));
             if (status != null) {
                 predicates.add(cb.equal(root.get("status"), status));
             }

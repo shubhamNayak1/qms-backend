@@ -70,6 +70,7 @@ public class QmsRecordMapper {
         response.setUpdatedAt(record.getUpdatedAt());
         response.setCreatedBy(record.getCreatedBy());
         response.setUpdatedBy(record.getUpdatedBy());
+        response.setDisabled(Boolean.TRUE.equals(record.getIsDeleted()));
     }
 
     private List<StatusHistoryEntry> deserializeHistory(String json) {

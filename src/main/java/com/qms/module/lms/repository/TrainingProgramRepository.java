@@ -28,8 +28,7 @@ public interface TrainingProgramRepository extends JpaRepository<TrainingProgram
      */
     @Query("""
             SELECT p FROM TrainingProgram p
-            WHERE p.isDeleted = false
-              AND (:status     IS NULL OR p.status      = :status)
+            WHERE (:status     IS NULL OR p.status      = :status)
               AND (:category   IS NULL OR p.category    = :category)
               AND (:department IS NULL OR p.department  = :department)
               AND (:mandatory  IS NULL OR p.isMandatory = :mandatory)

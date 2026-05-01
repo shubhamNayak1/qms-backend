@@ -418,7 +418,7 @@ public class DocumentService {
     // ─── Helpers ──────────────────────────────────────────────
 
     private Document findById(Long id) {
-        return documentRepository.findByIdAndIsDeletedFalse(id)
+        return documentRepository.findById(id)
                 .orElseThrow(() -> AppException.notFound("Document", id));
     }
 
@@ -520,6 +520,7 @@ public class DocumentService {
                 .updatedAt(doc.getUpdatedAt())
                 .createdBy(doc.getCreatedBy())
                 .updatedBy(doc.getUpdatedBy())
+                .disabled(Boolean.TRUE.equals(doc.getIsDeleted()))
                 .build();
     }
 

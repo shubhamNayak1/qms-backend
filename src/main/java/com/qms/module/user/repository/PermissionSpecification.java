@@ -14,7 +14,6 @@ public final class PermissionSpecification {
     public static Specification<Permission> filter(String module, String search) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.isFalse(root.get("isDeleted")));
             if (module != null && !module.isBlank()) {
                 predicates.add(cb.equal(root.get("module"), module));
             }

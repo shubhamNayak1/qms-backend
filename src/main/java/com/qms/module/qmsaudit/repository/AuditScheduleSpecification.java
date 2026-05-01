@@ -17,16 +17,11 @@ public class AuditScheduleSpecification {
             String search) {
 
         return Specification
-                .where(notDeleted())
-                .and(hasType(type))
+                .where(hasType(type))
                 .and(hasStatus(status))
                 .and(scheduledAfter(from))
                 .and(scheduledBefore(to))
                 .and(titleOrNumberContains(search));
-    }
-
-    private static Specification<AuditSchedule> notDeleted() {
-        return (r, q, cb) -> cb.isFalse(r.get("isDeleted"));
     }
 
     private static Specification<AuditSchedule> hasType(AuditType type) {

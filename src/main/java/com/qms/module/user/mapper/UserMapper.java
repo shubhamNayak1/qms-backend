@@ -88,5 +88,18 @@ public interface UserMapper {
                 .map(Permission::getName)
                 .collect(Collectors.toSet());
         resp.permissions(perms);
+
+        // Disabled flag
+        resp.disabled(Boolean.TRUE.equals(user.getIsDeleted()));
+    }
+
+    @AfterMapping
+    default void enrichRoleResponse(Role role, @MappingTarget RoleResponse.RoleResponseBuilder resp) {
+        resp.disabled(Boolean.TRUE.equals(role.getIsDeleted()));
+    }
+
+    @AfterMapping
+    default void enrichPermissionResponse(Permission permission, @MappingTarget PermissionResponse.PermissionResponseBuilder resp) {
+        resp.disabled(Boolean.TRUE.equals(permission.getIsDeleted()));
     }
 }

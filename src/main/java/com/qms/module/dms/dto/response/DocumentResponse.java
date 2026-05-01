@@ -81,4 +81,6 @@ public class DocumentResponse {
 
     // Download URL (populated on download request, not on list/get)
     private String downloadUrl;     // signed URL for cloud, or null for local (use /download endpoint)
+
+    private boolean disabled;
 }

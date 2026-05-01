@@ -72,6 +72,7 @@ public class ProgramResponse {
     private LocalDateTime  createdAt;
     private LocalDateTime  updatedAt;
     private String         createdBy;
+    private boolean        disabled;
 
     // ── Nested summaries ──────────────────────────────────────
 

@@ -53,8 +53,7 @@ public interface DocumentRepository extends JpaRepository<Document, Long>, JpaSp
      */
     @Query("""
             SELECT d FROM Document d
-            WHERE d.isDeleted = false
-              AND (:status     IS NULL OR d.status     = :status)
+            WHERE (:status     IS NULL OR d.status     = :status)
               AND (:category   IS NULL OR d.category   = :category)
               AND (:department IS NULL OR d.department = :department)
               AND (:ownerId    IS NULL OR d.ownerId    = :ownerId)

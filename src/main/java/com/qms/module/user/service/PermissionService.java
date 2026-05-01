@@ -50,7 +50,7 @@ public class PermissionService {
     }
 
     public List<PermissionResponse> getAllFlat() {
-        return permissionRepository.findAllByIsDeletedFalse()
+        return permissionRepository.findAll()
                 .stream()
                 .map(userMapper::toPermissionResponse)
                 .toList();
@@ -125,7 +125,6 @@ public class PermissionService {
 
     Permission findById(Long id) {
         return permissionRepository.findById(id)
-                .filter(p -> !Boolean.TRUE.equals(p.getIsDeleted()))
                 .orElseThrow(() -> AppException.notFound("Permission", id));
     }
 }

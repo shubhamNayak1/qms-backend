@@ -21,9 +21,6 @@ public final class UserSpecification {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            // Always exclude soft-deleted rows
-            predicates.add(cb.isFalse(root.get("isDeleted")));
-
             if (search != null && !search.isBlank()) {
                 String pattern = "%" + search.toLowerCase() + "%";
                 predicates.add(cb.or(

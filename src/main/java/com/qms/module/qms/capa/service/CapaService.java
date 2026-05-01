@@ -210,7 +210,7 @@ public class CapaService {
     // ── Helpers ──────────────────────────────────────────────
 
     private Capa findById(Long id) {
-        return capaRepository.findByIdAndIsDeletedFalse(id)
+        return capaRepository.findById(id)
                 .orElseThrow(() -> AppException.notFound("CAPA", id));
     }
 

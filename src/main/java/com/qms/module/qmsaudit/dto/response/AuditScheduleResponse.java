@@ -33,4 +33,5 @@ public class AuditScheduleResponse {
     private String               createdBy;
     private LocalDateTime        createdAt;
     private LocalDateTime        updatedAt;
+    private boolean              disabled;
 }

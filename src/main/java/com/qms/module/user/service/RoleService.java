@@ -48,7 +48,7 @@ public class RoleService {
     }
 
     public List<RoleResponse> getAllFlat() {
-        return roleRepository.findAllByIsDeletedFalse()
+        return roleRepository.findAll()
                 .stream()
                 .map(role -> enrichWithUserCount(userMapper.toRoleResponse(role), role.getId()))
                 .toList();
@@ -155,7 +155,6 @@ public class RoleService {
 
     Role findById(Long id) {
         return roleRepository.findById(id)
-                .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
                 .orElseThrow(() -> AppException.notFound("Role", id));
     }
 
@@ -184,6 +183,7 @@ public class RoleService {
                 .createdAt(response.getCreatedAt())
                 .updatedAt(response.getUpdatedAt())
                 .createdBy(response.getCreatedBy())
+                .disabled(response.isDisabled())
                 .build();
     }
 }

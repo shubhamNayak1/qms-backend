@@ -166,7 +166,7 @@ public class ChangeControlService {
     }
 
     private ChangeControl findById(Long id) {
-        return changeControlRepository.findByIdAndIsDeletedFalse(id)
+        return changeControlRepository.findById(id)
                 .orElseThrow(() -> AppException.notFound("Change Control", id));
     }
 

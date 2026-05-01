@@ -170,7 +170,7 @@ public class MarketComplaintService {
     }
 
     private MarketComplaint findById(Long id) {
-        return complaintRepository.findByIdAndIsDeletedFalse(id)
+        return complaintRepository.findById(id)
                 .orElseThrow(() -> AppException.notFound("Market Complaint", id));
     }
 

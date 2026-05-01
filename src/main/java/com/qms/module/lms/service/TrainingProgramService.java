@@ -358,7 +358,7 @@ public class TrainingProgramService {
     // ── Helpers ──────────────────────────────────────────────
 
     TrainingProgram findById(Long id) {
-        return programRepository.findByIdAndIsDeletedFalse(id)
+        return programRepository.findById(id)
                 .orElseThrow(() -> AppException.notFound("Training Program", id));
     }
 
@@ -429,6 +429,7 @@ public class TrainingProgramService {
                 .sessions(sessionSummaries)
                 .hasAssessment(p.getAssessment() != null)
                 .createdAt(p.getCreatedAt()).updatedAt(p.getUpdatedAt()).createdBy(p.getCreatedBy())
+                .disabled(Boolean.TRUE.equals(p.getIsDeleted()))
                 .build();
     }
 }

@@ -177,7 +177,6 @@ public class PasswordPolicyService {
 
     private PasswordPolicy findById(Long id) {
         return policyRepository.findById(id)
-                .filter(p -> !Boolean.TRUE.equals(p.getIsDeleted()))
                 .orElseThrow(() -> AppException.notFound("PasswordPolicy", id));
     }
 
@@ -254,6 +253,7 @@ public class PasswordPolicyService {
                 .createdAt(p.getCreatedAt())
                 .updatedAt(p.getUpdatedAt())
                 .createdBy(p.getCreatedBy())
+                .disabled(Boolean.TRUE.equals(p.getIsDeleted()))
                 .build();
     }
 

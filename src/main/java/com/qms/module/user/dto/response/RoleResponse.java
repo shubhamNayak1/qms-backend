@@ -19,4 +19,5 @@ public class RoleResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String createdBy;
+    private boolean disabled;
 }

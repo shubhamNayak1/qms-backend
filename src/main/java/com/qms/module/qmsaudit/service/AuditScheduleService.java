@@ -178,7 +178,7 @@ public class AuditScheduleService {
     // ── Helpers ───────────────────────────────────────────────
 
     private AuditSchedule findById(Long id) {
-        return repository.findByIdAndIsDeletedFalse(id)
+        return repository.findById(id)
                 .orElseThrow(() -> AppException.notFound("Audit Schedule", id));
     }
 
@@ -213,6 +213,7 @@ public class AuditScheduleService {
                 .createdBy(a.getCreatedBy())
                 .createdAt(a.getCreatedAt())
                 .updatedAt(a.getUpdatedAt())
+                .disabled(Boolean.TRUE.equals(a.getIsDeleted()))
                 .build();
     }
 }

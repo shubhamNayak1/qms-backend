@@ -165,7 +165,7 @@ public class DeviationService {
     }
 
     private Deviation findById(Long id) {
-        return deviationRepository.findByIdAndIsDeletedFalse(id)
+        return deviationRepository.findById(id)
                 .orElseThrow(() -> AppException.notFound("Deviation", id));
     }
 

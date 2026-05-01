@@ -15,4 +15,5 @@ public class PermissionResponse {
     private String description;
     private LocalDateTime createdAt;
     private String createdBy;
+    private boolean disabled;
 }

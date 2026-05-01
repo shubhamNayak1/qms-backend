@@ -18,7 +18,6 @@ public final class EnrollmentSpecification {
                                                     Boolean overdue) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.isFalse(root.get("isDeleted")));
             if (userId != null) {
                 predicates.add(cb.equal(root.get("userId"), userId));
             }

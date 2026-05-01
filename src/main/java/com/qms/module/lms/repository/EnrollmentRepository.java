@@ -25,8 +25,7 @@ public interface EnrollmentRepository extends JpaRepository<Enrollment, Long>, J
 
     @Query("""
             SELECT e FROM Enrollment e
-            WHERE e.isDeleted = false
-              AND (:userId     IS NULL OR e.userId      = :userId)
+            WHERE (:userId     IS NULL OR e.userId      = :userId)
               AND (:programId  IS NULL OR e.program.id  = :programId)
               AND (:status     IS NULL OR e.status      = :status)
               AND (:department IS NULL OR e.userDepartment = :department)
