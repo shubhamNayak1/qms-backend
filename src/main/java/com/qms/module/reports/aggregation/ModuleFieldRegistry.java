@@ -46,8 +46,8 @@ public class ModuleFieldRegistry {
             dim("capa_type",   "CAPA Type",   "capa_type"),
             dim("department",  "Department",  "department"),
             dim("month",       "Month",       "TO_CHAR(created_at,'YYYY-MM')"),
-            dim("quarter",     "Quarter",     "CONCAT(EXTRACT(YEAR FROM created_at),'-Q',CEIL(EXTRACT(MONTH FROM created_at)/3.0)::INT)"),
-            dim("year",        "Year",        "EXTRACT(YEAR FROM created_at)::TEXT"),
+            dim("quarter",     "Quarter",     "CONCAT(EXTRACT(YEAR FROM created_at),'-Q',CAST(CEIL(EXTRACT(MONTH FROM created_at)/3.0) AS INTEGER))"),
+            dim("year",        "Year",        "CAST(EXTRACT(YEAR FROM created_at) AS TEXT)"),
             // Metrics
             met("record_number","Record #",   "record_number"),
             met("title",        "Title",      "title"),
@@ -55,7 +55,7 @@ public class ModuleFieldRegistry {
             met("raised_by",    "Raised By",  "raised_by_name"),
             met("due_date",     "Due Date",   "due_date"),
             met("closed_date",  "Closed Date","closed_date"),
-            met("age_days",     "Age (Days)", "COALESCE(EXTRACT(DAY FROM NOW()-created_at)::INT,0)"),
+            met("age_days",     "Age (Days)", "COALESCE(CAST(EXTRACT(DAY FROM NOW()-created_at) AS INTEGER),0)"),
             met("is_effective", "Effective?", "CASE WHEN is_effective THEN 'Yes' WHEN is_effective=false THEN 'No' ELSE '' END"),
             met("overdue",      "Overdue?",   "CASE WHEN due_date < NOW() AND status NOT IN ('CLOSED','CANCELLED') THEN 'Yes' ELSE 'No' END")
         ));
@@ -70,7 +70,7 @@ public class ModuleFieldRegistry {
             dim("department",          "Department",         "department"),
             dim("regulatory_reportable","Regulatory Reportable","CASE WHEN regulatory_reportable THEN 'Yes' ELSE 'No' END"),
             dim("month",               "Month",              "TO_CHAR(created_at,'YYYY-MM')"),
-            dim("year",                "Year",               "EXTRACT(YEAR FROM created_at)::TEXT"),
+            dim("year",                "Year",               "CAST(EXTRACT(YEAR FROM created_at) AS TEXT)"),
             met("record_number",       "Record #",           "record_number"),
             met("title",               "Title",              "title"),
             met("assigned_to",         "Assigned To",        "assigned_to_name"),
@@ -78,7 +78,7 @@ public class ModuleFieldRegistry {
             met("due_date",            "Due Date",           "due_date"),
             met("closed_date",         "Closed Date",        "closed_date"),
             met("capa_required",       "CAPA Required?",     "CASE WHEN capa_required THEN 'Yes' ELSE 'No' END"),
-            met("age_days",            "Age (Days)",         "COALESCE(EXTRACT(DAY FROM NOW()-created_at)::INT,0)"),
+            met("age_days",            "Age (Days)",         "COALESCE(CAST(EXTRACT(DAY FROM NOW()-created_at) AS INTEGER),0)"),
             met("overdue",             "Overdue?",           "CASE WHEN due_date < NOW() AND status NOT IN ('CLOSED','CANCELLED') THEN 'Yes' ELSE 'No' END")
         ));
 
@@ -92,14 +92,14 @@ public class ModuleFieldRegistry {
             dim("department",    "Department",    "department"),
             dim("injury_involved","Injury Involved","CASE WHEN injury_involved THEN 'Yes' ELSE 'No' END"),
             dim("month",         "Month",         "TO_CHAR(created_at,'YYYY-MM')"),
-            dim("year",          "Year",          "EXTRACT(YEAR FROM created_at)::TEXT"),
+            dim("year",          "Year",          "CAST(EXTRACT(YEAR FROM created_at) AS TEXT)"),
             met("record_number", "Record #",      "record_number"),
             met("title",         "Title",         "title"),
             met("assigned_to",   "Assigned To",   "assigned_to_name"),
             met("occurrence_date","Occurrence Date","occurrence_date"),
             met("due_date",      "Due Date",      "due_date"),
             met("closed_date",   "Closed Date",   "closed_date"),
-            met("age_days",      "Age (Days)",    "COALESCE(EXTRACT(DAY FROM NOW()-created_at)::INT,0)"),
+            met("age_days",      "Age (Days)",    "COALESCE(CAST(EXTRACT(DAY FROM NOW()-created_at) AS INTEGER),0)"),
             met("overdue",       "Overdue?",      "CASE WHEN due_date < NOW() AND status NOT IN ('CLOSED','CANCELLED') THEN 'Yes' ELSE 'No' END")
         ));
 
@@ -112,13 +112,14 @@ public class ModuleFieldRegistry {
             dim("risk_level",  "Risk Level",  "risk_level"),
             dim("department",  "Department",  "department"),
             dim("month",       "Month",       "TO_CHAR(created_at,'YYYY-MM')"),
-            dim("year",        "Year",        "EXTRACT(YEAR FROM created_at)::TEXT"),
+            dim("year",        "Year",        "CAST(EXTRACT(YEAR FROM created_at) AS TEXT)"),
             met("record_number","Record #",   "record_number"),
             met("title",        "Title",      "title"),
-            met("requested_by", "Requested By","requested_by_name"),
+            met("raised_by",    "Raised By",   "raised_by_name"),
+            met("assigned_to",  "Assigned To", "assigned_to_name"),
             met("due_date",     "Due Date",   "due_date"),
             met("closed_date",  "Closed Date","closed_date"),
-            met("age_days",     "Age (Days)", "COALESCE(EXTRACT(DAY FROM NOW()-created_at)::INT,0)"),
+            met("age_days",     "Age (Days)", "COALESCE(CAST(EXTRACT(DAY FROM NOW()-created_at) AS INTEGER),0)"),
             met("overdue",      "Overdue?",   "CASE WHEN due_date < NOW() AND status NOT IN ('CLOSED','CANCELLED') THEN 'Yes' ELSE 'No' END")
         ));
 
@@ -132,32 +133,34 @@ public class ModuleFieldRegistry {
             dim("department",              "Department",            "department"),
             dim("reportable_to_authority", "Reportable?",           "CASE WHEN reportable_to_authority THEN 'Yes' ELSE 'No' END"),
             dim("month",                   "Month",                 "TO_CHAR(created_at,'YYYY-MM')"),
-            dim("year",                    "Year",                  "EXTRACT(YEAR FROM created_at)::TEXT"),
+            dim("year",                    "Year",                  "CAST(EXTRACT(YEAR FROM created_at) AS TEXT)"),
             met("record_number",           "Record #",              "record_number"),
             met("title",                   "Title",                 "title"),
             met("customer_name",           "Customer",              "customer_name"),
             met("assigned_to",             "Assigned To",           "assigned_to_name"),
             met("due_date",                "Due Date",              "due_date"),
             met("closed_date",             "Closed Date",           "closed_date"),
-            met("age_days",                "Age (Days)",            "COALESCE(EXTRACT(DAY FROM NOW()-created_at)::INT,0)")
+            met("age_days",                "Age (Days)",            "COALESCE(CAST(EXTRACT(DAY FROM NOW()-created_at) AS INTEGER),0)")
         ));
 
         // ── LMS_ENROLLMENT ────────────────────────────────────
         TABLE_MAP.put(ReportModule.LMS_ENROLLMENT, "lms_enrollments");
         FIELD_MAP.put(ReportModule.LMS_ENROLLMENT, List.of(
-            dim("status",          "Enrollment Status", "status"),
-            dim("training_type",   "Training Type",     "training_type"),
-            dim("department",      "Department",        "user_department"),
-            dim("month",           "Month",             "TO_CHAR(created_at,'YYYY-MM')"),
-            dim("year",            "Year",              "EXTRACT(YEAR FROM created_at)::TEXT"),
-            met("user_name",       "User Name",         "user_name"),
-            met("user_email",      "User Email",        "user_email"),
-            met("enrolled_at",     "Enrolled At",       "created_at"),
-            met("completed_at",    "Completed At",      "completed_at"),
-            met("last_score",      "Score",             "last_score"),
-            met("due_date",        "Due Date",          "due_date"),
-            met("attempts_used",   "Attempts Used",     "attempts_used"),
-            met("overdue",         "Overdue?",          "CASE WHEN due_date < NOW() AND status NOT IN ('COMPLETED','WAIVED','CANCELLED') THEN 'Yes' ELSE 'No' END")
+            dim("status",            "Enrollment Status", "status"),
+            dim("training_kind",     "Training Kind",     "CASE WHEN retraining_of_enrollment_id IS NOT NULL THEN 'Retraining' ELSE 'Initial' END"),
+            dim("department",        "Department",        "user_department"),
+            dim("attendance_marked", "Attendance Marked", "CASE WHEN attendance_marked THEN 'Yes' ELSE 'No' END"),
+            dim("month",             "Month",             "TO_CHAR(created_at,'YYYY-MM')"),
+            dim("year",              "Year",              "CAST(EXTRACT(YEAR FROM created_at) AS TEXT)"),
+            met("user_name",         "User Name",         "user_name"),
+            met("user_email",        "User Email",        "user_email"),
+            met("enrolled_at",       "Enrolled At",       "created_at"),
+            met("completed_at",      "Completed At",      "completed_at"),
+            met("last_score",        "Score",             "last_score"),
+            met("due_date",          "Due Date",          "due_date"),
+            met("attempts_used",     "Attempts Used",     "attempts_used"),
+            met("assigned_by",       "Assigned By",       "assigned_by_name"),
+            met("overdue",           "Overdue?",          "CASE WHEN due_date < NOW() AND status NOT IN ('COMPLETED','WAIVED','CANCELLED') THEN 'Yes' ELSE 'No' END")
         ));
 
         // ── USER ──────────────────────────────────────────────────
@@ -170,7 +173,7 @@ public class ModuleFieldRegistry {
             dim("is_email_verified",   "Email Verified",    "CASE WHEN is_email_verified THEN 'Yes' ELSE 'No' END"),
             dim("must_change_password","Must Change Pwd",   "CASE WHEN must_change_password THEN 'Yes' ELSE 'No' END"),
             dim("month",               "Month Joined",      "TO_CHAR(created_at,'YYYY-MM')"),
-            dim("year",                "Year Joined",       "EXTRACT(YEAR FROM created_at)::TEXT"),
+            dim("year",                "Year Joined",       "CAST(EXTRACT(YEAR FROM created_at) AS TEXT)"),
             // Metrics (detail fields)
             met("username",            "Username",          "username"),
             met("email",               "Email",             "email"),
