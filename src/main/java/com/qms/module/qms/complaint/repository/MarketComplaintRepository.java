@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +38,21 @@ public interface MarketComplaintRepository extends JpaRepository<MarketComplaint
             ORDER BY mc.priority DESC NULLS LAST, mc.dueDate ASC NULLS LAST
             """)
     List<MarketComplaint> findActiveForUser(@Param("userId") Long userId);
+
+    /**
+     * Market complaints that moved to REJECTED, CANCELLED, or CLOSED since :since,
+     * where the user was the raiser, assignee, or approver.
+     */
+    @Query("""
+            SELECT mc FROM MarketComplaint mc
+            WHERE mc.isDeleted = false
+              AND mc.status IN ('REJECTED', 'CANCELLED', 'CLOSED')
+              AND mc.updatedAt >= :since
+              AND (mc.raisedById = :userId OR mc.assignedToId = :userId OR mc.approvedById = :userId)
+            ORDER BY mc.updatedAt DESC
+            """)
+    List<MarketComplaint> findRecentTerminalForUser(@Param("userId") Long userId,
+                                                     @Param("since")  LocalDateTime since);
 
     @Query("""
             SELECT mc FROM MarketComplaint mc

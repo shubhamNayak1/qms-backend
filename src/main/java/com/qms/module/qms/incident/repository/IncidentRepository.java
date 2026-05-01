@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +38,21 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, JpaSp
             ORDER BY i.priority DESC NULLS LAST, i.dueDate ASC NULLS LAST
             """)
     List<Incident> findActiveForUser(@Param("userId") Long userId);
+
+    /**
+     * Incidents that moved to REJECTED, CANCELLED, or CLOSED since :since,
+     * where the user was the raiser, assignee, or approver.
+     */
+    @Query("""
+            SELECT i FROM Incident i
+            WHERE i.isDeleted = false
+              AND i.status IN ('REJECTED', 'CANCELLED', 'CLOSED')
+              AND i.updatedAt >= :since
+              AND (i.raisedById = :userId OR i.assignedToId = :userId OR i.approvedById = :userId)
+            ORDER BY i.updatedAt DESC
+            """)
+    List<Incident> findRecentTerminalForUser(@Param("userId") Long userId,
+                                              @Param("since")  LocalDateTime since);
 
     @Query("""
             SELECT i FROM Incident i

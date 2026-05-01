@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -36,6 +37,21 @@ public interface ChangeControlRepository extends JpaRepository<ChangeControl, Lo
             ORDER BY c.priority DESC NULLS LAST, c.dueDate ASC NULLS LAST
             """)
     List<ChangeControl> findActiveForUser(@Param("userId") Long userId);
+
+    /**
+     * Change controls that moved to REJECTED, CANCELLED, or CLOSED since :since,
+     * where the user was the raiser, assignee, or approver.
+     */
+    @Query("""
+            SELECT c FROM ChangeControl c
+            WHERE c.isDeleted = false
+              AND c.status IN ('REJECTED', 'CANCELLED', 'CLOSED')
+              AND c.updatedAt >= :since
+              AND (c.raisedById = :userId OR c.assignedToId = :userId OR c.approvedById = :userId)
+            ORDER BY c.updatedAt DESC
+            """)
+    List<ChangeControl> findRecentTerminalForUser(@Param("userId") Long userId,
+                                                   @Param("since")  LocalDateTime since);
 
     @Query("""
             SELECT c FROM ChangeControl c

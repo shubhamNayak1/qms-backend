@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -37,6 +38,21 @@ public interface DeviationRepository extends JpaRepository<Deviation, Long>, Jpa
             ORDER BY d.priority DESC NULLS LAST, d.dueDate ASC NULLS LAST
             """)
     List<Deviation> findActiveForUser(@Param("userId") Long userId);
+
+    /**
+     * Deviations that moved to REJECTED, CANCELLED, or CLOSED since :since,
+     * where the user was the raiser, assignee, or approver.
+     */
+    @Query("""
+            SELECT d FROM Deviation d
+            WHERE d.isDeleted = false
+              AND d.status IN ('REJECTED', 'CANCELLED', 'CLOSED')
+              AND d.updatedAt >= :since
+              AND (d.raisedById = :userId OR d.assignedToId = :userId OR d.approvedById = :userId)
+            ORDER BY d.updatedAt DESC
+            """)
+    List<Deviation> findRecentTerminalForUser(@Param("userId") Long userId,
+                                               @Param("since")  LocalDateTime since);
 
     @Query("""
             SELECT d FROM Deviation d

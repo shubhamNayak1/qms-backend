@@ -74,6 +74,7 @@ public class NotificationService {
     private static final int DOC_EXPIRY_WARN_DAYS    = 30;  // document expiry warning
     private static final int DOC_REVIEW_WARN_DAYS    = 30;  // document review-due warning
     private static final int PWD_EXPIRY_WARN_DAYS    = 7;   // password expiry warning
+    private static final int TERMINAL_NOTIFY_DAYS    = 30;  // notify participants of terminal status for 30 days
 
     /** Statuses that require a manager / QA-officer to act (approval queue). */
     private static final List<QmsStatus> MANAGER_APPROVAL_STATUSES = List.of(
@@ -254,6 +255,30 @@ public class NotificationService {
              });
         }
 
+        // 4 — Terminal status notifications (REJECTED / CANCELLED / CLOSED)
+        //     Notify all users who were involved: raiser, assignee, or approver.
+        //     Only shown for records that reached a terminal state within the last TERMINAL_NOTIFY_DAYS.
+        Set<Long> alreadyShownIds = items.stream()
+                .filter(n -> n.getId() != null)
+                .map(NotificationItem::getId)
+                .collect(Collectors.toSet());
+
+        LocalDateTime terminalSince = today.minusDays(TERMINAL_NOTIFY_DAYS).atStartOfDay();
+
+        Stream.of(
+                capaRepository.findRecentTerminalForUser(userId, terminalSince),
+                deviationRepository.findRecentTerminalForUser(userId, terminalSince),
+                incidentRepository.findRecentTerminalForUser(userId, terminalSince),
+                changeControlRepository.findRecentTerminalForUser(userId, terminalSince),
+                marketComplaintRepository.findRecentTerminalForUser(userId, terminalSince)
+        ).flatMap(List::stream)
+         .filter(r -> !alreadyShownIds.contains(r.getId()))
+         .forEach(r -> {
+             String module   = r.getRecordType().name();
+             String baseLink = resolveQmsLink(module);
+             items.add(buildTerminalItem(r, module, baseLink));
+         });
+
         return items;
     }
 
@@ -323,6 +348,61 @@ public class NotificationService {
                 .overdue(overdue)
                 .actionRequired("Review and approve or reject this "
                         + module.toLowerCase().replace("_", " "))
+                .link(baseLink + "/" + r.getId())
+                .createdAt(r.getCreatedAt())
+                .build();
+    }
+
+    /**
+     * Builds a notification for a record that has reached a terminal status
+     * (REJECTED, CANCELLED, or CLOSED). Shown to all users who were involved
+     * in the record (raiser, assignee, approver) for up to TERMINAL_NOTIFY_DAYS days.
+     */
+    private <T extends QmsRecord> NotificationItem buildTerminalItem(T r, String module,
+                                                                      String baseLink) {
+        String moduleLabel = module.replace("_", " ");
+        NotificationSeverity severity;
+        String message;
+        String actionRequired;
+
+        switch (r.getStatus()) {
+            case REJECTED -> {
+                severity      = NotificationSeverity.WARNING;
+                message       = moduleLabel + " " + r.getRecordNumber() + " has been REJECTED."
+                        + (r.getApprovalComments() != null && !r.getApprovalComments().isBlank()
+                                ? " Reason: " + r.getApprovalComments() : " Review comments for details.");
+                actionRequired = "Review rejection comments and resubmit or take corrective action";
+            }
+            case CANCELLED -> {
+                severity      = NotificationSeverity.WARNING;
+                message       = moduleLabel + " " + r.getRecordNumber() + " has been CANCELLED.";
+                actionRequired = "No further action required — record has been cancelled";
+            }
+            case CLOSED -> {
+                severity      = NotificationSeverity.INFO;
+                message       = moduleLabel + " " + r.getRecordNumber() + " has been successfully CLOSED.";
+                actionRequired = "No further action required — record has been closed";
+            }
+            default -> {
+                severity      = NotificationSeverity.INFO;
+                message       = moduleLabel + " " + r.getRecordNumber() + " status changed to " + r.getStatus() + ".";
+                actionRequired = "";
+            }
+        }
+
+        return NotificationItem.builder()
+                .id(r.getId())
+                .recordNumber(r.getRecordNumber())
+                .title(r.getTitle())
+                .message(message)
+                .severity(severity)
+                .category(NotificationCategory.QMS)
+                .module(module)
+                .status(r.getStatus().name())
+                .priority(r.getPriority() != null ? r.getPriority().name() : null)
+                .dueDate(r.getDueDate())
+                .overdue(false)
+                .actionRequired(actionRequired)
                 .link(baseLink + "/" + r.getId())
                 .createdAt(r.getCreatedAt())
                 .build();

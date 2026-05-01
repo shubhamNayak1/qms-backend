@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -44,6 +45,22 @@ public interface CapaRepository extends JpaRepository<Capa, Long>, JpaSpecificat
             ORDER BY c.priority DESC NULLS LAST, c.dueDate ASC NULLS LAST
             """)
     List<Capa> findActiveForUser(@Param("userId") Long userId);
+
+    /**
+     * CAPAs that moved to REJECTED, CANCELLED, or CLOSED since :since,
+     * where the user was the raiser, assignee, or approver.
+     * Used to notify all involved parties of terminal status changes.
+     */
+    @Query("""
+            SELECT c FROM Capa c
+            WHERE c.isDeleted = false
+              AND c.status IN ('REJECTED', 'CANCELLED', 'CLOSED')
+              AND c.updatedAt >= :since
+              AND (c.raisedById = :userId OR c.assignedToId = :userId OR c.approvedById = :userId)
+            ORDER BY c.updatedAt DESC
+            """)
+    List<Capa> findRecentTerminalForUser(@Param("userId") Long userId,
+                                          @Param("since")  LocalDateTime since);
 
     /** CAPAs in any of the supplied statuses — used by managers to find items awaiting approval. */
     @Query("""
