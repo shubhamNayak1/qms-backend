@@ -43,7 +43,7 @@ public class User extends BaseEntity {
     @Column(name = "username", nullable = false, unique = true, length = 80)
     private String username;
 
-    @Column(name = "email", nullable = false, unique = true, length = 150)
+    @Column(name = "email", unique = true, length = 150)
     private String email;
 
     @Column(name = "password_hash", nullable = false, length = 255)
@@ -53,7 +53,7 @@ public class User extends BaseEntity {
     @Column(name = "first_name", nullable = false, length = 80)
     private String firstName;
 
-    @Column(name = "last_name", nullable = false, length = 80)
+    @Column(name = "last_name", length = 80)
     private String lastName;
 
     @Column(name = "phone", length = 25)
@@ -129,6 +129,8 @@ public class User extends BaseEntity {
 
     // ─── Computed helpers ─────────────────────────────────────
     public String getFullName() {
+        if (lastName == null || lastName.isBlank()) return firstName == null ? "" : firstName;
+        if (firstName == null || firstName.isBlank()) return lastName;
         return firstName + " " + lastName;
     }
 

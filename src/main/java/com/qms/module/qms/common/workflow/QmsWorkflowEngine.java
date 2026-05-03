@@ -47,8 +47,12 @@ public class QmsWorkflowEngine {
 
     /**
      * Generic transition — validates per-module rules and applies the status change.
+     * A non-blank comment is mandatory on every workflow action — this is enforced
+     * in {@link #requireComment(String)} so callers receive a single, consistent
+     * error and an audit trail entry is always meaningful.
      */
     public void transition(QmsRecord record, QmsStatus newStatus, String comment) {
+        requireComment(comment);
         QmsStatus current = record.getStatus();
         if (current == newStatus) {
             throw AppException.badRequest("Record is already in status " + current);
@@ -137,6 +141,20 @@ public class QmsWorkflowEngine {
         }
         transition(record, QmsStatus.DRAFT, comment);
         record.setClosedDate(null);
+    }
+
+    // ── Validation ─────────────────────────────────────────────
+
+    /**
+     * Every workflow action must carry a non-blank comment. This is a 21 CFR
+     * Part 11 / GxP requirement — every status change must record an
+     * intelligible reason alongside the actor and timestamp.
+     */
+    private void requireComment(String comment) {
+        if (comment == null || comment.isBlank()) {
+            throw AppException.badRequest(
+                    "Comment is required for every workflow action.");
+        }
     }
 
     /**

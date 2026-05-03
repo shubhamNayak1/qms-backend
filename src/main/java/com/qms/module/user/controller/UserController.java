@@ -116,6 +116,25 @@ public class UserController {
     }
 
     // ─────────────────────────────────────────────────────────
+    // PATCH /api/v1/users/{id}/admin-reset-password
+    // ─────────────────────────────────────────────────────────
+    @PatchMapping("/{id}/admin-reset-password")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @Operation(summary = "Admin reset of another user's password",
+               description = """
+                   SUPER_ADMIN-only. Sets a temporary password and flags the
+                   target user with mustChangePassword=true so they are forced
+                   to choose their own password on next login.
+                   The new password must satisfy the active password policy.
+                   """)
+    public ResponseEntity<ApiResponse<Void>> adminResetPassword(
+            @PathVariable Long id,
+            @Valid @RequestBody AdminResetPasswordRequest request) {
+        userService.adminResetPassword(id, request.getNewPassword());
+        return ApiResponse.noContent("Password reset successfully. User must change it on next login.");
+    }
+
+    // ─────────────────────────────────────────────────────────
     // PATCH /api/v1/users/{id}/activate
     // ─────────────────────────────────────────────────────────
     @PatchMapping("/{id}/activate")

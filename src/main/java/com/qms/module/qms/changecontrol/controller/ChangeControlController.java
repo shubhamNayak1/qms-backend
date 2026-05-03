@@ -69,37 +69,37 @@ public class ChangeControlController {
 
     @PostMapping("/{id}/submit")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER')")
-    public ResponseEntity<ApiResponse<ChangeControlResponse>> submit(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<ChangeControlResponse>> submit(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Submitted for approval", changeControlService.submit(id, comment));
     }
 
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    public ResponseEntity<ApiResponse<ChangeControlResponse>> approve(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<ChangeControlResponse>> approve(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Change Control approved", changeControlService.approve(id, comment));
     }
 
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    public ResponseEntity<ApiResponse<ChangeControlResponse>> reject(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<ChangeControlResponse>> reject(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Change Control rejected", changeControlService.reject(id, comment));
     }
 
     @PostMapping("/{id}/close")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    public ResponseEntity<ApiResponse<ChangeControlResponse>> close(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<ChangeControlResponse>> close(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Change Control closed", changeControlService.close(id, comment));
     }
 
     @PostMapping("/{id}/cancel")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    public ResponseEntity<ApiResponse<ChangeControlResponse>> cancel(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<ChangeControlResponse>> cancel(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Change Control cancelled", changeControlService.cancel(id, comment));
     }
 
     @PostMapping("/{id}/reopen")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    public ResponseEntity<ApiResponse<ChangeControlResponse>> reopen(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<ChangeControlResponse>> reopen(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Change Control reopened", changeControlService.reopen(id, comment));
     }
 

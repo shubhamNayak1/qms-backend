@@ -18,10 +18,9 @@ public class CreateUserRequest {
     @Schema(example = "john.doe")
     private String username;
 
-    @NotBlank(message = "Email is required")
     @Email(message = "Must be a valid email address")
     @Size(max = 150, message = "Email must not exceed 150 characters")
-    @Schema(example = "john.doe@company.com")
+    @Schema(example = "john.doe@company.com", description = "Optional — leave blank if user has no email")
     private String email;
 
     @NotBlank(message = "Password is required")
@@ -35,9 +34,8 @@ public class CreateUserRequest {
     @Schema(example = "John")
     private String firstName;
 
-    @NotBlank(message = "Last name is required")
-    @Size(min = 1, max = 80, message = "Last name must not exceed 80 characters")
-    @Schema(example = "Doe")
+    @Size(max = 80, message = "Last name must not exceed 80 characters")
+    @Schema(example = "Doe", description = "Optional — surname is not mandatory")
     private String lastName;
 
     @Pattern(regexp = "^\\+?[0-9\\-\\s]{7,25}$",

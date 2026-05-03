@@ -94,7 +94,7 @@ public class CapaController {
     @Operation(summary = "Submit CAPA — DRAFT → PENDING_HOD (Head of Department review)")
     public ResponseEntity<ApiResponse<CapaResponse>> submit(
             @PathVariable Long id,
-            @RequestParam(required = false) String comment) {
+            @RequestParam(required = true) String comment) {
         return ApiResponse.ok("CAPA submitted for approval", capaService.submit(id, comment));
     }
 
@@ -103,7 +103,7 @@ public class CapaController {
     @Operation(summary = "Approve — advances to canonical next step per workflow (e.g. PENDING_HOD→PENDING_QA_REVIEW, PENDING_HEAD_QA→CLOSED)")
     public ResponseEntity<ApiResponse<CapaResponse>> approve(
             @PathVariable Long id,
-            @RequestParam(required = false) String comment) {
+            @RequestParam(required = true) String comment) {
         return ApiResponse.ok("CAPA approved", capaService.approve(id, comment));
     }
 
@@ -112,7 +112,7 @@ public class CapaController {
     @Operation(summary = "Reject — moves to REJECTED from any pending state, returns to DRAFT for rework")
     public ResponseEntity<ApiResponse<CapaResponse>> reject(
             @PathVariable Long id,
-            @RequestParam(required = false) String comment) {
+            @RequestParam(required = true) String comment) {
         return ApiResponse.ok("CAPA rejected", capaService.reject(id, comment));
     }
 
@@ -121,7 +121,7 @@ public class CapaController {
     @Operation(summary = "Close — PENDING_HEAD_QA → CLOSED (final closure by Head of QA)")
     public ResponseEntity<ApiResponse<CapaResponse>> close(
             @PathVariable Long id,
-            @RequestParam(required = false) String comment) {
+            @RequestParam(required = true) String comment) {
         return ApiResponse.ok("CAPA closed", capaService.close(id, comment));
     }
 
@@ -130,7 +130,7 @@ public class CapaController {
     @Operation(summary = "Cancel a CAPA — any non-terminal status")
     public ResponseEntity<ApiResponse<CapaResponse>> cancel(
             @PathVariable Long id,
-            @RequestParam(required = false) String comment) {
+            @RequestParam(required = true) String comment) {
         return ApiResponse.ok("CAPA cancelled", capaService.cancel(id, comment));
     }
 
@@ -139,7 +139,7 @@ public class CapaController {
     @Operation(summary = "Reopen a closed CAPA — CLOSED → DRAFT (reset for rework)")
     public ResponseEntity<ApiResponse<CapaResponse>> reopen(
             @PathVariable Long id,
-            @RequestParam(required = false) String comment) {
+            @RequestParam(required = true) String comment) {
         return ApiResponse.ok("CAPA reopened", capaService.reopen(id, comment));
     }
 

@@ -68,37 +68,37 @@ public class MarketComplaintController {
 
     @PostMapping("/{id}/submit")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER')")
-    public ResponseEntity<ApiResponse<MarketComplaintResponse>> submit(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<MarketComplaintResponse>> submit(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Submitted for review", complaintService.submit(id, comment));
     }
 
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    public ResponseEntity<ApiResponse<MarketComplaintResponse>> approve(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<MarketComplaintResponse>> approve(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Complaint approved", complaintService.approve(id, comment));
     }
 
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    public ResponseEntity<ApiResponse<MarketComplaintResponse>> reject(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<MarketComplaintResponse>> reject(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Complaint rejected", complaintService.reject(id, comment));
     }
 
     @PostMapping("/{id}/close")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    public ResponseEntity<ApiResponse<MarketComplaintResponse>> close(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<MarketComplaintResponse>> close(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Complaint closed", complaintService.close(id, comment));
     }
 
     @PostMapping("/{id}/cancel")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    public ResponseEntity<ApiResponse<MarketComplaintResponse>> cancel(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<MarketComplaintResponse>> cancel(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Complaint cancelled", complaintService.cancel(id, comment));
     }
 
     @PostMapping("/{id}/reopen")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    public ResponseEntity<ApiResponse<MarketComplaintResponse>> reopen(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<MarketComplaintResponse>> reopen(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Complaint reopened", complaintService.reopen(id, comment));
     }
 

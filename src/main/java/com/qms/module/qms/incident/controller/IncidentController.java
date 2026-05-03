@@ -69,37 +69,37 @@ public class IncidentController {
 
     @PostMapping("/{id}/submit")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER')")
-    public ResponseEntity<ApiResponse<IncidentResponse>> submit(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<IncidentResponse>> submit(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Submitted for approval", incidentService.submit(id, comment));
     }
 
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    public ResponseEntity<ApiResponse<IncidentResponse>> approve(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<IncidentResponse>> approve(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Incident approved", incidentService.approve(id, comment));
     }
 
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    public ResponseEntity<ApiResponse<IncidentResponse>> reject(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<IncidentResponse>> reject(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Incident rejected", incidentService.reject(id, comment));
     }
 
     @PostMapping("/{id}/close")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    public ResponseEntity<ApiResponse<IncidentResponse>> close(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<IncidentResponse>> close(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Incident closed", incidentService.close(id, comment));
     }
 
     @PostMapping("/{id}/cancel")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    public ResponseEntity<ApiResponse<IncidentResponse>> cancel(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<IncidentResponse>> cancel(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Incident cancelled", incidentService.cancel(id, comment));
     }
 
     @PostMapping("/{id}/reopen")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    public ResponseEntity<ApiResponse<IncidentResponse>> reopen(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<IncidentResponse>> reopen(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Incident reopened", incidentService.reopen(id, comment));
     }
 

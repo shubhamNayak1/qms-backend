@@ -82,7 +82,9 @@ public class UserService {
             throw AppException.conflict(
                     "Username '" + req.getUsername() + "' is already taken.");
         }
-        if (userRepository.existsByEmailAndIsDeletedFalse(req.getEmail())) {
+        // Email is optional — only check uniqueness when provided
+        if (req.getEmail() != null && !req.getEmail().isBlank()
+                && userRepository.existsByEmailAndIsDeletedFalse(req.getEmail())) {
             throw AppException.conflict(
                     "Email '" + req.getEmail() + "' is already registered.");
         }
@@ -99,12 +101,18 @@ public class UserService {
 
         String passwordHash = passwordEncoder.encode(req.getPassword());
 
+        // Normalize optional fields — store null instead of blank for email/lastName
+        String normalizedEmail    = (req.getEmail() != null && !req.getEmail().isBlank())
+                                    ? req.getEmail().toLowerCase() : null;
+        String normalizedLastName = (req.getLastName() != null && !req.getLastName().isBlank())
+                                    ? req.getLastName() : null;
+
         User user = User.builder()
                 .username(req.getUsername())
-                .email(req.getEmail().toLowerCase())
+                .email(normalizedEmail)
                 .passwordHash(passwordHash)
                 .firstName(req.getFirstName())
-                .lastName(req.getLastName())
+                .lastName(normalizedLastName)
                 .phone(req.getPhone())
                 .department(req.getDepartment())
                 .designation(req.getDesignation())
@@ -212,6 +220,11 @@ public class UserService {
     @Transactional
     public void adminResetPassword(Long userId, String newPassword) {
         User user = findById(userId);
+
+        // Enforce password complexity rules — admin-set temp passwords must
+        // also satisfy the active password policy.
+        passwordPolicyService.enforcePolicy(newPassword);
+
         String newHash = passwordEncoder.encode(newPassword);
 
         // Single save — avoids stale-entity overwrite of new hash

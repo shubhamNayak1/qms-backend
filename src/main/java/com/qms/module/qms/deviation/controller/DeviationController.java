@@ -67,37 +67,37 @@ public class DeviationController {
 
     @PostMapping("/{id}/submit")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER')")
-    public ResponseEntity<ApiResponse<DeviationResponse>> submit(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<DeviationResponse>> submit(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Submitted for approval", deviationService.submit(id, comment));
     }
 
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    public ResponseEntity<ApiResponse<DeviationResponse>> approve(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<DeviationResponse>> approve(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Deviation approved", deviationService.approve(id, comment));
     }
 
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    public ResponseEntity<ApiResponse<DeviationResponse>> reject(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<DeviationResponse>> reject(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Deviation rejected", deviationService.reject(id, comment));
     }
 
     @PostMapping("/{id}/close")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    public ResponseEntity<ApiResponse<DeviationResponse>> close(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<DeviationResponse>> close(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Deviation closed", deviationService.close(id, comment));
     }
 
     @PostMapping("/{id}/cancel")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    public ResponseEntity<ApiResponse<DeviationResponse>> cancel(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<DeviationResponse>> cancel(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Deviation cancelled", deviationService.cancel(id, comment));
     }
 
     @PostMapping("/{id}/reopen")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
-    public ResponseEntity<ApiResponse<DeviationResponse>> reopen(@PathVariable Long id, @RequestParam(required = false) String comment) {
+    public ResponseEntity<ApiResponse<DeviationResponse>> reopen(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Deviation reopened", deviationService.reopen(id, comment));
     }
 
