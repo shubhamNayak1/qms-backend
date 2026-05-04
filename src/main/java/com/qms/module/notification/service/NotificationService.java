@@ -23,6 +23,7 @@ import com.qms.module.qms.common.entity.QmsRecord;
 import com.qms.module.qms.complaint.repository.MarketComplaintRepository;
 import com.qms.module.qms.deviation.repository.DeviationRepository;
 import com.qms.module.qms.incident.repository.IncidentRepository;
+import com.qms.module.org.service.OrgSecurityService;
 import com.qms.module.user.entity.Role;
 import com.qms.module.user.entity.User;
 import com.qms.module.user.repository.UserRepository;
@@ -50,6 +51,7 @@ public class NotificationService {
 
     private final UserRepository               userRepository;
     private final PasswordPolicyService        passwordPolicyService;
+    private final OrgSecurityService           orgSecurityService;
 
     // QMS
     private final CapaRepository               capaRepository;
@@ -104,9 +106,19 @@ public class NotificationService {
                 .map(Role::getName)
                 .collect(Collectors.toSet());
 
-        boolean isManager   = roles.contains("SUPER_ADMIN") || roles.contains("QA_MANAGER");
-        boolean isQaOfficer = roles.contains("QA_OFFICER");
-        boolean isAuditor   = roles.contains("AUDITOR");
+        // Positional checks (post-V18) — driven by org structure, not flat roles.
+        // Falls back to legacy flat-role names so users created before V18 still
+        // see their full notification view.
+        boolean isManager = roles.contains("SUPER_ADMIN")
+                || roles.contains("QA_MANAGER")            // legacy
+                || orgSecurityService.isUserQaHead(user)
+                || orgSecurityService.isUserSiteHead(user);
+
+        boolean isQaOfficer = roles.contains("QA_OFFICER") // legacy
+                || orgSecurityService.isUserQaReviewer(user);
+
+        boolean isAuditor = roles.contains("AUDITOR")      // legacy
+                || orgSecurityService.isUserRa(user);
 
         LocalDate today = LocalDate.now();
 

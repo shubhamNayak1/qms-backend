@@ -28,8 +28,7 @@ public class ChangeControl extends QmsRecord {
     @Column(name = "risk_level", length = 20)
     private String riskLevel;
 
-    @Column(name = "risk_assessment", columnDefinition = "TEXT")
-    private String riskAssessment;
+    // risk_assessment moved to QmsRecord parent (shared across all modules)
 
     @Column(name = "implementation_plan", columnDefinition = "TEXT")
     private String implementationPlan;
@@ -62,15 +61,14 @@ public class ChangeControl extends QmsRecord {
     @Column(name = "site_head_required")
     private Boolean siteHeadRequired = false;
 
-    /**
-     * Whether customer notification/comment is required (routes through PENDING_CUSTOMER_COMMENT).
-     */
+    // customer_comment moved to QmsRecord parent (shared with all modules).
+    // customer_comment_required is kept here under its existing DB column name
+    // for backwards compatibility with the existing request/response DTOs —
+    // it routes the workflow through PENDING_CUSTOMER_COMMENT specifically for
+    // Change Control. The parent's customer_communication_required is the
+    // generic equivalent for other modules.
     @Column(name = "customer_comment_required")
     private Boolean customerCommentRequired = false;
-
-    /** Customer comment text (filled in during PENDING_CUSTOMER_COMMENT stage). */
-    @Column(name = "customer_comment", columnDefinition = "TEXT")
-    private String customerComment;
 
     @PrePersist
     private void prePersist() { setRecordType(QmsRecordType.CHANGE_CONTROL); }

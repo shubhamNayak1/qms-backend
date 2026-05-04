@@ -74,20 +74,23 @@ public class SecurityConfig {
                     // User management — individual endpoints guarded by @PreAuthorize
                     .requestMatchers("/api/v1/users/**").authenticated()
 
-                    // Audit logs - auditors and above
-                    .requestMatchers("/api/v1/audit/**").hasAnyRole("SUPER_ADMIN", "QA_MANAGER", "AUDITOR")
-
-                    // QMS modules - QA roles + Employee (create/edit own records)
-                    .requestMatchers("/api/v1/qms/**").hasAnyRole("SUPER_ADMIN", "QA_MANAGER", "QA_OFFICER", "EMPLOYEE")
-
-                    // DMS - doc controllers and QA
-                    .requestMatchers("/api/v1/dms/**").hasAnyRole("SUPER_ADMIN", "QA_MANAGER", "DOC_CONTROLLER", "EMPLOYEE")
-
-                    // LMS - all authenticated users
+                    // ── Module-level access ──────────────────────────────────
+                    // V18 deprecated the flat per-module roles (QA_MANAGER, QA_OFFICER,
+                    // AUDITOR, HOD). Authorisation is now enforced inside each controller
+                    // via @PreAuthorize and inside QmsWorkflowEngine via positional
+                    // checks (OrgSecurityService). Keeping path-level role matchers
+                    // here would block new users — who only carry EMPLOYEE — from
+                    // ever reaching audit / reports / dms endpoints. Instead we
+                    // require simple authentication and let the per-endpoint guard
+                    // decide.
+                    .requestMatchers("/api/v1/audit/**").authenticated()
+                    .requestMatchers("/api/v1/qms/**").authenticated()
+                    .requestMatchers("/api/v1/dms/**").authenticated()
                     .requestMatchers("/api/v1/lms/**").authenticated()
-
-                    // Reports - managers and above
-                    .requestMatchers("/api/v1/reports/**").hasAnyRole("SUPER_ADMIN", "QA_MANAGER", "AUDITOR")
+                    .requestMatchers("/api/v1/reports/**").authenticated()
+                    .requestMatchers("/api/v1/org/**").authenticated()
+                    .requestMatchers("/api/v1/licenses/**").authenticated()
+                    .requestMatchers("/api/v1/notifications/**").authenticated()
 
                     // All other requests must be authenticated
                     .anyRequest().authenticated()

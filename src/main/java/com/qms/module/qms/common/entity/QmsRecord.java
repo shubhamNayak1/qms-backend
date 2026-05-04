@@ -150,6 +150,75 @@ public abstract class QmsRecord extends BaseEntity {
     @Column(name = "comments", columnDefinition = "TEXT")
     private String comments;
 
+    // ── Risk + categorisation (shared by all 5 modules) ──────
+
+    /** Risk assessment narrative captured during HOD / QA review. */
+    @Column(name = "risk_assessment", columnDefinition = "TEXT")
+    private String riskAssessment;
+
+    /** Critical / Major / Minor — set during RA evaluation on Change Control,
+     *  generally useful on every QMS module for impact rating. */
+    @Column(name = "category", length = 20)
+    private String category;
+
+    // ── Customer communication block (Change Control + Market Complaint) ──
+
+    @Column(name = "customer_communication_required")
+    private Boolean customerCommunicationRequired;
+
+    @Column(name = "customer_representative", length = 150)
+    private String customerRepresentative;
+
+    @Column(name = "customer_comment", columnDefinition = "TEXT")
+    private String customerComment;
+
+    // ── Verification phase (post-implementation review) ──────
+
+    @Column(name = "verification_action_taken", columnDefinition = "TEXT")
+    private String verificationActionTaken;
+
+    @Column(name = "verification_effective_on")
+    private LocalDate verificationEffectiveOn;
+
+    @Column(name = "verification_documents_reissue")
+    private Boolean verificationDocumentsReissue;
+
+    @Column(name = "verification_other_comments", columnDefinition = "TEXT")
+    private String verificationOtherComments;
+
+    @Column(name = "verification_reg_communication", columnDefinition = "TEXT")
+    private String verificationRegCommunication;
+
+    // ── Target-date extension (lightweight inline workflow) ──
+    //
+    // Inline approach avoids a separate workflow engine: when an Initiator
+    // requests an extension we capture the new date + reason and flip
+    // status to PENDING. Reviewer (HOD or QA Reviewer) then approves/rejects
+    // via the dedicated endpoint, which sets the final status and — on
+    // approval — copies extension_date into target_completion_date.
+
+    @Column(name = "target_date_extension_date")
+    private LocalDate targetDateExtensionDate;
+
+    @Column(name = "target_date_extension_reason", columnDefinition = "TEXT")
+    private String targetDateExtensionReason;
+
+    /** PENDING / APPROVED / REJECTED — null if no extension was ever requested. */
+    @Column(name = "target_date_extension_status", length = 20)
+    private String targetDateExtensionStatus;
+
+    @Column(name = "target_date_extension_requested_by_id")
+    private Long targetDateExtensionRequestedById;
+
+    @Column(name = "target_date_extension_requested_at")
+    private LocalDateTime targetDateExtensionRequestedAt;
+
+    @Column(name = "target_date_extension_decided_by_id")
+    private Long targetDateExtensionDecidedById;
+
+    @Column(name = "target_date_extension_decided_at")
+    private LocalDateTime targetDateExtensionDecidedAt;
+
     // ── Workflow history (embedded JSON — avoids extra join table) ──
 
     @Column(name = "status_history", columnDefinition = "TEXT")
