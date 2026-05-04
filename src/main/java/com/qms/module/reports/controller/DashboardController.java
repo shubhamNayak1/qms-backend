@@ -33,7 +33,7 @@ public class DashboardController {
     private static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(
         summary = "Unified QMS executive dashboard",
         description = """
@@ -58,7 +58,7 @@ public class DashboardController {
     }
 
     @PostMapping("/export/excel")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(
         summary = "Export the dashboard summary to Excel",
         description = """

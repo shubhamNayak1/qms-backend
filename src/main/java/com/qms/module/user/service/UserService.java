@@ -13,6 +13,7 @@ import com.qms.module.license.enums.LicenseStatus;
 import com.qms.module.license.repository.LicenseRepository;
 import com.qms.module.org.entity.Department;
 import com.qms.module.org.repository.DepartmentRepository;
+import com.qms.module.org.service.OrgSecurityService;
 import com.qms.module.user.dto.request.*;
 import com.qms.module.user.dto.response.MeResponse;
 import com.qms.module.user.dto.response.UserResponse;
@@ -57,6 +58,7 @@ public class UserService {
     private final PasswordPolicyService passwordPolicyService;
     private final DepartmentRepository  departmentRepository;
     private final LicenseRepository     licenseRepository;
+    private final OrgSecurityService    orgSecurityService;
 
     // ─── Queries ─────────────────────────────────────────────
 
@@ -386,12 +388,32 @@ public class UserService {
                 .map(Permission::getName)
                 .collect(Collectors.toSet());
 
-        // Grouped by module — for show/hide at page level
+        // Grouped by module — for show/hide at page level. Mutable so we can
+        // splice in positional grants below (QA Head etc.).
         Map<String, List<String>> permissionsByModule = allPerms.stream()
                 .collect(Collectors.groupingBy(
                         Permission::getModule,
                         Collectors.mapping(Permission::getName, Collectors.toList())
                 ));
+
+        // ── Positional permission grants ─────────────────────────
+        // QA Head (HOD of any QA-typed department) gets full access to the
+        // Audit and Reports modules — even though no role-based grant
+        // carries them. Mirrors the @PreAuthorize gates on AuditLogController,
+        // DashboardController and ReportManagerController so the UI nav and
+        // per-permission gates align with the backend.
+        if (orgSecurityService.isUserQaHead(user)) {
+            // Audit
+            permissionSet.add("AUDIT_VIEW");
+            permissionSet.add("AUDIT_EXPORT");
+            permissionsByModule.computeIfAbsent("AUDIT", k -> new java.util.ArrayList<>())
+                    .addAll(List.of("AUDIT_VIEW", "AUDIT_EXPORT"));
+            // Reports
+            permissionSet.add("REPORT_VIEW");
+            permissionSet.add("REPORT_EXPORT");
+            permissionsByModule.computeIfAbsent("REPORT", k -> new java.util.ArrayList<>())
+                    .addAll(List.of("REPORT_VIEW", "REPORT_EXPORT"));
+        }
 
         // Boolean per module — for nav-item visibility
         Map<String, Boolean> moduleAccess = new LinkedHashMap<>();

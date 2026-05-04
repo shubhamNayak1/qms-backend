@@ -35,7 +35,7 @@ public class ReportManagerController {
     // ── 1. Create Report ─────────────────────────────────────
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','TRAINING_MANAGER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','TRAINING_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Create a new report",
                description = """
                    Define a report by selecting:
@@ -56,7 +56,7 @@ public class ReportManagerController {
     // ── 2. Edit Report ────────────────────────────────────────
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','TRAINING_MANAGER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','TRAINING_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Edit report configuration and re-run",
                description = "Partial update — only send fields you want to change. Re-runs the report automatically with the new config.")
     public ResponseEntity<ApiResponse<ReportResponse>> update(
@@ -68,7 +68,7 @@ public class ReportManagerController {
     // ── 3. History ────────────────────────────────────────────
 
     @GetMapping("/{id}/history")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','TRAINING_MANAGER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','TRAINING_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Get run history for a report",
                description = "Returns all past execution runs for a report — status, duration, row count, errors.")
     public ResponseEntity<ApiResponse<PageResponse<ReportHistoryResponse>>> history(
@@ -81,14 +81,14 @@ public class ReportManagerController {
     // ── 4. Disable Report ─────────────────────────────────────
 
     @PatchMapping("/{id}/disable")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Disable a report", description = "Prevents the report from being re-run. Existing file is preserved.")
     public ResponseEntity<ApiResponse<ReportResponse>> disable(@PathVariable Long id) {
         return ApiResponse.ok("Report disabled", reportManagerService.disable(id));
     }
 
     @PatchMapping("/{id}/enable")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Re-enable a disabled report")
     public ResponseEntity<ApiResponse<ReportResponse>> enable(@PathVariable Long id) {
         return ApiResponse.ok("Report enabled", reportManagerService.enable(id));
@@ -97,7 +97,7 @@ public class ReportManagerController {
     // ── 5. Download ───────────────────────────────────────────
 
     @GetMapping("/{id}/download")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','TRAINING_MANAGER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','TRAINING_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Download the generated report file",
                description = "Downloads the Excel (.xlsx) or CSV file generated during the last run. Returns 400 if report hasn't been run yet.")
     public ResponseEntity<byte[]> download(@PathVariable Long id) {
@@ -119,7 +119,7 @@ public class ReportManagerController {
     // ── 6. Re-Run Report ─────────────────────────────────────
 
     @PostMapping("/{id}/run")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','TRAINING_MANAGER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','TRAINING_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Re-run a report",
                description = "Re-executes the report with the same configuration. Overwrites the previous file. Useful for refreshing data.")
     public ResponseEntity<ApiResponse<ReportResponse>> reRun(@PathVariable Long id) {
@@ -129,7 +129,7 @@ public class ReportManagerController {
     // ── 7. List Reports ───────────────────────────────────────
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','TRAINING_MANAGER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','TRAINING_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "List reports",
                description = """
                    Filter by:
@@ -156,7 +156,7 @@ public class ReportManagerController {
     // ── 8. Insights ───────────────────────────────────────────
 
     @GetMapping("/{id}/insights")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','TRAINING_MANAGER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','TRAINING_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Get insights for a report",
                description = """
                    Analyses the report data and returns:
@@ -176,7 +176,7 @@ public class ReportManagerController {
     // ── Module Field Discovery ─────────────────────────────────
 
     @GetMapping("/modules/{module}/fields")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','TRAINING_MANAGER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','TRAINING_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "List available dimensions and metrics for a module",
                description = "Use this to populate the dimension/metric selection UI when creating a report.")
     public ResponseEntity<ApiResponse<ModuleFieldsResponse>> moduleFields(

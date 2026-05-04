@@ -48,7 +48,7 @@ public class AuditLogController {
     // Multi-criteria search with all parameters optional
     // ─────────────────────────────────────────────────────────
     @GetMapping("/logs")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(
         summary = "Search audit logs",
         description = """
@@ -99,7 +99,7 @@ public class AuditLogController {
     // GET /api/v1/audit/logs/{id}
     // ─────────────────────────────────────────────────────────
     @GetMapping("/logs/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Get a single audit log entry by ID")
     public ResponseEntity<ApiResponse<AuditLogResponse>> getById(@PathVariable Long id) {
         return ApiResponse.ok(auditLogService.getById(id));
@@ -110,7 +110,7 @@ public class AuditLogController {
     // Full history of changes to a specific record
     // ─────────────────────────────────────────────────────────
     @GetMapping("/entity/{entityType}/{entityId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(
         summary = "Get full audit history of a specific entity",
         description = "Returns all audit events that affected a given entity, ordered by time. " +
@@ -129,7 +129,7 @@ public class AuditLogController {
     // All events in a user's login session
     // ─────────────────────────────────────────────────────────
     @GetMapping("/session/{sessionId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(
         summary = "Get audit trail for an entire user session",
         description = "Returns all events from a single login session (identified by the JWT jti claim), " +
@@ -145,7 +145,7 @@ public class AuditLogController {
     // KPI summary for the dashboard
     // ─────────────────────────────────────────────────────────
     @GetMapping("/stats")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(
         summary = "Audit statistics and KPI summary",
         description = "Returns total event counts, failure rates, login stats, and module breakdowns " +
@@ -163,7 +163,7 @@ public class AuditLogController {
     // Security-focused: last N login events for a user
     // ─────────────────────────────────────────────────────────
     @GetMapping("/users/{userId}/recent-logins")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR') or #userId == authentication.principal.id")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead() or #userId == authentication.principal.id")
     @Operation(
         summary = "Get the most recent login events for a user",
         description = "Returns login and login-failed events for the given user. " +
@@ -189,7 +189,7 @@ public class AuditLogController {
     // Ingest an audit event from an external system or batch job
     // ─────────────────────────────────────────────────────────
     @PostMapping("/logs/manual")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(
         summary = "Manually submit an audit log entry",
         description = """
