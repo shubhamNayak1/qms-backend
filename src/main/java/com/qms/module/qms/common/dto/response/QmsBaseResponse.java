@@ -36,6 +36,8 @@ public class QmsBaseResponse {
     private Long   raisedById;
     private String raisedByName;
     private String department;
+    private Long   departmentId;
+    private Long   commentingDepartmentId;
 
     // Dates
     private LocalDate dueDate;
@@ -52,6 +54,31 @@ public class QmsBaseResponse {
     private String rootCause;
     private String correctiveAction;
     private String comments;
+
+    // Risk + categorisation
+    private String  riskAssessment;
+    private String  category;
+
+    // Customer block
+    private Boolean customerCommunicationRequired;
+    private String  customerRepresentative;
+    private String  customerComment;
+
+    // Verification phase
+    private String    verificationActionTaken;
+    private LocalDate verificationEffectiveOn;
+    private Boolean   verificationDocumentsReissue;
+    private String    verificationOtherComments;
+    private String    verificationRegCommunication;
+
+    // Target-date extension
+    private LocalDate     targetDateExtensionDate;
+    private String        targetDateExtensionReason;
+    private String        targetDateExtensionStatus;
+    private Long          targetDateExtensionRequestedById;
+    private LocalDateTime targetDateExtensionRequestedAt;
+    private Long          targetDateExtensionDecidedById;
+    private LocalDateTime targetDateExtensionDecidedAt;
 
     // Computed
     private boolean overdue;

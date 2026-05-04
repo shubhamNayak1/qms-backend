@@ -40,6 +40,9 @@ public class QmsBaseRequest {
     @Schema(example = "Manufacturing")
     private String department;
 
+    @Schema(description = "FK to departments.id — drives positional workflow checks", example = "5")
+    private Long departmentId;
+
     @FutureOrPresent(message = "Due date must be today or in the future")
     @Schema(description = "ISO date e.g. 2024-12-31")
     private LocalDate dueDate;
@@ -52,4 +55,29 @@ public class QmsBaseRequest {
 
     @Size(max = 2000)
     private String comments;
+
+    // ── Shared fields lifted to QmsRecord (V19) ──────────────
+    // These let stage-specific panels (HOD review, RA review, verification)
+    // update the same record via PUT without needing per-module endpoints.
+
+    /** Risk assessment narrative, captured during HOD / QA review. */
+    private String riskAssessment;
+
+    /** Critical / Major / Minor — set during RA evaluation. */
+    @Size(max = 20)
+    private String category;
+
+    private Boolean customerCommunicationRequired;
+
+    @Size(max = 150)
+    private String customerRepresentative;
+
+    private String customerComment;
+
+    // Verification phase
+    private String   verificationActionTaken;
+    private LocalDate verificationEffectiveOn;
+    private Boolean  verificationDocumentsReissue;
+    private String   verificationOtherComments;
+    private String   verificationRegCommunication;
 }

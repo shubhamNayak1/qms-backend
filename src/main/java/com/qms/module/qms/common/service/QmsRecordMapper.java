@@ -27,16 +27,31 @@ public class QmsRecordMapper {
 
     /** Copy all shared QmsBaseRequest fields onto a QmsRecord entity. */
     public void applyRequest(QmsBaseRequest req, QmsRecord record) {
-        if (req.getTitle()                != null) record.setTitle(req.getTitle());
-        if (req.getDescription()          != null) record.setDescription(req.getDescription());
-        if (req.getPriority()             != null) record.setPriority(req.getPriority());
-        if (req.getAssignedToId()         != null) record.setAssignedToId(req.getAssignedToId());
-        if (req.getDepartment()           != null) record.setDepartment(req.getDepartment());
-        if (req.getDueDate()              != null) record.setDueDate(req.getDueDate());
-        if (req.getTargetCompletionDate() != null) record.setTargetCompletionDate(req.getTargetCompletionDate());
-        if (req.getRootCause()            != null) record.setRootCause(req.getRootCause());
-        if (req.getCorrectiveAction()     != null) record.setCorrectiveAction(req.getCorrectiveAction());
-        if (req.getComments()             != null) record.setComments(req.getComments());
+        if (req.getTitle()                       != null) record.setTitle(req.getTitle());
+        if (req.getDescription()                 != null) record.setDescription(req.getDescription());
+        if (req.getPriority()                    != null) record.setPriority(req.getPriority());
+        if (req.getAssignedToId()                != null) record.setAssignedToId(req.getAssignedToId());
+        if (req.getDepartment()                  != null) record.setDepartment(req.getDepartment());
+        if (req.getDepartmentId()                != null) record.setDepartmentId(req.getDepartmentId());
+        if (req.getDueDate()                     != null) record.setDueDate(req.getDueDate());
+        if (req.getTargetCompletionDate()        != null) record.setTargetCompletionDate(req.getTargetCompletionDate());
+        if (req.getRootCause()                   != null) record.setRootCause(req.getRootCause());
+        if (req.getCorrectiveAction()            != null) record.setCorrectiveAction(req.getCorrectiveAction());
+        if (req.getComments()                    != null) record.setComments(req.getComments());
+        // Shared common fields lifted to QmsRecord (V19) — let HOD review,
+        // RA evaluation, customer comment, verification stages all update
+        // their dedicated fields via the per-module PUT endpoint.
+        if (req.getRiskAssessment()              != null) record.setRiskAssessment(req.getRiskAssessment());
+        if (req.getCategory()                    != null) record.setCategory(req.getCategory());
+        if (req.getCustomerCommunicationRequired() != null)
+            record.setCustomerCommunicationRequired(req.getCustomerCommunicationRequired());
+        if (req.getCustomerRepresentative()      != null) record.setCustomerRepresentative(req.getCustomerRepresentative());
+        if (req.getCustomerComment()             != null) record.setCustomerComment(req.getCustomerComment());
+        if (req.getVerificationActionTaken()       != null) record.setVerificationActionTaken(req.getVerificationActionTaken());
+        if (req.getVerificationEffectiveOn()       != null) record.setVerificationEffectiveOn(req.getVerificationEffectiveOn());
+        if (req.getVerificationDocumentsReissue()  != null) record.setVerificationDocumentsReissue(req.getVerificationDocumentsReissue());
+        if (req.getVerificationOtherComments()     != null) record.setVerificationOtherComments(req.getVerificationOtherComments());
+        if (req.getVerificationRegCommunication()  != null) record.setVerificationRegCommunication(req.getVerificationRegCommunication());
     }
 
     /** Copy all shared QmsRecord fields into a QmsBaseResponse DTO. */
@@ -53,6 +68,8 @@ public class QmsRecordMapper {
         response.setRaisedById(record.getRaisedById());
         response.setRaisedByName(record.getRaisedByName());
         response.setDepartment(record.getDepartment());
+        response.setDepartmentId(record.getDepartmentId());
+        response.setCommentingDepartmentId(record.getCommentingDepartmentId());
         response.setDueDate(record.getDueDate());
         response.setClosedDate(record.getClosedDate());
         response.setTargetCompletionDate(record.getTargetCompletionDate());
@@ -63,6 +80,24 @@ public class QmsRecordMapper {
         response.setRootCause(record.getRootCause());
         response.setCorrectiveAction(record.getCorrectiveAction());
         response.setComments(record.getComments());
+        // Shared common fields lifted to QmsRecord (V19)
+        response.setRiskAssessment(record.getRiskAssessment());
+        response.setCategory(record.getCategory());
+        response.setCustomerCommunicationRequired(record.getCustomerCommunicationRequired());
+        response.setCustomerRepresentative(record.getCustomerRepresentative());
+        response.setCustomerComment(record.getCustomerComment());
+        response.setVerificationActionTaken(record.getVerificationActionTaken());
+        response.setVerificationEffectiveOn(record.getVerificationEffectiveOn());
+        response.setVerificationDocumentsReissue(record.getVerificationDocumentsReissue());
+        response.setVerificationOtherComments(record.getVerificationOtherComments());
+        response.setVerificationRegCommunication(record.getVerificationRegCommunication());
+        response.setTargetDateExtensionDate(record.getTargetDateExtensionDate());
+        response.setTargetDateExtensionReason(record.getTargetDateExtensionReason());
+        response.setTargetDateExtensionStatus(record.getTargetDateExtensionStatus());
+        response.setTargetDateExtensionRequestedById(record.getTargetDateExtensionRequestedById());
+        response.setTargetDateExtensionRequestedAt(record.getTargetDateExtensionRequestedAt());
+        response.setTargetDateExtensionDecidedById(record.getTargetDateExtensionDecidedById());
+        response.setTargetDateExtensionDecidedAt(record.getTargetDateExtensionDecidedAt());
         response.setOverdue(record.isOverdue());
         response.setAllowedTransitions(WorkflowTransition.allowedFrom(record.getRecordType(), record.getStatus()));
         response.setStatusHistory(deserializeHistory(record.getStatusHistory()));
