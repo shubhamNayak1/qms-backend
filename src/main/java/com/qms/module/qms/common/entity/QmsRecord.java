@@ -90,8 +90,29 @@ public abstract class QmsRecord extends BaseEntity {
     @Column(name = "raised_by_name", length = 150, updatable = false)
     private String raisedByName;
 
+    /**
+     * Legacy free-text department — kept for backward compatibility during
+     * the org-structure migration. New code should rely on {@link #departmentId}.
+     */
     @Column(name = "department", length = 100)
     private String department;
+
+    /**
+     * FK-style reference to departments.id — the originating department of
+     * the record. Drives positional workflow checks (e.g. "HOD of THIS dept
+     * must approve the PENDING_HOD step").
+     */
+    @Column(name = "department_id")
+    private Long departmentId;
+
+    /**
+     * When QA routes a record to another department for cross-functional
+     * comment (status PENDING_DEPT_COMMENT), this column captures which
+     * department must comment. The HOD of that department is then the only
+     * actor that can move the record back to PENDING_QA_REVIEW.
+     */
+    @Column(name = "commenting_department_id")
+    private Long commentingDepartmentId;
 
     // ── Dates ────────────────────────────────────────────────
 

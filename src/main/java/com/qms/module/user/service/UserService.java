@@ -8,6 +8,11 @@ import com.qms.module.audit.annotation.Audited;
 import com.qms.module.audit.context.AuditContext;
 import com.qms.module.audit.context.AuditContextHolder;
 import com.qms.module.audit.service.AuditValueSerializer;
+import com.qms.module.license.entity.License;
+import com.qms.module.license.enums.LicenseStatus;
+import com.qms.module.license.repository.LicenseRepository;
+import com.qms.module.org.entity.Department;
+import com.qms.module.org.repository.DepartmentRepository;
 import com.qms.module.user.dto.request.*;
 import com.qms.module.user.dto.response.MeResponse;
 import com.qms.module.user.dto.response.UserResponse;
@@ -50,6 +55,8 @@ public class UserService {
     private final PasswordEncoder       passwordEncoder;
     private final AuditValueSerializer  auditSerializer;
     private final PasswordPolicyService passwordPolicyService;
+    private final DepartmentRepository  departmentRepository;
+    private final LicenseRepository     licenseRepository;
 
     // ─── Queries ─────────────────────────────────────────────
 
@@ -58,17 +65,36 @@ public class UserService {
         Specification<User> spec = UserSpecification.filter(search, department, isActive);
         var pageResult = userRepository.findAll(spec,
                 PageRequest.of(page, size, Sort.by("createdAt").descending()));
-        return PageResponse.of(pageResult.map(userMapper::toUserResponse));
+        return PageResponse.of(pageResult.map(u -> enrich(userMapper.toUserResponse(u))));
     }
 
     public UserResponse getById(Long id) {
-        return userMapper.toUserResponse(findById(id));
+        return enrich(userMapper.toUserResponse(findById(id)));
     }
 
     public UserResponse getByUsername(String username) {
         User user = userRepository.findByUsernameAndIsDeletedFalse(username)
                 .orElseThrow(() -> AppException.notFound("User", username));
-        return userMapper.toUserResponse(user);
+        return enrich(userMapper.toUserResponse(user));
+    }
+
+    /**
+     * Resolves the department name and currently assigned license code so the
+     * front-end can render them without a second round-trip per row.
+     */
+    private UserResponse enrich(UserResponse resp) {
+        if (resp == null) return null;
+        if (resp.getDepartmentId() != null) {
+            Department d = departmentRepository.findById(resp.getDepartmentId()).orElse(null);
+            if (d != null) resp.setDepartmentName(d.getName());
+        }
+        // Find the active assigned license for this user, if any.
+        java.util.Optional<License> active = licenseRepository
+                .findActiveLicenseForUser(resp.getId(), java.time.LocalDateTime.now());
+        resp.setHasActiveLicense(active.isPresent());
+        active.ifPresent(l -> resp.setLicenseCode(l.getCode()));
+        if (resp.getHasActiveLicense() == null) resp.setHasActiveLicense(false);
+        return resp;
     }
 
     // ─── Commands ────────────────────────────────────────────
@@ -113,8 +139,13 @@ public class UserService {
                 .passwordHash(passwordHash)
                 .firstName(req.getFirstName())
                 .lastName(normalizedLastName)
+                .initials(req.getInitials() != null ? req.getInitials().toUpperCase() : null)
                 .phone(req.getPhone())
+                .joiningDate(req.getJoiningDate())
                 .department(req.getDepartment())
+                .departmentId(req.getDepartmentId())
+                .isDeptReviewer(Boolean.TRUE.equals(req.getIsDeptReviewer()))
+                .isQaReviewer(Boolean.TRUE.equals(req.getIsQaReviewer()))
                 .designation(req.getDesignation())
                 .employeeId(req.getEmployeeId())
                 .isActive(true)
@@ -128,7 +159,7 @@ public class UserService {
         // Track initial password in history so it can't be immediately reused
         passwordPolicyService.recordPasswordHistory(saved.getId(), passwordHash);
         log.info("User created: {} (id={})", saved.getUsername(), saved.getId());
-        return userMapper.toUserResponse(saved);
+        return enrich(userMapper.toUserResponse(saved));
     }
 
     @Audited(action = AuditAction.UPDATE, module = AuditModule.USER,
@@ -149,14 +180,19 @@ public class UserService {
 
         if (req.getFirstName()        != null) user.setFirstName(req.getFirstName());
         if (req.getLastName()         != null) user.setLastName(req.getLastName());
+        if (req.getInitials()         != null) user.setInitials(req.getInitials().toUpperCase());
         if (req.getPhone()            != null) user.setPhone(req.getPhone());
+        if (req.getJoiningDate()      != null) user.setJoiningDate(req.getJoiningDate());
         if (req.getDepartment()       != null) user.setDepartment(req.getDepartment());
+        if (req.getDepartmentId()     != null) user.setDepartmentId(req.getDepartmentId());
+        if (req.getIsDeptReviewer()   != null) user.setIsDeptReviewer(req.getIsDeptReviewer());
+        if (req.getIsQaReviewer()     != null) user.setIsQaReviewer(req.getIsQaReviewer());
         if (req.getDesignation()      != null) user.setDesignation(req.getDesignation());
         if (req.getEmployeeId()       != null) user.setEmployeeId(req.getEmployeeId());
         if (req.getProfilePictureUrl() != null) user.setProfilePictureUrl(req.getProfilePictureUrl());
         if (req.getIsActive()         != null) user.setIsActive(req.getIsActive());
 
-        return userMapper.toUserResponse(userRepository.save(user));
+        return enrich(userMapper.toUserResponse(userRepository.save(user)));
     }
 
     /**

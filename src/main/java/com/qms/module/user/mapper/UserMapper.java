@@ -60,8 +60,13 @@ public interface UserMapper {
     @Mapping(target = "email",             source = "email")
     @Mapping(target = "firstName",         source = "firstName")
     @Mapping(target = "lastName",          source = "lastName")
+    @Mapping(target = "initials",          source = "initials")
     @Mapping(target = "phone",             source = "phone")
+    @Mapping(target = "joiningDate",       source = "joiningDate")
     @Mapping(target = "department",        source = "department")
+    @Mapping(target = "departmentId",      source = "departmentId")
+    @Mapping(target = "isDeptReviewer",    source = "isDeptReviewer")
+    @Mapping(target = "isQaReviewer",      source = "isQaReviewer")
     @Mapping(target = "designation",       source = "designation")
     @Mapping(target = "employeeId",        source = "employeeId")
     @Mapping(target = "profilePictureUrl", source = "profilePictureUrl")
@@ -73,8 +78,11 @@ public interface UserMapper {
     @Mapping(target = "createdAt",         source = "createdAt")
     @Mapping(target = "updatedAt",         source = "updatedAt")
     @Mapping(target = "createdBy",         source = "createdBy")
-    @Mapping(target = "fullName",    ignore = true)  // set in @AfterMapping
-    @Mapping(target = "permissions", ignore = true)  // set in @AfterMapping
+    @Mapping(target = "fullName",         ignore = true)  // set in @AfterMapping
+    @Mapping(target = "permissions",      ignore = true)  // set in @AfterMapping
+    @Mapping(target = "departmentName",   ignore = true)  // resolved in service
+    @Mapping(target = "hasActiveLicense", ignore = true)  // resolved in service
+    @Mapping(target = "licenseCode",      ignore = true)  // resolved in service
     UserResponse toUserResponse(User user);
 
     @AfterMapping

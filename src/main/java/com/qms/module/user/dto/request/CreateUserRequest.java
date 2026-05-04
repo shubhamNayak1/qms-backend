@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.util.Set;
 
 @Data
@@ -38,14 +39,46 @@ public class CreateUserRequest {
     @Schema(example = "Doe", description = "Optional — surname is not mandatory")
     private String lastName;
 
+    @NotBlank(message = "Mobile number is required")
     @Pattern(regexp = "^\\+?[0-9\\-\\s]{7,25}$",
              message = "Phone number format is invalid")
-    @Schema(example = "+91-9876543210")
+    @Schema(example = "+91-9876543210", description = "Mobile number — required")
     private String phone;
 
+    @NotBlank(message = "Initials are required")
+    @Size(max = 10, message = "Initials must not exceed 10 characters")
+    @Pattern(regexp = "^[A-Za-z]{1,10}$",
+             message = "Initials may only contain letters (e.g. JKD)")
+    @Schema(example = "JKD",
+            description = "Short identifier used on signed pharma documents")
+    private String initials;
+
+    @NotNull(message = "Joining date is required")
+    @PastOrPresent(message = "Joining date cannot be in the future")
+    @Schema(example = "2024-04-15")
+    private LocalDate joiningDate;
+
+    /**
+     * Legacy free-text department label. Optional — newer clients should
+     * supply {@link #departmentId} instead.
+     */
     @Size(max = 100, message = "Department must not exceed 100 characters")
-    @Schema(example = "Quality Assurance")
+    @Schema(example = "Quality Assurance",
+            description = "Deprecated free-text label. Prefer departmentId.")
     private String department;
+
+    @NotNull(message = "Department is required")
+    @Schema(example = "5",
+            description = "FK to departments.id — drives org-position checks")
+    private Long departmentId;
+
+    /** Mark this user as a department-level reviewer (cross-functional comments). */
+    @Schema(example = "false")
+    private Boolean isDeptReviewer;
+
+    /** Mark this user as a QA Reviewer (only meaningful when departmentId is the QA department). */
+    @Schema(example = "false")
+    private Boolean isQaReviewer;
 
     @Size(max = 100, message = "Designation must not exceed 100 characters")
     @Schema(example = "QA Manager")

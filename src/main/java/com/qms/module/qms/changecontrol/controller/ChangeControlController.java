@@ -27,7 +27,7 @@ public class ChangeControlController {
     private final ChangeControlService changeControlService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR','EMPLOYEE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PageResponse<ChangeControlResponse>>> search(
             @RequestParam(required = false) QmsStatus status,
             @RequestParam(required = false) Priority  priority,
@@ -43,62 +43,62 @@ public class ChangeControlController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR','EMPLOYEE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChangeControlResponse>> getById(@PathVariable Long id) {
         return ApiResponse.ok(changeControlService.getById(id));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','EMPLOYEE')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Raise a new Change Control request")
     public ResponseEntity<ApiResponse<ChangeControlResponse>> create(@Valid @RequestBody ChangeControlRequest req) {
         return ApiResponse.created("Change Control created", changeControlService.create(req));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','EMPLOYEE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChangeControlResponse>> update(@PathVariable Long id, @Valid @RequestBody ChangeControlRequest req) {
         return ApiResponse.ok("Change Control updated", changeControlService.update(id, req));
     }
 
     @PostMapping("/{id}/transition")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChangeControlResponse>> transition(@PathVariable Long id, @Valid @RequestBody WorkflowRequest req) {
         return ApiResponse.ok("Status updated", changeControlService.transition(id, req));
     }
 
     @PostMapping("/{id}/submit")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChangeControlResponse>> submit(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Submitted for approval", changeControlService.submit(id, comment));
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChangeControlResponse>> approve(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Change Control approved", changeControlService.approve(id, comment));
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChangeControlResponse>> reject(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Change Control rejected", changeControlService.reject(id, comment));
     }
 
     @PostMapping("/{id}/close")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChangeControlResponse>> close(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Change Control closed", changeControlService.close(id, comment));
     }
 
     @PostMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChangeControlResponse>> cancel(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Change Control cancelled", changeControlService.cancel(id, comment));
     }
 
     @PostMapping("/{id}/reopen")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChangeControlResponse>> reopen(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Change Control reopened", changeControlService.reopen(id, comment));
     }

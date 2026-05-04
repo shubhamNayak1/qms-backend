@@ -27,7 +27,7 @@ public class IncidentController {
     private final IncidentService incidentService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR','EMPLOYEE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PageResponse<IncidentResponse>>> search(
             @RequestParam(required = false) QmsStatus status,
             @RequestParam(required = false) Priority  priority,
@@ -43,7 +43,7 @@ public class IncidentController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR','EMPLOYEE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<IncidentResponse>> getById(@PathVariable Long id) {
         return ApiResponse.ok(incidentService.getById(id));
     }
@@ -56,49 +56,49 @@ public class IncidentController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','EMPLOYEE')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<IncidentResponse>> update(@PathVariable Long id, @Valid @RequestBody IncidentRequest req) {
         return ApiResponse.ok("Incident updated", incidentService.update(id, req));
     }
 
     @PostMapping("/{id}/transition")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<IncidentResponse>> transition(@PathVariable Long id, @Valid @RequestBody WorkflowRequest req) {
         return ApiResponse.ok("Status updated", incidentService.transition(id, req));
     }
 
     @PostMapping("/{id}/submit")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<IncidentResponse>> submit(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Submitted for approval", incidentService.submit(id, comment));
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<IncidentResponse>> approve(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Incident approved", incidentService.approve(id, comment));
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<IncidentResponse>> reject(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Incident rejected", incidentService.reject(id, comment));
     }
 
     @PostMapping("/{id}/close")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<IncidentResponse>> close(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Incident closed", incidentService.close(id, comment));
     }
 
     @PostMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<IncidentResponse>> cancel(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Incident cancelled", incidentService.cancel(id, comment));
     }
 
     @PostMapping("/{id}/reopen")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<IncidentResponse>> reopen(@PathVariable Long id, @RequestParam(required = true) String comment) {
         return ApiResponse.ok("Incident reopened", incidentService.reopen(id, comment));
     }

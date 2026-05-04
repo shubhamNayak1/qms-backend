@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -39,6 +40,14 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
     boolean existsByEmailAndIsDeletedFalse(String email);
 
     boolean existsByEmployeeIdAndIsDeletedFalse(String employeeId);
+
+    // ─── Org-structure queries ────────────────────────────────
+
+    /** All active users belonging to a department. Used by the org-tree builder. */
+    List<User> findAllByDepartmentIdAndIsDeletedFalseOrderByFirstNameAsc(Long departmentId);
+
+    /** All QA reviewers across QA departments. Used by OrgSecurityService. */
+    List<User> findAllByIsQaReviewerTrueAndIsDeletedFalse();
 
     // ─── Paginated search ─────────────────────────────────────
     // Filtering is handled via JpaSpecificationExecutor (see UserSpecification).

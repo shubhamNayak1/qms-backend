@@ -3,7 +3,9 @@ package com.qms.module.user.controller;
 import com.qms.common.response.ApiResponse;
 import com.qms.common.response.PageResponse;
 import com.qms.module.user.dto.request.*;
+import com.qms.module.user.dto.response.BulkUserUploadResponse;
 import com.qms.module.user.dto.response.UserResponse;
+import com.qms.module.user.service.BulkUserUploadService;
 import com.qms.module.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -26,7 +28,8 @@ import org.springframework.web.bind.annotation.*;
 @SecurityRequirement(name = "bearerAuth")
 public class UserController {
 
-    private final UserService userService;
+    private final UserService           userService;
+    private final BulkUserUploadService bulkUserUploadService;
 
     // ─────────────────────────────────────────────────────────
     // GET /api/v1/users
@@ -68,6 +71,24 @@ public class UserController {
             @Valid @RequestBody CreateUserRequest request) {
         return ApiResponse.created("User created successfully",
                 userService.create(request));
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // POST /api/v1/users/bulk
+    // ─────────────────────────────────────────────────────────
+    @PostMapping("/bulk")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @Operation(summary = "Bulk-create users (CSV/JSON import)",
+               description = """
+                   Each row is created in its own transaction so a single
+                   bad row does not roll back the rest. Newly created users
+                   are NOT auto-licensed — assign licenses individually.
+                   Cap of 500 rows per call.
+                   """)
+    public ResponseEntity<ApiResponse<BulkUserUploadResponse>> bulkCreate(
+            @Valid @RequestBody BulkUserUploadRequest request) {
+        return ApiResponse.ok("Bulk upload processed",
+                bulkUserUploadService.upload(request));
     }
 
     // ─────────────────────────────────────────────────────────

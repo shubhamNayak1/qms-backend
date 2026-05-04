@@ -4,6 +4,7 @@ import com.qms.common.base.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
@@ -56,11 +57,48 @@ public class User extends BaseEntity {
     @Column(name = "last_name", length = 80)
     private String lastName;
 
+    /** Mobile/phone — required at user creation per pharma SOP. */
     @Column(name = "phone", length = 25)
     private String phone;
 
+    /**
+     * Initials — short identifier (e.g. "JKD") used on signed pharma documents
+     * for quick recognition on audit trails.
+     */
+    @Column(name = "initials", length = 10)
+    private String initials;
+
+    /** Date the employee joined the company. */
+    @Column(name = "joining_date")
+    private LocalDate joiningDate;
+
+    /**
+     * Legacy free-text department label — kept for backward compatibility
+     * during migration. New code should use {@link #departmentId} instead.
+     */
     @Column(name = "department", length = 100)
     private String department;
+
+    /** FK-style reference to departments.id — drives org-position checks. */
+    @Column(name = "department_id")
+    private Long departmentId;
+
+    /**
+     * True if this user is a designated departmental reviewer (gives
+     * cross-department comments on QMS records routed via
+     * PENDING_DEPT_COMMENT). Not the same as being a department's HOD.
+     */
+    @Column(name = "is_dept_reviewer", nullable = false)
+    @Builder.Default
+    private Boolean isDeptReviewer = false;
+
+    /**
+     * True if this user is a QA Reviewer. Only meaningful when the user's
+     * department has dept_type = QA — flagged via OrgSecurityService.
+     */
+    @Column(name = "is_qa_reviewer", nullable = false)
+    @Builder.Default
+    private Boolean isQaReviewer = false;
 
     @Column(name = "designation", length = 100)
     private String designation;

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qms.common.enums.QmsStatus;
 import com.qms.common.exception.AppException;
+import com.qms.module.org.service.OrgSecurityService;
 import com.qms.module.qms.common.entity.QmsRecord;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +40,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class QmsWorkflowEngine {
 
-    private final ObjectMapper mapper;
+    private final ObjectMapper        mapper;
+    private final OrgSecurityService  orgSecurity;
+
     private static final TypeReference<List<StatusHistoryEntry>> HISTORY_TYPE =
             new TypeReference<>() {};
 
@@ -61,6 +64,12 @@ public class QmsWorkflowEngine {
             throw AppException.badRequest(
                     WorkflowTransition.transitionError(record.getRecordType(), current, newStatus));
         }
+        // ── Positional authorisation ─────────────────────────────
+        // Beyond the graph rules, the actor must hold the structural role
+        // required for the target status (HOD of dept, QA Reviewer, etc.).
+        // SUPER_ADMIN bypasses this gate.
+        requirePosition(record, newStatus);
+
         applyTransition(record, current, newStatus, comment);
 
         // Set approval metadata when reaching certain statuses
@@ -154,6 +163,35 @@ public class QmsWorkflowEngine {
         if (comment == null || comment.isBlank()) {
             throw AppException.badRequest(
                     "Comment is required for every workflow action.");
+        }
+    }
+
+    /**
+     * Enforces the structural role required to drive a record into the given
+     * target status. SUPER_ADMIN bypasses every check. Statuses without a
+     * mapped position (DRAFT, CANCELLED, REJECTED, REOPENED, optional
+     * branches) are not gated here — the graph rules are enough.
+     */
+    private void requirePosition(QmsRecord record, QmsStatus target) {
+        WorkflowPosition required = WorkflowPosition.requiredFor(target);
+        if (required == null) return;
+        if (orgSecurity.isSuperAdmin()) return;
+
+        boolean ok = switch (required) {
+            case ANY_INITIATOR          -> orgSecurity.currentUser().isPresent();
+            case HOD_OF_RECORD_DEPT     -> orgSecurity.isCurrentUserHodOf(record.getDepartmentId());
+            case HOD_OF_COMMENTING_DEPT -> orgSecurity.isCurrentUserHodOf(record.getCommentingDepartmentId());
+            case QA_REVIEWER            -> orgSecurity.isCurrentUserQaReviewer()
+                                            || orgSecurity.isCurrentUserQaHead();
+            case QA_HEAD                -> orgSecurity.isCurrentUserQaHead();
+            case RA                     -> orgSecurity.isCurrentUserRa();
+            case SITE_HEAD              -> orgSecurity.isCurrentUserSiteHead();
+        };
+
+        if (!ok) {
+            throw AppException.forbidden(
+                    "Your role does not permit moving this record to " + target +
+                    ". Required: " + required);
         }
     }
 

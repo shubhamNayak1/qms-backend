@@ -4,6 +4,7 @@ import com.qms.common.enums.AuditAction;
 import com.qms.common.enums.AuditModule;
 import com.qms.common.exception.AppException;
 import com.qms.module.audit.annotation.Audited;
+import com.qms.module.license.service.LicenseService;
 import com.qms.module.user.dto.request.LoginRequest;
 import com.qms.module.user.dto.request.RefreshTokenRequest;
 import com.qms.module.user.dto.response.TokenResponse;
@@ -33,11 +34,14 @@ import java.time.LocalDateTime;
 @Transactional(readOnly = true)
 public class AuthService {
 
+    private static final String SUPER_ADMIN_ROLE = "SUPER_ADMIN";
+
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider      jwtTokenProvider;
     private final UserRepository        userRepository;
     private final PasswordEncoder       passwordEncoder;
     private final PasswordPolicyService passwordPolicyService;
+    private final LicenseService        licenseService;
 
     @Value("${app.security.max-failed-attempts:5}")
     private int maxFailedAttempts;
@@ -66,6 +70,24 @@ public class AuthService {
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
             UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+
+            // ── License gate ─────────────────────────────────
+            // SUPER_ADMIN bypasses the license check so the very first admin
+            // can always log in to assign licenses to other users.
+            // All other users MUST hold an active assigned license.
+            boolean isSuperAdmin = principal.getAuthorities().stream()
+                    .anyMatch(a -> ("ROLE_" + SUPER_ADMIN_ROLE).equals(a.getAuthority()));
+            if (!isSuperAdmin && !licenseService.userHasActiveLicense(principal.getId())) {
+                log.warn("Login blocked: user '{}' (id={}) has no active license",
+                        principal.getUsername(), principal.getId());
+                // Clear the partial security context so a downstream check
+                // doesn't see this half-authenticated principal.
+                SecurityContextHolder.clearContext();
+                throw new AppException(
+                        org.springframework.http.HttpStatus.FORBIDDEN,
+                        "LICENSE_REQUIRED",
+                        "No active license is assigned to your account. Please contact an administrator.");
+            }
 
             // Reset failed attempts on successful login
             userRepository.resetLockout(principal.getId());

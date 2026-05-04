@@ -23,7 +23,7 @@ public class QmsDashboardController {
     private final QmsDashboardService dashboardService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(
         summary = "Get the unified QMS dashboard",
         description = """

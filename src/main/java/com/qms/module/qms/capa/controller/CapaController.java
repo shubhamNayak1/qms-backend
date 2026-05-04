@@ -31,7 +31,7 @@ public class CapaController {
     private final CapaService capaService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR','EMPLOYEE')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Search / list CAPAs with optional filters")
     public ResponseEntity<ApiResponse<PageResponse<CapaResponse>>> search(
             @RequestParam(required = false) QmsStatus status,
@@ -47,14 +47,14 @@ public class CapaController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR','EMPLOYEE')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get a CAPA by database ID")
     public ResponseEntity<ApiResponse<CapaResponse>> getById(@PathVariable Long id) {
         return ApiResponse.ok(capaService.getById(id));
     }
 
     @GetMapping("/number/{recordNumber}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','AUDITOR','EMPLOYEE')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get a CAPA by record number e.g. CAPA-202404-0001")
     public ResponseEntity<ApiResponse<CapaResponse>> getByRecordNumber(
             @PathVariable String recordNumber) {
@@ -62,7 +62,7 @@ public class CapaController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','EMPLOYEE')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Open a new CAPA record")
     public ResponseEntity<ApiResponse<CapaResponse>> create(
             @Valid @RequestBody CapaRequest request) {
@@ -70,7 +70,7 @@ public class CapaController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER','EMPLOYEE')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Update CAPA fields — null fields are ignored")
     public ResponseEntity<ApiResponse<CapaResponse>> update(
             @PathVariable Long id,
@@ -81,7 +81,7 @@ public class CapaController {
     // ── Workflow endpoints ────────────────────────────────────
 
     @PostMapping("/{id}/transition")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Generic status transition — specify any allowed targetStatus (PENDING_SITE_HEAD, PENDING_ATTACHMENTS, CANCELLED, etc.)")
     public ResponseEntity<ApiResponse<CapaResponse>> transition(
             @PathVariable Long id,
@@ -90,7 +90,7 @@ public class CapaController {
     }
 
     @PostMapping("/{id}/submit")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','QA_OFFICER')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Submit CAPA — DRAFT → PENDING_HOD (Head of Department review)")
     public ResponseEntity<ApiResponse<CapaResponse>> submit(
             @PathVariable Long id,
@@ -99,7 +99,7 @@ public class CapaController {
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Approve — advances to canonical next step per workflow (e.g. PENDING_HOD→PENDING_QA_REVIEW, PENDING_HEAD_QA→CLOSED)")
     public ResponseEntity<ApiResponse<CapaResponse>> approve(
             @PathVariable Long id,
@@ -108,7 +108,7 @@ public class CapaController {
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Reject — moves to REJECTED from any pending state, returns to DRAFT for rework")
     public ResponseEntity<ApiResponse<CapaResponse>> reject(
             @PathVariable Long id,
@@ -117,7 +117,7 @@ public class CapaController {
     }
 
     @PostMapping("/{id}/close")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Close — PENDING_HEAD_QA → CLOSED (final closure by Head of QA)")
     public ResponseEntity<ApiResponse<CapaResponse>> close(
             @PathVariable Long id,
@@ -126,7 +126,7 @@ public class CapaController {
     }
 
     @PostMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Cancel a CAPA — any non-terminal status")
     public ResponseEntity<ApiResponse<CapaResponse>> cancel(
             @PathVariable Long id,
@@ -135,7 +135,7 @@ public class CapaController {
     }
 
     @PostMapping("/{id}/reopen")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Reopen a closed CAPA — CLOSED → DRAFT (reset for rework)")
     public ResponseEntity<ApiResponse<CapaResponse>> reopen(
             @PathVariable Long id,
@@ -144,7 +144,7 @@ public class CapaController {
     }
 
     @PostMapping("/{id}/effectiveness")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Record effectiveness check result for a CLOSED CAPA")
     public ResponseEntity<ApiResponse<CapaResponse>> recordEffectiveness(
             @PathVariable Long id,
@@ -153,7 +153,7 @@ public class CapaController {
     }
 
     @GetMapping("/effectiveness/pending")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "List CAPAs with effectiveness checks due in the next 30 days")
     public ResponseEntity<ApiResponse<List<CapaResponse>>> pendingEffectivenessChecks() {
         return ApiResponse.ok(capaService.getPendingEffectivenessChecks());
