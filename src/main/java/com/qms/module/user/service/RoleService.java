@@ -48,8 +48,13 @@ public class RoleService {
     }
 
     public List<RoleResponse> getAllFlat() {
+        // Soft-deleted roles (e.g. the legacy QA_MANAGER / QA_OFFICER / AUDITOR
+        // / HOD that V18 deprecated) must not appear in the create-user
+        // dropdown — UserService.resolveRoles() rejects them with
+        // "One or more role IDs are invalid or do not exist."
         return roleRepository.findAll()
                 .stream()
+                .filter(r -> !Boolean.TRUE.equals(r.getIsDeleted()))
                 .map(role -> enrichWithUserCount(userMapper.toRoleResponse(role), role.getId()))
                 .toList();
     }
