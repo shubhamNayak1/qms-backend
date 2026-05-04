@@ -429,6 +429,15 @@ public class UserService {
         boolean mustChange = Boolean.TRUE.equals(user.getMustChangePassword())
                 || isPasswordExpiredForUser(user);
 
+        // Resolve a display-friendly dept name once so the UI can render it
+        // without a second round-trip.
+        String departmentName = null;
+        if (user.getDepartmentId() != null) {
+            departmentName = departmentRepository.findById(user.getDepartmentId())
+                    .map(Department::getName)
+                    .orElse(null);
+        }
+
         return MeResponse.builder()
                 .id(user.getId())
                 .username(user.getUsername())
@@ -438,6 +447,8 @@ public class UserService {
                 .lastName(user.getLastName())
                 .phone(user.getPhone())
                 .department(user.getDepartment())
+                .departmentId(user.getDepartmentId())
+                .departmentName(departmentName)
                 .designation(user.getDesignation())
                 .employeeId(user.getEmployeeId())
                 .profilePictureUrl(user.getProfilePictureUrl())

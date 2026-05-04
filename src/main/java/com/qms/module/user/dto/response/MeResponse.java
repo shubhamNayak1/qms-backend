@@ -29,7 +29,12 @@ public class MeResponse {
     private String  firstName;
     private String  lastName;
     private String  phone;
+    /** Legacy free-text department label (kept for backwards compatibility). */
     private String  department;
+    /** FK to departments.id — required by QMS create flows that auto-select the user's dept. */
+    private Long    departmentId;
+    /** Display-friendly department name resolved at /me time. */
+    private String  departmentName;
     private String  designation;
     private String  employeeId;
     private String  profilePictureUrl;
