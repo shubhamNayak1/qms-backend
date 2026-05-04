@@ -32,7 +32,7 @@ public class AuditScheduleController {
     // ── List / Search ─────────────────────────────────────────
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR','QA_ENGINEER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR','QA_ENGINEER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Search / list audits",
                description = "Filter by type, status, date range, or free-text search across title, number and auditor name.")
     public ResponseEntity<ApiResponse<PageResponse<AuditScheduleResponse>>> search(
@@ -49,7 +49,7 @@ public class AuditScheduleController {
     // ── Get by ID ─────────────────────────────────────────────
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR','QA_ENGINEER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR','QA_ENGINEER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Get audit by ID")
     public ResponseEntity<ApiResponse<AuditScheduleResponse>> getById(@PathVariable Long id) {
         return ApiResponse.ok(service.getById(id));
@@ -58,7 +58,7 @@ public class AuditScheduleController {
     // ── Create ────────────────────────────────────────────────
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Schedule a new audit",
                description = "Creates a new audit in PLANNED status. auditType: INTERNAL | EXTERNAL | SUPPLIER | REGULATORY")
     public ResponseEntity<ApiResponse<AuditScheduleResponse>> create(
@@ -69,7 +69,7 @@ public class AuditScheduleController {
     // ── Update ────────────────────────────────────────────────
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Update audit details",
                description = "Partial update — only provided fields are changed.")
     public ResponseEntity<ApiResponse<AuditScheduleResponse>> update(
@@ -81,14 +81,14 @@ public class AuditScheduleController {
     // ── Workflow ──────────────────────────────────────────────
 
     @PatchMapping("/{id}/start")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Start audit — PLANNED → IN_PROGRESS")
     public ResponseEntity<ApiResponse<AuditScheduleResponse>> start(@PathVariable Long id) {
         return ApiResponse.ok("Audit started", service.start(id));
     }
 
     @PatchMapping("/{id}/complete")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Complete audit — IN_PROGRESS → COMPLETED",
                description = "Optionally pass findings and observations in request params.")
     public ResponseEntity<ApiResponse<AuditScheduleResponse>> complete(
@@ -99,7 +99,7 @@ public class AuditScheduleController {
     }
 
     @PatchMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Cancel audit")
     public ResponseEntity<ApiResponse<AuditScheduleResponse>> cancel(@PathVariable Long id) {
         return ApiResponse.ok("Audit cancelled", service.cancel(id));
@@ -108,7 +108,7 @@ public class AuditScheduleController {
     // ── Delete ────────────────────────────────────────────────
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Soft-delete an audit")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         service.delete(id);

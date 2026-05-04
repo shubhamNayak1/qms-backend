@@ -88,7 +88,7 @@ public class DocumentController {
     }
 
     @GetMapping("/number/{docNumber}/versions")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','DOC_CONTROLLER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','DOC_CONTROLLER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Get the complete version history of a document")
     public ResponseEntity<ApiResponse<List<VersionSummaryResponse>>> getVersionHistory(
             @PathVariable String docNumber) {
@@ -96,7 +96,7 @@ public class DocumentController {
     }
 
     @GetMapping("/{id}/approvals")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','DOC_CONTROLLER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','DOC_CONTROLLER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Get all approval records for a document")
     public ResponseEntity<ApiResponse<List<ApprovalResponse>>> getApprovals(
             @PathVariable Long id) {
@@ -104,7 +104,7 @@ public class DocumentController {
     }
 
     @GetMapping("/stats")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','DOC_CONTROLLER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','DOC_CONTROLLER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "DMS dashboard KPIs",
                description = "Returns document counts by status, expiring soon, and due for review.")
     public ResponseEntity<ApiResponse<DocumentStatsResponse>> getStats() {
@@ -116,7 +116,7 @@ public class DocumentController {
     // ═══════════════════════════════════════════════════════════
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','DOC_CONTROLLER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','DOC_CONTROLLER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(
         summary = "Upload a new document",
         description = """
@@ -156,7 +156,7 @@ public class DocumentController {
     // ═══════════════════════════════════════════════════════════
 
     @PostMapping(value = "/{id}/new-version", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','DOC_CONTROLLER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','DOC_CONTROLLER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(
         summary = "Upload a new version of an existing document",
         description = """
@@ -184,7 +184,7 @@ public class DocumentController {
     // ═══════════════════════════════════════════════════════════
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','DOC_CONTROLLER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','DOC_CONTROLLER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Update document metadata",
                description = "Only DRAFT documents can be updated. "
                            + "To change the file content, upload a new version.")
@@ -199,7 +199,7 @@ public class DocumentController {
     // ═══════════════════════════════════════════════════════════
 
     @PostMapping("/{id}/submit")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','DOC_CONTROLLER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','DOC_CONTROLLER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Submit a DRAFT document for approval review",
                description = "Transitions: DRAFT → UNDER_REVIEW")
     public ResponseEntity<ApiResponse<DocumentResponse>> submit(
@@ -210,7 +210,7 @@ public class DocumentController {
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Approve a document under review",
                description = "Transitions: UNDER_REVIEW → APPROVED (when quorum is met). "
                            + "If multiple approvers are required, the document remains UNDER_REVIEW until quorum.")
@@ -221,7 +221,7 @@ public class DocumentController {
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Reject a document under review",
                description = "Transitions: UNDER_REVIEW → REJECTED. "
                            + "The author must upload a corrected new version.")
@@ -232,7 +232,7 @@ public class DocumentController {
     }
 
     @PostMapping("/{id}/publish")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','DOC_CONTROLLER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','DOC_CONTROLLER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Publish an APPROVED document, making it EFFECTIVE",
                description = "Transitions: APPROVED → EFFECTIVE. "
                            + "Any previous EFFECTIVE version is automatically SUPERSEDED.")
@@ -243,7 +243,7 @@ public class DocumentController {
     }
 
     @PostMapping("/{id}/obsolete")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','DOC_CONTROLLER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','DOC_CONTROLLER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Retire an EFFECTIVE document",
                description = "Transitions: EFFECTIVE → OBSOLETE. A reason is mandatory.")
     public ResponseEntity<ApiResponse<DocumentResponse>> obsolete(
@@ -253,7 +253,7 @@ public class DocumentController {
     }
 
     @PostMapping("/{id}/withdraw")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','DOC_CONTROLLER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','DOC_CONTROLLER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Withdraw a DRAFT or UNDER_REVIEW document before it is approved",
                description = "Transitions: DRAFT|UNDER_REVIEW → WITHDRAWN")
     public ResponseEntity<ApiResponse<DocumentResponse>> withdraw(@PathVariable Long id) {

@@ -26,7 +26,7 @@ public class ProgramAssessmentController {
     // ── GET assessment (manager view with correct answers) ────
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','TRAINER','COORDINATOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','TRAINER','COORDINATOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Get full assessment definition including questions and correct answers",
                description = """
                    Returns the assessment attached to this program, including all questions
@@ -41,7 +41,7 @@ public class ProgramAssessmentController {
     // ── Update assessment metadata (title, passScore, timeLimit, etc.) ────
 
     @PutMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Update assessment settings (title, pass score, time limit, randomisation)",
                description = "All fields are optional — only provided fields are updated.")
     public ResponseEntity<ApiResponse<AssessmentDetailResponse>> setup(
@@ -53,7 +53,7 @@ public class ProgramAssessmentController {
     // ── Add a question ────────────────────────────────────────
 
     @PostMapping("/questions")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','TRAINER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','TRAINER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Add an MCQ / TRUE_FALSE / MULTI_SELECT / SHORT_ANSWER question",
                description = """
                    Adds a new question to the program's assessment.
@@ -77,7 +77,7 @@ public class ProgramAssessmentController {
     // ── Update a question ────────────────────────────────────
 
     @PutMapping("/questions/{questionId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','TRAINER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','TRAINER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Update an existing question",
                description = "All fields are optional — only provided fields are updated.")
     public ResponseEntity<ApiResponse<AssessmentDetailResponse>> updateQuestion(
@@ -91,7 +91,7 @@ public class ProgramAssessmentController {
     // ── Delete a question ────────────────────────────────────
 
     @DeleteMapping("/questions/{questionId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','TRAINER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','TRAINER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Delete a question from the assessment")
     public ResponseEntity<ApiResponse<Void>> deleteQuestion(
             @PathVariable Long programId,

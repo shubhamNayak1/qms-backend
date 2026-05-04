@@ -36,7 +36,7 @@ public class TrainingSessionController {
     }
 
     @PostMapping("/programs/{programId}/sessions")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Create a training session for a program",
                description = "Program must be in APPROVED, PLANNED, or ACTIVE status. " +
                              "Trainer/coordinator defaults to the program's values if not overridden.")
@@ -57,7 +57,7 @@ public class TrainingSessionController {
     }
 
     @PutMapping("/sessions/{sessionId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Update session details (date, venue, trainer, etc.)")
     public ResponseEntity<ApiResponse<TrainingSessionResponse>> update(
             @PathVariable Long sessionId,
@@ -66,7 +66,7 @@ public class TrainingSessionController {
     }
 
     @PostMapping("/sessions/{sessionId}/cancel")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Cancel a session with an optional reason")
     public ResponseEntity<ApiResponse<TrainingSessionResponse>> cancel(
             @PathVariable Long sessionId,
@@ -75,7 +75,7 @@ public class TrainingSessionController {
     }
 
     @PostMapping("/sessions/{sessionId}/complete")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Mark a session as COMPLETED")
     public ResponseEntity<ApiResponse<TrainingSessionResponse>> complete(
             @PathVariable Long sessionId) {
@@ -85,7 +85,7 @@ public class TrainingSessionController {
     // ── Attendance ───────────────────────────────────────────
 
     @PostMapping("/sessions/{sessionId}/attendance")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','COORDINATOR','TRAINER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','COORDINATOR','TRAINER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Mark attendance for trainees in a session",
                description = """
                    Attendance can be marked within ±2 days of the session date.

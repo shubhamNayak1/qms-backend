@@ -31,14 +31,14 @@ public class TniController {
     }
 
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','HR','MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','HR','MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Get all TNI records for a user")
     public ResponseEntity<ApiResponse<List<TniResponse>>> getByUser(@PathVariable Long userId) {
         return ApiResponse.ok(complianceService.getTniByUser(userId));
     }
 
     @PutMapping("/enrollment/{enrollmentId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','HR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','HR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Update TNI details (gaps, recommendations, JD)",
                description = "TNI is auto-generated at QA Head approval. Use this to update or enrich the content.")
     public ResponseEntity<ApiResponse<TniResponse>> update(

@@ -70,7 +70,7 @@ public class AssessmentController {
     }
 
     @PostMapping("/review/{attemptId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Manually grade a PENDING_REVIEW attempt (SHORT_ANSWER questions)",
                description = "Provide a percentage score (0–100) and optional review comments.")
     public ResponseEntity<ApiResponse<AssessmentAttemptResponse>> review(
@@ -83,7 +83,7 @@ public class AssessmentController {
     }
 
     @GetMapping("/pending-reviews")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "List all assessment attempts pending manual review across all programs")
     public ResponseEntity<ApiResponse<List<AssessmentAttemptResponse>>> pendingReviews(
             @PathVariable Long enrollmentId) {

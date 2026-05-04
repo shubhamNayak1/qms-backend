@@ -23,7 +23,7 @@ public class CertificateController {
     private final CertificateService certificateService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "List all certificates (paginated)",
                description = "Managers can list all certificates, optionally filtered by status.")
     public ResponseEntity<ApiResponse<PageResponse<CertificateResponse>>> getAll(
@@ -34,7 +34,7 @@ public class CertificateController {
     }
 
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','AUDITOR') or #userId == authentication.principal.id")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead() or #userId == authentication.principal.id")
     @Operation(summary = "Get all certificates for a user (most recent first)",
                description = "Users can view their own certificates. Managers can view anyone's.")
     public ResponseEntity<ApiResponse<PageResponse<CertificateResponse>>> getByUser(
@@ -62,7 +62,7 @@ public class CertificateController {
     }
 
     @PostMapping("/{id}/revoke")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Revoke a certificate",
                description = "Used when a compliance breach invalidates prior training. Reason is mandatory.")
     public ResponseEntity<ApiResponse<CertificateResponse>> revoke(

@@ -24,7 +24,7 @@ public class LmsComplianceController {
     private final LmsComplianceService complianceService;
 
     @GetMapping("/dashboard")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(
         summary = "Get the LMS compliance dashboard",
         description = """

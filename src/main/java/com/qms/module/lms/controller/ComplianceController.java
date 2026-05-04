@@ -56,7 +56,7 @@ public class ComplianceController {
     // ── Step 7a: Coordinator / Trainer review ────────────────
 
     @PostMapping("/review")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','COORDINATOR','TRAINER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','COORDINATOR','TRAINER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Coordinator/Trainer reviews compliance (Step 7a — SCHEDULED/SELF)",
                description = """
                    **APPROVED**:
@@ -78,7 +78,7 @@ public class ComplianceController {
     // ── Step 7b: HR review (Induction only) ─────────────────
 
     @PostMapping("/hr-review")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','HR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','HR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "HR review of induction compliance (Step 7b — INDUCTION only)",
                description = """
                    Only applicable to INDUCTION type programs.
@@ -97,7 +97,7 @@ public class ComplianceController {
     // ── Step 7c: QA Head approval (Induction only) ──────────
 
     @PostMapping("/qa-approve")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "QA Head final approval for induction (Step 7c — INDUCTION only)",
                description = """
                    Only applicable to INDUCTION type programs.
@@ -119,7 +119,7 @@ public class ComplianceController {
     // ── Pending reviews (for dashboard) ─────────────────────
 
     @GetMapping("/pending")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','COORDINATOR','TRAINER','HR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','COORDINATOR','TRAINER','HR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Get all pending compliance submissions across all enrollments")
     public ResponseEntity<ApiResponse<List<ComplianceSubmissionResponse>>> getPending(
             @PathVariable Long enrollmentId) {

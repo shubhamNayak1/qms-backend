@@ -59,7 +59,7 @@ public class TrainingProgramController {
     // ── STEP 1: Create & Update ──────────────────────────────
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "STEP 1 — Create a training program (starts in DRAFT)",
                description = """
                    **Required fields:** code, title, trainingType
@@ -78,7 +78,7 @@ public class TrainingProgramController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Update training program metadata (any non-ARCHIVED status)")
     public ResponseEntity<ApiResponse<ProgramResponse>> update(
             @PathVariable Long id, @Valid @RequestBody ProgramRequest req) {
@@ -88,21 +88,21 @@ public class TrainingProgramController {
     // ── STEP 2: Review & Approval ────────────────────────────
 
     @PostMapping("/{id}/raise-review")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "STEP 2a — Raise for QA review (DRAFT/REJECTED → UNDER_REVIEW)")
     public ResponseEntity<ApiResponse<ProgramResponse>> raiseForReview(@PathVariable Long id) {
         return ApiResponse.ok("Raised for review", programService.raiseForReview(id));
     }
 
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "STEP 2b — QA approves the program (UNDER_REVIEW → APPROVED)")
     public ResponseEntity<ApiResponse<ProgramResponse>> approve(@PathVariable Long id) {
         return ApiResponse.ok("Program approved", programService.approve(id));
     }
 
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "STEP 2c — QA rejects the program (UNDER_REVIEW → REJECTED)",
                description = "Provide a rejection reason. The program returns to DRAFT when the creator raises it again.")
     public ResponseEntity<ApiResponse<ProgramResponse>> reject(
@@ -114,7 +114,7 @@ public class TrainingProgramController {
     // ── STEP 3: Plan ─────────────────────────────────────────
 
     @PostMapping("/{id}/plan")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "STEP 3 — Mark as PLANNED (APPROVED → PLANNED)",
                description = "Requires at least one training session to be created first. " +
                              "Use POST /programs/{id}/sessions to add sessions.")
@@ -125,7 +125,7 @@ public class TrainingProgramController {
     // ── STEP 4: Allocate & Activate ──────────────────────────
 
     @PostMapping("/{id}/activate")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "STEP 4 — Approve allocation and activate (PLANNED → ACTIVE)",
                description = "After enrollments are created, the manager approves the allocation. " +
                              "This makes the program live — trainees can now see and start it.")
@@ -136,7 +136,7 @@ public class TrainingProgramController {
     // ── STEP 9: Complete ─────────────────────────────────────
 
     @PostMapping("/{id}/complete")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "STEP 9 — Mark program as COMPLETED (ACTIVE → COMPLETED)",
                description = "Called when all sessions have finished. " +
                              "Enrollments continue their own lifecycle independently.")
@@ -145,7 +145,7 @@ public class TrainingProgramController {
     }
 
     @PostMapping("/{id}/archive")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Archive a program — no new enrollments allowed")
     public ResponseEntity<ApiResponse<ProgramResponse>> archive(@PathVariable Long id) {
         return ApiResponse.ok("Program archived", programService.archive(id));
@@ -154,7 +154,7 @@ public class TrainingProgramController {
     // ── Content management (STEP 1 sub-actions) ──────────────
 
     @PostMapping("/{id}/contents")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Add a content/material item to the program",
                description = """
                    Provide fields relevant to the contentType:
@@ -181,7 +181,7 @@ public class TrainingProgramController {
     }
 
     @DeleteMapping("/{id}/contents/{contentId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Remove a content item from the program")
     public ResponseEntity<ApiResponse<ProgramResponse>> removeContent(
             @PathVariable Long id, @PathVariable Long contentId) {
@@ -191,7 +191,7 @@ public class TrainingProgramController {
     // ── DMS document linking ─────────────────────────────────
 
     @PostMapping("/{id}/document-links")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Link a DMS document as reference material for this program")
     public ResponseEntity<ApiResponse<ProgramResponse>> linkDocument(
             @PathVariable Long id,
@@ -206,7 +206,7 @@ public class TrainingProgramController {
     }
 
     @DeleteMapping("/{id}/document-links/{linkId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Remove a DMS document link from this program")
     public ResponseEntity<ApiResponse<ProgramResponse>> unlinkDocument(
             @PathVariable Long id, @PathVariable Long linkId) {

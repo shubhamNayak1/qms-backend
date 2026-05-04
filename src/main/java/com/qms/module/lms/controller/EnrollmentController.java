@@ -32,7 +32,7 @@ public class EnrollmentController {
     // ── Search & Read ────────────────────────────────────────
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','MANAGER','AUDITOR')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','MANAGER','AUDITOR') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Search enrollments with optional filters",
                description = "Pass overdue=true to list only overdue assignments.")
     public ResponseEntity<ApiResponse<PageResponse<EnrollmentResponse>>> search(
@@ -48,6 +48,7 @@ public class EnrollmentController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','MANAGER','AUDITOR') " +
+                  "or @orgSecurity.isCurrentUserQaHead() " +
                   "or @enrollmentOwnerChecker.check(#id, authentication)")
     @Operation(summary = "Get enrollment details with full content progress list")
     public ResponseEntity<ApiResponse<EnrollmentResponse>> getById(@PathVariable Long id) {
@@ -64,7 +65,7 @@ public class EnrollmentController {
     // ── Enroll ───────────────────────────────────────────────
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Assign a training program to a single user")
     public ResponseEntity<ApiResponse<EnrollmentResponse>> enroll(
             @Valid @RequestBody EnrollmentRequest req) {
@@ -72,7 +73,7 @@ public class EnrollmentController {
     }
 
     @PostMapping("/bulk")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "STEP 4a — Assign a training program to multiple users at once",
                description = """
                    Users already actively enrolled are silently skipped.
@@ -89,7 +90,7 @@ public class EnrollmentController {
     }
 
     @PostMapping("/programs/{programId}/approve-allocation")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER','MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "STEP 4b — Approve allocation and activate the program (PLANNED → ACTIVE)",
                description = "After enrollments are created, the manager approves the allocation. " +
                              "This transitions the program to ACTIVE so trainees can start.")
@@ -121,7 +122,7 @@ public class EnrollmentController {
     // ── Waiver & Cancel ──────────────────────────────────────
 
     @PostMapping("/{id}/waive")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','QA_MANAGER','MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Grant a training waiver",
                description = "A waived enrollment counts as compliant for reporting purposes.")
     public ResponseEntity<ApiResponse<EnrollmentResponse>> waive(
@@ -131,7 +132,7 @@ public class EnrollmentController {
     }
 
     @PostMapping("/{id}/cancel")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','TRAINING_MANAGER','QA_MANAGER') or @orgSecurity.isCurrentUserQaHead()")
     @Operation(summary = "Cancel an enrollment",
                description = "Cancelled enrollments do NOT count as compliant.")
     public ResponseEntity<ApiResponse<EnrollmentResponse>> cancel(
