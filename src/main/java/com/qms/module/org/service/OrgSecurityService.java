@@ -34,7 +34,11 @@ import java.util.Optional;
  * SUPER_ADMIN bypasses every positional check.
  */
 @Slf4j
-@Service
+// Bean name is explicit so the SpEL expressions in @PreAuthorize annotations
+// (e.g. "hasRole(...) or @orgSecurity.isCurrentUserQaHead()") resolve to this
+// service. Spring's default name would be "orgSecurityService" — using the
+// shorter alias keeps annotations readable across every controller.
+@Service("orgSecurity")
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class OrgSecurityService {
