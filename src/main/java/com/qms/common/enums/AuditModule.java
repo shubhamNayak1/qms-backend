@@ -20,5 +20,19 @@ public enum AuditModule {
     REPORT,
     QMS_AUDIT,
     PASSWORD_POLICY,
+
+    /** Site / Department / org-tree mutations. */
+    ORG,
+    /** License generate / assign / revoke. */
+    LICENSE,
+    /**
+     * Cross-module QMS operations that aren't tied to one specific
+     * sub-module — line items, department comments, target-date
+     * extensions. The audit row's entityType / entityId stays specific
+     * (e.g. "QmsLineItem", "QmsDepartmentComment") so reports can still
+     * drill in.
+     */
+    QMS,
+
     SYSTEM
 }

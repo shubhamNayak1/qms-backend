@@ -1,7 +1,10 @@
 package com.qms.module.qms.common.service;
 
+import com.qms.common.enums.AuditAction;
+import com.qms.common.enums.AuditModule;
 import com.qms.common.enums.QmsRecordType;
 import com.qms.common.exception.AppException;
+import com.qms.module.audit.annotation.Audited;
 import com.qms.module.org.entity.Department;
 import com.qms.module.org.repository.DepartmentRepository;
 import com.qms.module.org.service.OrgSecurityService;
@@ -45,6 +48,9 @@ public class QmsDepartmentCommentService {
 
     // ─── Routing — typically called by QA Reviewer ──────────
 
+    @Audited(action = AuditAction.CREATE, module = AuditModule.QMS,
+             entityType = "QmsDepartmentComment",
+             description = "Comment requested from a department by QA Reviewer")
     @Transactional
     public QmsDepartmentCommentResponse request(QmsRecordType recordType, Long recordId,
                                                  QmsDepartmentCommentRequest req) {
@@ -84,6 +90,9 @@ public class QmsDepartmentCommentService {
 
     // ─── Filling — by the HOD of the targeted department ────
 
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.QMS,
+             entityType = "QmsDepartmentComment", entityIdArgIndex = 0,
+             description = "Department HOD filled the requested comment")
     @Transactional
     public QmsDepartmentCommentResponse fill(Long commentRowId, QmsDepartmentCommentRequest req) {
         QmsDepartmentComment row = repository.findByIdAndIsDeletedFalse(commentRowId)

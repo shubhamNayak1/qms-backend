@@ -1,7 +1,10 @@
 package com.qms.module.qms.common.service;
 
+import com.qms.common.enums.AuditAction;
+import com.qms.common.enums.AuditModule;
 import com.qms.common.enums.QmsRecordType;
 import com.qms.common.exception.AppException;
+import com.qms.module.audit.annotation.Audited;
 import com.qms.module.org.service.OrgSecurityService;
 import com.qms.module.qms.common.dto.request.QmsLineItemRequest;
 import com.qms.module.qms.common.dto.response.QmsLineItemResponse;
@@ -45,6 +48,9 @@ public class QmsLineItemService {
     //  Create / Update / Delete
     // ─────────────────────────────────────────────────────────
 
+    @Audited(action = AuditAction.CREATE, module = AuditModule.QMS,
+             entityType = "QmsLineItem",
+             description = "Line item added to QMS record")
     @Transactional
     public QmsLineItemResponse create(QmsRecordType recordType, Long recordId,
                                        QmsLineItemRequest req) {
@@ -74,6 +80,9 @@ public class QmsLineItemService {
         return toResponse(saved);
     }
 
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.QMS,
+             entityType = "QmsLineItem", entityIdArgIndex = 0,
+             description = "Line item updated (e.g. verification status)")
     @Transactional
     public QmsLineItemResponse update(Long lineItemId, QmsLineItemRequest req) {
         QmsLineItem item = require(lineItemId);
@@ -93,6 +102,9 @@ public class QmsLineItemService {
         return toResponse(repository.save(item));
     }
 
+    @Audited(action = AuditAction.DELETE, module = AuditModule.QMS,
+             entityType = "QmsLineItem", entityIdArgIndex = 0, captureNewValue = false,
+             description = "Line item soft-deleted")
     @Transactional
     public void delete(Long lineItemId) {
         QmsLineItem item = require(lineItemId);

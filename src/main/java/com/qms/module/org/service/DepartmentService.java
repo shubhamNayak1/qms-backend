@@ -1,6 +1,9 @@
 package com.qms.module.org.service;
 
+import com.qms.common.enums.AuditAction;
+import com.qms.common.enums.AuditModule;
 import com.qms.common.exception.AppException;
+import com.qms.module.audit.annotation.Audited;
 import com.qms.module.org.dto.request.DepartmentRequest;
 import com.qms.module.org.dto.response.DepartmentResponse;
 import com.qms.module.org.entity.Department;
@@ -33,6 +36,8 @@ public class DepartmentService {
         return toResponse(require(id));
     }
 
+    @Audited(action = AuditAction.CREATE, module = AuditModule.ORG,
+             entityType = "Department", description = "Department created")
     @Transactional
     public DepartmentResponse create(DepartmentRequest req) {
         if (departmentRepository.existsByCodeAndIsDeletedFalse(req.getCode())) {
@@ -57,6 +62,9 @@ public class DepartmentService {
         return toResponse(saved);
     }
 
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.ORG,
+             entityType = "Department", entityIdArgIndex = 0,
+             description = "Department updated (name / HOD / parent / type)")
     @Transactional
     public DepartmentResponse update(Long id, DepartmentRequest req) {
         Department d = require(id);
@@ -78,6 +86,9 @@ public class DepartmentService {
         return toResponse(departmentRepository.save(d));
     }
 
+    @Audited(action = AuditAction.DELETE, module = AuditModule.ORG,
+             entityType = "Department", entityIdArgIndex = 0, captureNewValue = false,
+             description = "Department soft-deleted (sub-depts re-parented)")
     @Transactional
     public void softDelete(Long id) {
         Department d = require(id);

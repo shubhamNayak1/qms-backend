@@ -1,7 +1,10 @@
 package com.qms.module.license.service;
 
+import com.qms.common.enums.AuditAction;
+import com.qms.common.enums.AuditModule;
 import com.qms.common.exception.AppException;
 import com.qms.common.response.PageResponse;
+import com.qms.module.audit.annotation.Audited;
 import com.qms.module.license.dto.request.GenerateLicensesRequest;
 import com.qms.module.license.dto.response.LicenseResponse;
 import com.qms.module.license.dto.response.LicenseStatsResponse;
@@ -74,6 +77,9 @@ public class LicenseService {
     //  Admin operations
     // ─────────────────────────────────────────────────────────
 
+    @Audited(action = AuditAction.CREATE, module = AuditModule.LICENSE,
+             entityType = "License",
+             description = "License batch generated into AVAILABLE pool")
     @Transactional
     public List<LicenseResponse> generate(GenerateLicensesRequest req) {
         List<LicenseResponse> result = new ArrayList<>();
@@ -98,6 +104,9 @@ public class LicenseService {
         return result;
     }
 
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.LICENSE,
+             entityType = "License", entityIdArgIndex = 0,
+             description = "License assigned to user (login enabled)")
     @Transactional
     public LicenseResponse assign(Long licenseId, Long userId) {
         License lic = licenseRepository.findByIdAndIsDeletedFalse(licenseId)
@@ -129,6 +138,9 @@ public class LicenseService {
         return toResponse(saved);
     }
 
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.LICENSE,
+             entityType = "License", entityIdArgIndex = 0,
+             description = "License revoked (user can no longer log in)")
     @Transactional
     public LicenseResponse revoke(Long licenseId, String reason) {
         License lic = licenseRepository.findByIdAndIsDeletedFalse(licenseId)

@@ -1,6 +1,9 @@
 package com.qms.module.org.service;
 
+import com.qms.common.enums.AuditAction;
+import com.qms.common.enums.AuditModule;
 import com.qms.common.exception.AppException;
+import com.qms.module.audit.annotation.Audited;
 import com.qms.module.org.dto.request.SiteRequest;
 import com.qms.module.org.dto.response.SiteResponse;
 import com.qms.module.org.entity.Site;
@@ -28,6 +31,9 @@ public class SiteService {
         return toResponse(s);
     }
 
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.ORG,
+             entityType = "Site", entityIdArgIndex = 0,
+             description = "Site profile updated (name / address / Site Head)")
     @Transactional
     public SiteResponse update(Long id, SiteRequest req) {
         Site s = siteRepository.findById(id)

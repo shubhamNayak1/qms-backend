@@ -1,7 +1,10 @@
 package com.qms.module.qms.common.service;
 
+import com.qms.common.enums.AuditAction;
+import com.qms.common.enums.AuditModule;
 import com.qms.common.enums.QmsRecordType;
 import com.qms.common.exception.AppException;
+import com.qms.module.audit.annotation.Audited;
 import com.qms.module.org.service.OrgSecurityService;
 import com.qms.module.qms.common.dto.request.TargetDateExtensionDecision;
 import com.qms.module.qms.common.dto.request.TargetDateExtensionRequest;
@@ -47,6 +50,9 @@ public class TargetDateExtensionService {
         return toResponse(r, null);
     }
 
+    @Audited(action = AuditAction.SUBMIT, module = AuditModule.QMS,
+             entityType = "QmsRecord",
+             description = "Target-date extension requested")
     @Transactional
     public TargetDateExtensionResponse request(QmsRecordType recordType, Long recordId,
                                                 TargetDateExtensionRequest req) {
@@ -77,6 +83,9 @@ public class TargetDateExtensionService {
         return toResponse(r, null);
     }
 
+    @Audited(action = AuditAction.APPROVE, module = AuditModule.QMS,
+             entityType = "QmsRecord",
+             description = "Target-date extension approve / reject decision recorded")
     @Transactional
     public TargetDateExtensionResponse decide(QmsRecordType recordType, Long recordId,
                                                TargetDateExtensionDecision dec) {
