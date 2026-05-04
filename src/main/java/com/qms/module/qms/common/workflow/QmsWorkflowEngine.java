@@ -7,6 +7,7 @@ import com.qms.common.enums.QmsStatus;
 import com.qms.common.exception.AppException;
 import com.qms.module.org.service.OrgSecurityService;
 import com.qms.module.qms.common.entity.QmsRecord;
+import com.qms.module.qms.common.repository.QmsDepartmentCommentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -40,8 +41,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class QmsWorkflowEngine {
 
-    private final ObjectMapper        mapper;
-    private final OrgSecurityService  orgSecurity;
+    private final ObjectMapper                   mapper;
+    private final OrgSecurityService             orgSecurity;
+    private final QmsDepartmentCommentRepository deptCommentRepository;
 
     private static final TypeReference<List<StatusHistoryEntry>> HISTORY_TYPE =
             new TypeReference<>() {};
@@ -67,8 +69,17 @@ public class QmsWorkflowEngine {
         // ── Positional authorisation ─────────────────────────────
         // Beyond the graph rules, the actor must hold the structural role
         // required for the target status (HOD of dept, QA Reviewer, etc.).
-        // SUPER_ADMIN bypasses this gate.
-        requirePosition(record, newStatus);
+        // SUPER_ADMIN bypasses this gate. Source-aware override applies for
+        // legitimate loop-backs (e.g. PENDING_DEPT_COMMENT → PENDING_QA_REVIEW
+        // is owned by the HOD of the commenting dept, not by the HOD of
+        // record's originating dept).
+        requirePosition(record, current, newStatus);
+
+        // ── Cross-cutting state guards ───────────────────────────
+        // Block forward-progression to RA Review until every QmsDepartmentComment
+        // requested for this record is COMPLETED. Otherwise QA Reviewers can
+        // bypass the dept fan-out by clicking Approve too early.
+        requireDeptCommentsComplete(record, current, newStatus);
 
         applyTransition(record, current, newStatus, comment);
 
@@ -171,16 +182,28 @@ public class QmsWorkflowEngine {
      * target status. SUPER_ADMIN bypasses every check. Statuses without a
      * mapped position (DRAFT, CANCELLED, REJECTED, REOPENED, optional
      * branches) are not gated here — the graph rules are enough.
+     *
+     * The source state ({@code from}) is consulted via
+     * {@link WorkflowPosition#requiredFor(QmsStatus, QmsStatus)} so loop-back
+     * transitions (e.g. PENDING_DEPT_COMMENT → PENDING_QA_REVIEW, owned by
+     * the HOD of the commenting dept) work correctly.
      */
-    private void requirePosition(QmsRecord record, QmsStatus target) {
-        WorkflowPosition required = WorkflowPosition.requiredFor(target);
+    private void requirePosition(QmsRecord record, QmsStatus from, QmsStatus target) {
+        WorkflowPosition required = WorkflowPosition.requiredFor(from, target);
         if (required == null) return;
         if (orgSecurity.isSuperAdmin()) return;
 
         boolean ok = switch (required) {
             case ANY_INITIATOR          -> orgSecurity.currentUser().isPresent();
             case HOD_OF_RECORD_DEPT     -> orgSecurity.isCurrentUserHodOf(record.getDepartmentId());
-            case HOD_OF_COMMENTING_DEPT -> orgSecurity.isCurrentUserHodOf(record.getCommentingDepartmentId());
+            case HOD_OF_COMMENTING_DEPT ->
+                // Either the explicitly-flagged commenting dept's HOD, OR the
+                // HOD of any dept that has a PENDING comment row on this record.
+                // The latter handles the standard CC fan-out (where multiple
+                // depts have PENDING rows simultaneously) without requiring
+                // the engine to track which dept is "current".
+                orgSecurity.isCurrentUserHodOf(record.getCommentingDepartmentId())
+                || isCurrentUserHodOfAnyPendingComment(record);
             case QA_REVIEWER            -> orgSecurity.isCurrentUserQaReviewer()
                                             || orgSecurity.isCurrentUserQaHead();
             case QA_HEAD                -> orgSecurity.isCurrentUserQaHead();
@@ -192,6 +215,38 @@ public class QmsWorkflowEngine {
             throw AppException.forbidden(
                     "Your role does not permit moving this record to " + target +
                     ". Required: " + required);
+        }
+    }
+
+    private boolean isCurrentUserHodOfAnyPendingComment(QmsRecord record) {
+        var pendingRows = deptCommentRepository
+                .findAllByRecordTypeAndRecordIdAndIsDeletedFalseOrderByCreatedAtAsc(
+                        record.getRecordType(), record.getId())
+                .stream()
+                .filter(r -> "PENDING".equalsIgnoreCase(r.getStatus()))
+                .toList();
+        for (var row : pendingRows) {
+            if (orgSecurity.isCurrentUserHodOf(row.getDepartmentId())) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Block PENDING_DEPT_COMMENT → PENDING_RA_REVIEW until every requested
+     * department comment has been filled. Without this, the QA Reviewer
+     * could bypass the cross-functional review by clicking Approve early.
+     */
+    private void requireDeptCommentsComplete(QmsRecord record, QmsStatus from, QmsStatus to) {
+        if (from != QmsStatus.PENDING_DEPT_COMMENT || to != QmsStatus.PENDING_RA_REVIEW) return;
+
+        long pendingCount = deptCommentRepository
+                .countByRecordTypeAndRecordIdAndStatusAndIsDeletedFalse(
+                        record.getRecordType(), record.getId(), "PENDING");
+        if (pendingCount > 0) {
+            throw AppException.badRequest(
+                    "Cannot forward to RA Evaluation while " + pendingCount +
+                    " department comment(s) are still pending. " +
+                    "Each requested department's HOD must complete their comment first.");
         }
     }
 

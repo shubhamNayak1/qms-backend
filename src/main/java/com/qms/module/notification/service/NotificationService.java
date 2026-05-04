@@ -21,6 +21,7 @@ import com.qms.module.qms.capa.repository.CapaRepository;
 import com.qms.module.qms.changecontrol.repository.ChangeControlRepository;
 import com.qms.module.qms.common.entity.QmsRecord;
 import com.qms.module.qms.complaint.repository.MarketComplaintRepository;
+import com.qms.module.qms.common.repository.QmsDepartmentCommentRepository;
 import com.qms.module.qms.deviation.repository.DeviationRepository;
 import com.qms.module.qms.incident.repository.IncidentRepository;
 import com.qms.module.org.service.OrgSecurityService;
@@ -49,9 +50,10 @@ public class NotificationService {
 
     // ── Repositories ──────────────────────────────────────────
 
-    private final UserRepository               userRepository;
-    private final PasswordPolicyService        passwordPolicyService;
-    private final OrgSecurityService           orgSecurityService;
+    private final UserRepository                  userRepository;
+    private final PasswordPolicyService           passwordPolicyService;
+    private final OrgSecurityService              orgSecurityService;
+    private final QmsDepartmentCommentRepository  deptCommentRepository;
 
     // QMS
     private final CapaRepository               capaRepository;
@@ -125,6 +127,7 @@ public class NotificationService {
         List<NotificationItem> all = new ArrayList<>();
         all.addAll(buildSystemNotifications(user, today));
         all.addAll(buildQmsNotifications(userId, isManager, isQaOfficer, today));
+        all.addAll(buildPositionalQmsNotifications(user, today, all));
         all.addAll(buildDmsNotifications(userId, isManager || isQaOfficer || isAuditor, today));
         all.addAll(buildLmsNotifications(userId, isManager, today));
 
@@ -292,6 +295,124 @@ public class NotificationService {
          });
 
         return items;
+    }
+
+    /**
+     * Positional notification routing — surfaces records to the user based on
+     * their structural position in the org tree (HOD of dept, RA member, Site
+     * Head, QA Head, QA Reviewer). Complements {@link #buildQmsNotifications}
+     * which only handles per-user assignments and the legacy flat-role queues.
+     *
+     * Without this, a regular dept HOD never gets notified about PENDING_HOD
+     * records on their own dept, and HODs invited to comment never see
+     * PENDING_DEPT_COMMENT records — both are bugs reported in the field.
+     *
+     * Routing:
+     *   PENDING_HOD              → HOD of record's originating department
+     *   PENDING_DEPT_COMMENT     → HOD of any dept with a PENDING dept-comment row
+     *   PENDING_RA_REVIEW        → any member of an RA-typed department
+     *   PENDING_QA_REVIEW        → QA Reviewer or QA Head
+     *   PENDING_VERIFICATION     → QA Reviewer or QA Head
+     *   PENDING_SITE_HEAD        → Site Head
+     *   PENDING_HEAD_QA          → QA Head
+     */
+    private List<NotificationItem> buildPositionalQmsNotifications(User user,
+                                                                    LocalDate today,
+                                                                    List<NotificationItem> existing) {
+        List<NotificationItem> items = new ArrayList<>();
+        Set<String> alreadyShown = existing.stream()
+                .filter(n -> n.getId() != null && n.getModule() != null)
+                .map(n -> n.getModule() + ":" + n.getId())
+                .collect(Collectors.toSet());
+
+        boolean isQaHead     = orgSecurityService.isUserQaHead(user);
+        boolean isQaReviewer = orgSecurityService.isUserQaReviewer(user);
+        boolean isRa         = orgSecurityService.isUserRa(user);
+        boolean isSiteHead   = orgSecurityService.isUserSiteHead(user);
+
+        // PENDING_HOD → HOD of record's department
+        addPositionalItems(items, alreadyShown, today,
+                List.of(QmsStatus.PENDING_HOD),
+                r -> r.getDepartmentId() != null
+                        && orgSecurityService.isHodOfDepartment(user.getId(), r.getDepartmentId()));
+
+        // PENDING_DEPT_COMMENT → HOD of any dept with a PENDING comment row
+        addPositionalItems(items, alreadyShown, today,
+                List.of(QmsStatus.PENDING_DEPT_COMMENT),
+                r -> isUserHodOfAnyPendingComment(user, r));
+
+        // PENDING_RA_REVIEW → RA users
+        if (isRa) {
+            addPositionalItems(items, alreadyShown, today,
+                    List.of(QmsStatus.PENDING_RA_REVIEW), r -> true);
+        }
+
+        // PENDING_QA_REVIEW + PENDING_VERIFICATION → QA Reviewer / QA Head
+        if (isQaReviewer || isQaHead) {
+            addPositionalItems(items, alreadyShown, today,
+                    List.of(QmsStatus.PENDING_QA_REVIEW, QmsStatus.PENDING_VERIFICATION),
+                    r -> true);
+        }
+
+        // PENDING_SITE_HEAD → Site Head
+        if (isSiteHead) {
+            addPositionalItems(items, alreadyShown, today,
+                    List.of(QmsStatus.PENDING_SITE_HEAD), r -> true);
+        }
+
+        // PENDING_HEAD_QA → QA Head
+        if (isQaHead) {
+            addPositionalItems(items, alreadyShown, today,
+                    List.of(QmsStatus.PENDING_HEAD_QA), r -> true);
+        }
+
+        return items;
+    }
+
+    /**
+     * Helper: pulls records across all 5 sub-modules for the given statuses,
+     * filters by the supplied predicate, and adds approval-style notification
+     * items for any that haven't already been added (dedup keyed by
+     * module + id).
+     */
+    private void addPositionalItems(List<NotificationItem> sink,
+                                     Set<String> alreadyShown,
+                                     LocalDate today,
+                                     List<QmsStatus> statuses,
+                                     java.util.function.Predicate<QmsRecord> matches) {
+        Stream.of(
+                capaRepository.findByStatusIn(statuses),
+                deviationRepository.findByStatusIn(statuses),
+                incidentRepository.findByStatusIn(statuses),
+                changeControlRepository.findByStatusIn(statuses),
+                marketComplaintRepository.findByStatusIn(statuses)
+        ).flatMap(List::stream)
+         .filter(matches)
+         .filter(r -> !alreadyShown.contains(r.getRecordType().name() + ":" + r.getId()))
+         .forEach(r -> {
+             String module = r.getRecordType().name();
+             sink.add(buildApprovalItem(r, module, resolveQmsLink(module), today));
+             alreadyShown.add(module + ":" + r.getId());
+         });
+    }
+
+    /**
+     * True when the given user is the HOD of any department that currently
+     * holds a PENDING dept-comment row on this record. Drives PENDING_DEPT_COMMENT
+     * notifications for the cross-functional review fan-out.
+     */
+    private boolean isUserHodOfAnyPendingComment(User user, QmsRecord record) {
+        if (user == null || user.getId() == null) return false;
+        var pendingRows = deptCommentRepository
+                .findAllByRecordTypeAndRecordIdAndIsDeletedFalseOrderByCreatedAtAsc(
+                        record.getRecordType(), record.getId())
+                .stream()
+                .filter(r -> "PENDING".equalsIgnoreCase(r.getStatus()))
+                .toList();
+        for (var row : pendingRows) {
+            if (orgSecurityService.isHodOfDepartment(user.getId(), row.getDepartmentId())) return true;
+        }
+        return false;
     }
 
     private <T extends QmsRecord> NotificationItem buildQmsItem(T r, String module,

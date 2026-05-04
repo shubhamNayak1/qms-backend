@@ -97,7 +97,10 @@ public final class WorkflowTransition {
         CC_T.put(DRAFT,                    Set.of(PENDING_HOD, CANCELLED));
         CC_T.put(PENDING_HOD,              Set.of(PENDING_QA_REVIEW, REJECTED, CANCELLED));
         CC_T.put(PENDING_QA_REVIEW,        Set.of(PENDING_DEPT_COMMENT, REJECTED, CANCELLED));
-        CC_T.put(PENDING_DEPT_COMMENT,     Set.of(PENDING_RA_REVIEW));
+        // PENDING_DEPT_COMMENT can also loop back to QA (so the dept HOD can
+        // bounce the record back if QA needs to re-evaluate before
+        // forwarding to RA), and supports REJECTED / CANCELLED escape hatches.
+        CC_T.put(PENDING_DEPT_COMMENT,     Set.of(PENDING_RA_REVIEW, PENDING_QA_REVIEW, REJECTED, CANCELLED));
         CC_T.put(PENDING_RA_REVIEW,        Set.of(PENDING_SITE_HEAD, PENDING_HEAD_QA, REJECTED, CANCELLED));
         CC_T.put(PENDING_SITE_HEAD,        Set.of(PENDING_CUSTOMER_COMMENT, PENDING_HEAD_QA, REJECTED, CANCELLED));
         CC_T.put(PENDING_CUSTOMER_COMMENT, Set.of(PENDING_HEAD_QA));

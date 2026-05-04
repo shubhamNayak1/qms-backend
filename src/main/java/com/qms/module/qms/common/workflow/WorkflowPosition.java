@@ -57,4 +57,25 @@ public enum WorkflowPosition {
     public static WorkflowPosition requiredFor(QmsStatus target) {
         return target == null ? null : REQUIRED.get(target);
     }
+
+    /**
+     * Source-aware override. Most transitions are owned solely by their
+     * target's actor (e.g. only the QA Reviewer can drive anything to
+     * PENDING_RA_REVIEW). A few legitimate loop-backs need to be owned
+     * by the actor at the SOURCE state instead — currently:
+     *
+     *  • PENDING_DEPT_COMMENT → PENDING_QA_REVIEW
+     *      The HOD of the commenting dept (who's filling their feedback
+     *      in the accordion) needs to be able to bounce the record back
+     *      to QA if they spot a problem during commenting. Without this,
+     *      the only person who could do it would be the HOD of the
+     *      record's originating dept — which makes no sense at this
+     *      stage.
+     */
+    public static WorkflowPosition requiredFor(QmsStatus from, QmsStatus to) {
+        if (from == QmsStatus.PENDING_DEPT_COMMENT && to == QmsStatus.PENDING_QA_REVIEW) {
+            return HOD_OF_COMMENTING_DEPT;
+        }
+        return requiredFor(to);
+    }
 }
