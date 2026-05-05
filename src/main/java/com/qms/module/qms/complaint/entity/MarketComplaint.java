@@ -18,6 +18,26 @@ import java.time.LocalDate;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class MarketComplaint extends QmsRecord {
 
+    // ── Origin / linkage ──────────────────────────────────────
+    /**
+     * NEW or EXISTING.
+     *  • NEW       — fresh complaint, no parent.
+     *  • EXISTING  — follow-up complaint that references {@link #parentComplaintId}.
+     */
+    @Column(name = "complaint_origin", length = 20)
+    private String complaintOrigin;
+
+    /** Parent market-complaint id — populated when complaintOrigin = EXISTING. */
+    @Column(name = "parent_complaint_id")
+    private Long parentComplaintId;
+
+    /**
+     * What the complaint is about — Product / Packing / Transportation /
+     * Labels / Drum / Shipper / Carton / Bag.
+     */
+    @Column(name = "complaint_subject", length = 50)
+    private String complaintSubject;
+
     // ── Customer info ─────────────────────────────────────────
     @Column(name = "customer_name", length = 150)
     private String customerName;
@@ -77,9 +97,20 @@ public class MarketComplaint extends QmsRecord {
     @Column(name = "capa_reference", length = 30)
     private String capaReference;
 
+    /** Set by QA Reviewer at PENDING_INVESTIGATION. */
+    @Column(name = "capa_required")
+    private Boolean capaRequired = false;
+
     /** Was the complained product returned for investigation? */
     @Column(name = "sample_returned")
     private Boolean sampleReturned = false;
+
+    // ── QA Investigation fields ───────────────────────────────
+    @Column(name = "investigation_findings", columnDefinition = "TEXT")
+    private String investigationFindings;
+
+    @Column(name = "impact_assessment", columnDefinition = "TEXT")
+    private String impactAssessment;
 
     @PrePersist
     private void prePersist() { setRecordType(QmsRecordType.MARKET_COMPLAINT); }

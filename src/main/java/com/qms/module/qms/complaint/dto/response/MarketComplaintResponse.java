@@ -9,6 +9,9 @@ import java.time.LocalDate;
 @Getter
 @Setter
 public class MarketComplaintResponse extends QmsBaseResponse {
+    private String    complaintOrigin;
+    private Long      parentComplaintId;
+    private String    complaintSubject;
     private String    customerName;
     private String    customerContact;
     private String    customerCountry;
@@ -26,5 +29,8 @@ public class MarketComplaintResponse extends QmsBaseResponse {
     private LocalDate customerNotifiedDate;
     private Boolean   customerSatisfied;
     private String    capaReference;
+    private Boolean   capaRequired;
     private Boolean   sampleReturned;
+    private String    investigationFindings;
+    private String    impactAssessment;
 }

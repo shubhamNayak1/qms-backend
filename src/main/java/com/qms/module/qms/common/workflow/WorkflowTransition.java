@@ -36,8 +36,13 @@ import static com.qms.common.enums.QmsStatus.*;
  *   →[PENDING_SITE_HEAD]→[PENDING_CUSTOMER_COMMENT]→PENDING_HEAD_QA→PENDING_VERIFICATION→CLOSED
  *
  * MARKET_COMPLAINT:
- *   DRAFT→PENDING_HOD→PENDING_INVESTIGATION→PENDING_ATTACHMENTS
- *   →PENDING_VERIFICATION→CLOSED
+ *   DRAFT→PENDING_HOD (HOD review only — no dept routing here)
+ *   →PENDING_INVESTIGATION ↔ PENDING_DEPT_COMMENT
+ *   →PENDING_HEAD_QA→CLOSED
+ *
+ *   QA Reviewer drives the investigation hub: invites depts (PENDING_DEPT_COMMENT)
+ *   and once every dept comment is filled the record loops back to
+ *   PENDING_INVESTIGATION before the QA Reviewer forwards it to Head QA.
  *
  * All modules: any non-terminal state → REJECTED → DRAFT (for rework)
  *              any non-terminal state → CANCELLED (terminal)
@@ -112,11 +117,17 @@ public final class WorkflowTransition {
         CC_T.put(CANCELLED,                Set.of());
 
         // ── MARKET_COMPLAINT ──────────────────────────────────
+        // HOD reviews only — does NOT route to depts (that happens at the
+        // QA Investigation hub). PENDING_INVESTIGATION ↔ PENDING_DEPT_COMMENT
+        // is a true loop: QA invites dept comments, the record sits at
+        // PENDING_DEPT_COMMENT until every requested dept fills their row,
+        // then comes back to PENDING_INVESTIGATION. QA Reviewer can also
+        // skip dept comments entirely and forward straight to Head QA.
         MC_T.put(DRAFT,                Set.of(PENDING_HOD, CANCELLED));
         MC_T.put(PENDING_HOD,          Set.of(PENDING_INVESTIGATION, REJECTED, CANCELLED));
-        MC_T.put(PENDING_INVESTIGATION,Set.of(PENDING_ATTACHMENTS, CANCELLED));
-        MC_T.put(PENDING_ATTACHMENTS,  Set.of(PENDING_VERIFICATION));
-        MC_T.put(PENDING_VERIFICATION, Set.of(CLOSED, REJECTED));
+        MC_T.put(PENDING_INVESTIGATION,Set.of(PENDING_DEPT_COMMENT, PENDING_HEAD_QA, REJECTED, CANCELLED));
+        MC_T.put(PENDING_DEPT_COMMENT, Set.of(PENDING_INVESTIGATION, REJECTED, CANCELLED));
+        MC_T.put(PENDING_HEAD_QA,      Set.of(CLOSED, PENDING_INVESTIGATION, REJECTED));
         MC_T.put(REJECTED,             Set.of(DRAFT, CANCELLED));
         MC_T.put(CLOSED,               Set.of(REOPENED));
         MC_T.put(REOPENED,             Set.of(DRAFT, CANCELLED));
@@ -176,9 +187,14 @@ public final class WorkflowTransition {
         Map<QmsStatus, QmsStatus> mcFwd = new EnumMap<>(QmsStatus.class);
         mcFwd.put(DRAFT,                PENDING_HOD);
         mcFwd.put(PENDING_HOD,          PENDING_INVESTIGATION);
-        mcFwd.put(PENDING_INVESTIGATION,PENDING_ATTACHMENTS);
-        mcFwd.put(PENDING_ATTACHMENTS,  PENDING_VERIFICATION);
-        mcFwd.put(PENDING_VERIFICATION, CLOSED);
+        // QA Reviewer's canonical "approve" target depends on whether they
+        // need dept input. Both targets are graph-allowed; the UI exposes
+        // explicit "Invite Departments" and "Forward to Head QA" buttons
+        // so the dept fan-out isn't accidental. Default forward = Head QA
+        // because the dept-comment fan-out is optional in MC.
+        mcFwd.put(PENDING_INVESTIGATION,PENDING_HEAD_QA);
+        mcFwd.put(PENDING_DEPT_COMMENT, PENDING_INVESTIGATION);
+        mcFwd.put(PENDING_HEAD_QA,      CLOSED);
         PRIMARY_FORWARD.put(QmsRecordType.MARKET_COMPLAINT, mcFwd);
     }
 

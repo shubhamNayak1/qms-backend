@@ -12,6 +12,15 @@ import java.time.LocalDate;
 @Schema(description = "Request body for creating or updating a Market Complaint record")
 public class MarketComplaintRequest extends QmsBaseRequest {
 
+    @Schema(example = "NEW", description = "NEW or EXISTING (existing = follow-up to a prior MC)")
+    private String complaintOrigin;
+
+    @Schema(description = "Parent MC id when complaintOrigin = EXISTING")
+    private Long parentComplaintId;
+
+    @Schema(description = "Product / Packing / Transportation / Labels / Drum / Shipper / Carton / Bag")
+    private String complaintSubject;
+
     private String customerName;
     private String customerContact;
     private String customerCountry;
@@ -34,5 +43,12 @@ public class MarketComplaintRequest extends QmsBaseRequest {
     private LocalDate customerNotifiedDate;
     private Boolean   customerSatisfied;
     private String    capaReference;
+    private Boolean   capaRequired;
     private Boolean   sampleReturned;
+
+    @Schema(description = "Detailed findings captured by QA Reviewer at PENDING_INVESTIGATION")
+    private String    investigationFindings;
+
+    @Schema(description = "Impact assessment narrative captured by QA Reviewer at PENDING_INVESTIGATION")
+    private String    impactAssessment;
 }

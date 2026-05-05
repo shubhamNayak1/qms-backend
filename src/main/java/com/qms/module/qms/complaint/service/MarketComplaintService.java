@@ -175,6 +175,9 @@ public class MarketComplaintService {
     }
 
     private void applyFields(MarketComplaintRequest req, MarketComplaint mc) {
+        if (req.getComplaintOrigin()           != null) mc.setComplaintOrigin(req.getComplaintOrigin());
+        if (req.getParentComplaintId()         != null) mc.setParentComplaintId(req.getParentComplaintId());
+        if (req.getComplaintSubject()          != null) mc.setComplaintSubject(req.getComplaintSubject());
         if (req.getCustomerName()              != null) mc.setCustomerName(req.getCustomerName());
         if (req.getCustomerContact()           != null) mc.setCustomerContact(req.getCustomerContact());
         if (req.getCustomerCountry()           != null) mc.setCustomerCountry(req.getCustomerCountry());
@@ -192,12 +195,18 @@ public class MarketComplaintService {
         if (req.getCustomerNotifiedDate()      != null) mc.setCustomerNotifiedDate(req.getCustomerNotifiedDate());
         if (req.getCustomerSatisfied()         != null) mc.setCustomerSatisfied(req.getCustomerSatisfied());
         if (req.getCapaReference()             != null) mc.setCapaReference(req.getCapaReference());
+        if (req.getCapaRequired()              != null) mc.setCapaRequired(req.getCapaRequired());
         if (req.getSampleReturned()            != null) mc.setSampleReturned(req.getSampleReturned());
+        if (req.getInvestigationFindings()     != null) mc.setInvestigationFindings(req.getInvestigationFindings());
+        if (req.getImpactAssessment()          != null) mc.setImpactAssessment(req.getImpactAssessment());
     }
 
     private MarketComplaintResponse toResponse(MarketComplaint mc) {
         MarketComplaintResponse r = new MarketComplaintResponse();
         recordMapper.applyResponse(mc, r);
+        r.setComplaintOrigin(mc.getComplaintOrigin());
+        r.setParentComplaintId(mc.getParentComplaintId());
+        r.setComplaintSubject(mc.getComplaintSubject());
         r.setCustomerName(mc.getCustomerName());
         r.setCustomerContact(mc.getCustomerContact());
         r.setCustomerCountry(mc.getCustomerCountry());
@@ -215,7 +224,10 @@ public class MarketComplaintService {
         r.setCustomerNotifiedDate(mc.getCustomerNotifiedDate());
         r.setCustomerSatisfied(mc.getCustomerSatisfied());
         r.setCapaReference(mc.getCapaReference());
+        r.setCapaRequired(mc.getCapaRequired());
         r.setSampleReturned(mc.getSampleReturned());
+        r.setInvestigationFindings(mc.getInvestigationFindings());
+        r.setImpactAssessment(mc.getImpactAssessment());
         return r;
     }
 }
