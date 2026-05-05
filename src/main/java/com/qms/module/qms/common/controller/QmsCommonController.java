@@ -2,13 +2,17 @@ package com.qms.module.qms.common.controller;
 
 import com.qms.common.enums.QmsRecordType;
 import com.qms.common.response.ApiResponse;
+import com.qms.module.qms.common.dto.request.QmsDepartmentAttachmentDecision;
+import com.qms.module.qms.common.dto.request.QmsDepartmentAttachmentRequest;
 import com.qms.module.qms.common.dto.request.QmsDepartmentCommentRequest;
 import com.qms.module.qms.common.dto.request.QmsLineItemRequest;
 import com.qms.module.qms.common.dto.request.TargetDateExtensionDecision;
 import com.qms.module.qms.common.dto.request.TargetDateExtensionRequest;
+import com.qms.module.qms.common.dto.response.QmsDepartmentAttachmentResponse;
 import com.qms.module.qms.common.dto.response.QmsDepartmentCommentResponse;
 import com.qms.module.qms.common.dto.response.QmsLineItemResponse;
 import com.qms.module.qms.common.dto.response.TargetDateExtensionResponse;
+import com.qms.module.qms.common.service.QmsDepartmentAttachmentService;
 import com.qms.module.qms.common.service.QmsDepartmentCommentService;
 import com.qms.module.qms.common.service.QmsLineItemService;
 import com.qms.module.qms.common.service.TargetDateExtensionService;
@@ -44,9 +48,10 @@ import java.util.List;
 @SecurityRequirement(name = "bearerAuth")
 public class QmsCommonController {
 
-    private final QmsLineItemService          lineItemService;
-    private final QmsDepartmentCommentService deptCommentService;
-    private final TargetDateExtensionService  extensionService;
+    private final QmsLineItemService             lineItemService;
+    private final QmsDepartmentCommentService    deptCommentService;
+    private final QmsDepartmentAttachmentService deptAttachmentService;
+    private final TargetDateExtensionService     extensionService;
 
     // ─────────────────────────────────────────────────────────
     //  Line items — repeating "existing/proposed/justification" rows
@@ -129,6 +134,67 @@ public class QmsCommonController {
             @Valid @RequestBody  QmsDepartmentCommentRequest request) {
         return ApiResponse.ok("Comment recorded",
                 deptCommentService.fill(commentRowId, request));
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  Department attachments — per-dept upload + Head QA approval rows
+    //  backing the PENDING_ATTACHMENTS gate (Deviation / Incident / CAPA /
+    //  Change Control). Mirrors the dept-comments pattern but for files.
+    // ─────────────────────────────────────────────────────────
+
+    @GetMapping("/department-attachments")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "List department attachment rows on a QMS record")
+    public ResponseEntity<ApiResponse<List<QmsDepartmentAttachmentResponse>>> listDeptAttachments(
+            @PathVariable String recordType,
+            @PathVariable Long   recordId) {
+        return ApiResponse.ok(deptAttachmentService.list(parseType(recordType), recordId));
+    }
+
+    @PostMapping("/department-attachments")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "QA Reviewer / Head QA invites a department to upload its attachment")
+    public ResponseEntity<ApiResponse<QmsDepartmentAttachmentResponse>> requestDeptAttachment(
+            @PathVariable String recordType,
+            @PathVariable Long   recordId,
+            @Valid @RequestBody  QmsDepartmentAttachmentRequest request) {
+        return ApiResponse.created("Department invited to upload",
+                deptAttachmentService.request(parseType(recordType), recordId, request));
+    }
+
+    @PutMapping("/department-attachments/{rowId}")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Department uploads / updates its attachment row")
+    public ResponseEntity<ApiResponse<QmsDepartmentAttachmentResponse>> uploadDeptAttachment(
+            @PathVariable String recordType,
+            @PathVariable Long   recordId,
+            @PathVariable Long   rowId,
+            @Valid @RequestBody  QmsDepartmentAttachmentRequest request) {
+        return ApiResponse.ok("Attachment uploaded",
+                deptAttachmentService.upload(rowId, request));
+    }
+
+    @PostMapping("/department-attachments/{rowId}/decide")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Head QA approves or rejects a department attachment row")
+    public ResponseEntity<ApiResponse<QmsDepartmentAttachmentResponse>> decideDeptAttachment(
+            @PathVariable String recordType,
+            @PathVariable Long   recordId,
+            @PathVariable Long   rowId,
+            @Valid @RequestBody  QmsDepartmentAttachmentDecision decision) {
+        return ApiResponse.ok("Attachment decision recorded",
+                deptAttachmentService.decide(rowId, decision));
+    }
+
+    @DeleteMapping("/department-attachments/{rowId}")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Soft-delete a non-APPROVED attachment row (e.g. invited the wrong dept)")
+    public ResponseEntity<ApiResponse<Void>> deleteDeptAttachment(
+            @PathVariable String recordType,
+            @PathVariable Long   recordId,
+            @PathVariable Long   rowId) {
+        deptAttachmentService.delete(rowId);
+        return ApiResponse.noContent("Attachment row removed");
     }
 
     // ─────────────────────────────────────────────────────────
