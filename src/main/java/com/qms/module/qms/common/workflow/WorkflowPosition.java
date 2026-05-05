@@ -1,5 +1,6 @@
 package com.qms.module.qms.common.workflow;
 
+import com.qms.common.enums.QmsRecordType;
 import com.qms.common.enums.QmsStatus;
 
 import java.util.EnumMap;
@@ -20,6 +21,15 @@ import java.util.Map;
 public enum WorkflowPosition {
     /** Any authenticated user — used for DRAFT-to-PENDING_HOD submissions. */
     ANY_INITIATOR,
+    /**
+     * Department reviewer of the record's originating department —
+     * a user with {@code is_dept_reviewer = true} who belongs to the
+     * same department as {@code record.departmentId}. Currently used
+     * by MARKET_COMPLAINT for the DRAFT → PENDING_HOD gate so the
+     * Employee who drafts the complaint isn't also the one who submits
+     * it (segregation of duties per Kedar-sir spec).
+     */
+    DEPT_REVIEWER_OF_RECORD_DEPT,
     /** HOD of the *originating* department of the record. */
     HOD_OF_RECORD_DEPT,
     /** HOD of the department currently flagged as commenting (PENDING_DEPT_COMMENT branch). */
@@ -82,5 +92,26 @@ public enum WorkflowPosition {
             return HOD_OF_COMMENTING_DEPT;
         }
         return requiredFor(to);
+    }
+
+    /**
+     * Record-type-aware variant — used for module-specific overrides that
+     * differ from the generic graph rule. The engine prefers this overload
+     * when it can supply the record type. Falls through to the 2-arg
+     * version when no MC-specific rule matches.
+     *
+     * Currently overrides:
+     *   • MARKET_COMPLAINT  DRAFT → PENDING_HOD = DEPT_REVIEWER_OF_RECORD_DEPT
+     *     (per Kedar-sir spec — Employee drafts, dept Reviewer submits)
+     */
+    public static WorkflowPosition requiredFor(QmsRecordType type,
+                                                QmsStatus from,
+                                                QmsStatus to) {
+        if (type == QmsRecordType.MARKET_COMPLAINT
+                && from == QmsStatus.DRAFT
+                && to == QmsStatus.PENDING_HOD) {
+            return DEPT_REVIEWER_OF_RECORD_DEPT;
+        }
+        return requiredFor(from, to);
     }
 }

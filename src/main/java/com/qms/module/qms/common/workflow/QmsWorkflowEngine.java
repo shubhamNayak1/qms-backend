@@ -196,12 +196,15 @@ public class QmsWorkflowEngine {
      * the HOD of the commenting dept) work correctly.
      */
     private void requirePosition(QmsRecord record, QmsStatus from, QmsStatus target) {
-        WorkflowPosition required = WorkflowPosition.requiredFor(from, target);
+        WorkflowPosition required = WorkflowPosition.requiredFor(
+                record.getRecordType(), from, target);
         if (required == null) return;
         if (orgSecurity.isSuperAdmin()) return;
 
         boolean ok = switch (required) {
             case ANY_INITIATOR          -> orgSecurity.currentUser().isPresent();
+            case DEPT_REVIEWER_OF_RECORD_DEPT ->
+                orgSecurity.isCurrentUserDeptReviewerOf(record.getDepartmentId());
             case HOD_OF_RECORD_DEPT     -> orgSecurity.isCurrentUserHodOf(record.getDepartmentId());
             case HOD_OF_COMMENTING_DEPT ->
                 // Three accepted actors for source-aware loop-backs out of

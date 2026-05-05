@@ -308,13 +308,17 @@ public class NotificationService {
      * PENDING_DEPT_COMMENT records — both are bugs reported in the field.
      *
      * Routing:
-     *   PENDING_HOD              → HOD of record's originating department
-     *   PENDING_DEPT_COMMENT     → HOD of any dept with a PENDING dept-comment row
-     *   PENDING_RA_REVIEW        → any member of an RA-typed department
-     *   PENDING_QA_REVIEW        → QA Reviewer or QA Head
-     *   PENDING_VERIFICATION     → QA Reviewer or QA Head
-     *   PENDING_SITE_HEAD        → Site Head
-     *   PENDING_HEAD_QA          → QA Head
+     *   DRAFT (Market Complaint)  → Department Reviewer of complainant's dept
+     *                                (Employee drafts, Reviewer submits per spec)
+     *   PENDING_HOD               → HOD of record's originating department
+     *   PENDING_DEPT_COMMENT      → HOD of any dept with a PENDING comment row
+     *   PENDING_INVESTIGATION     → QA Reviewer or QA Head
+     *                                (MC: investigation hub; DEV: investigation step)
+     *   PENDING_RA_REVIEW         → any member of an RA-typed department
+     *   PENDING_QA_REVIEW         → QA Reviewer or QA Head
+     *   PENDING_VERIFICATION      → QA Reviewer or QA Head
+     *   PENDING_SITE_HEAD         → Site Head
+     *   PENDING_HEAD_QA           → QA Head
      */
     private List<NotificationItem> buildPositionalQmsNotifications(User user,
                                                                     LocalDate today,
@@ -329,6 +333,23 @@ public class NotificationService {
         boolean isQaReviewer = orgSecurityService.isUserQaReviewer(user);
         boolean isRa         = orgSecurityService.isUserRa(user);
         boolean isSiteHead   = orgSecurityService.isUserSiteHead(user);
+        boolean isDeptRev    = Boolean.TRUE.equals(user.getIsDeptReviewer());
+
+        // DRAFT (MC only) → Department Reviewer of the complainant's dept.
+        // Other modules don't have a separate "submit" actor — Employee
+        // saves DRAFT and submits in one go — so we don't surface DRAFTs
+        // to dept reviewers there.
+        if (isDeptRev && user.getDepartmentId() != null) {
+            Stream.of(marketComplaintRepository.findByStatusIn(List.of(QmsStatus.DRAFT)))
+                  .flatMap(List::stream)
+                  .filter(r -> user.getDepartmentId().equals(r.getDepartmentId()))
+                  .filter(r -> !alreadyShown.contains(r.getRecordType().name() + ":" + r.getId()))
+                  .forEach(r -> {
+                      String module = r.getRecordType().name();
+                      items.add(buildSubmitItem(r, module, resolveQmsLink(module), today));
+                      alreadyShown.add(module + ":" + r.getId());
+                  });
+        }
 
         // PENDING_HOD → HOD of record's department
         addPositionalItems(items, alreadyShown, today,
@@ -347,10 +368,14 @@ public class NotificationService {
                     List.of(QmsStatus.PENDING_RA_REVIEW), r -> true);
         }
 
-        // PENDING_QA_REVIEW + PENDING_VERIFICATION → QA Reviewer / QA Head
+        // PENDING_QA_REVIEW + PENDING_VERIFICATION + PENDING_INVESTIGATION
+        // → QA Reviewer / QA Head. MC's investigation hub lives at
+        // PENDING_INVESTIGATION so QA needs to see it in the bell.
         if (isQaReviewer || isQaHead) {
             addPositionalItems(items, alreadyShown, today,
-                    List.of(QmsStatus.PENDING_QA_REVIEW, QmsStatus.PENDING_VERIFICATION),
+                    List.of(QmsStatus.PENDING_QA_REVIEW,
+                            QmsStatus.PENDING_VERIFICATION,
+                            QmsStatus.PENDING_INVESTIGATION),
                     r -> true);
         }
 
@@ -367,6 +392,34 @@ public class NotificationService {
         }
 
         return items;
+    }
+
+    /**
+     * Builds a "submit this draft" notification — surfaced to the
+     * Department Reviewer who's responsible for moving Market Complaints
+     * out of DRAFT into PENDING_HOD.
+     */
+    private <T extends QmsRecord> NotificationItem buildSubmitItem(T r, String module,
+                                                                     String baseLink,
+                                                                     LocalDate today) {
+        String moduleLabel = module.replace("_", " ");
+        return NotificationItem.builder()
+                .id(r.getId())
+                .recordNumber(r.getRecordNumber())
+                .title(r.getTitle())
+                .message(moduleLabel + " " + r.getRecordNumber()
+                        + " is in DRAFT and is awaiting submission for HOD review.")
+                .severity(NotificationSeverity.WARNING)
+                .category(NotificationCategory.QMS)
+                .module(module)
+                .status(r.getStatus().name())
+                .priority(r.getPriority() != null ? r.getPriority().name() : null)
+                .dueDate(r.getDueDate())
+                .overdue(r.getDueDate() != null && r.getDueDate().isBefore(today))
+                .actionRequired("Review the draft and submit it for HOD review")
+                .link(baseLink + "/" + r.getId())
+                .createdAt(r.getCreatedAt())
+                .build();
     }
 
     /**
