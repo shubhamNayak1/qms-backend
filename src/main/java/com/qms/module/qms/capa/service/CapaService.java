@@ -19,7 +19,9 @@ import com.qms.module.qms.capa.dto.response.CapaResponse;
 import com.qms.module.qms.capa.entity.Capa;
 import com.qms.module.qms.capa.repository.CapaRepository;
 import com.qms.module.qms.capa.repository.CapaSpecification;
+import com.qms.module.qms.common.entity.QmsRecord;
 import com.qms.module.qms.common.dto.request.WorkflowRequest;
+import com.qms.module.qms.common.service.QmsCapaAssessmentService;
 import com.qms.module.qms.common.service.QmsRecordMapper;
 import com.qms.module.qms.common.service.RecordNumberGenerator;
 import com.qms.module.qms.common.workflow.QmsWorkflowEngine;
@@ -44,11 +46,12 @@ public class CapaService {
 
     private static final String TABLE = "qms_capa";
 
-    private final CapaRepository         capaRepository;
-    private final QmsWorkflowEngine      workflowEngine;
-    private final RecordNumberGenerator  recordNumberGenerator;
-    private final QmsRecordMapper        recordMapper;
-    private final AuditValueSerializer   auditSerializer;
+    private final CapaRepository           capaRepository;
+    private final QmsWorkflowEngine        workflowEngine;
+    private final RecordNumberGenerator    recordNumberGenerator;
+    private final QmsRecordMapper          recordMapper;
+    private final AuditValueSerializer     auditSerializer;
+    private final QmsCapaAssessmentService assessmentService;
 
     // ── Queries ──────────────────────────────────────────────
 
@@ -155,7 +158,18 @@ public class CapaService {
     public CapaResponse close(Long id, String comment) {
         Capa capa = findById(id);
         workflowEngine.close(capa, comment);
-        return toResponse(capaRepository.save(capa));
+        Capa saved = capaRepository.save(capa);
+        // Seed the effectiveness-assessment lifecycle if Head QA configured it.
+        // The seed method is idempotent; calling it always is safe.
+        if (saved.getAssessmentCount() != null && saved.getAssessmentCount() > 0) {
+            assessmentService.seed(saved.getId(),
+                    saved.getAssessmentFrequency(),
+                    saved.getAssessmentCount());
+        } else {
+            saved.setAssessmentSummaryStatus("NOT_REQUIRED");
+            saved = capaRepository.save(saved);
+        }
+        return toResponse(saved);
     }
 
     @Audited(action = AuditAction.CANCEL, module = AuditModule.CAPA,
@@ -174,6 +188,69 @@ public class CapaService {
         Capa capa = findById(id);
         workflowEngine.reopen(capa, comment);
         return toResponse(capaRepository.save(capa));
+    }
+
+    /**
+     * Cross-module CAPA spawn — called by Incident / Deviation / Change
+     * Control / Market Complaint services when their HOD or QA Reviewer
+     * decides "CAPA Required = Yes" and the parent record needs a fresh
+     * CAPA cross-link.
+     *
+     * Builds a new CAPA at DRAFT with the polymorphic parent fields filled.
+     * The caller is responsible for stamping the new CAPA's record number
+     * back onto the parent (e.g. {@code linked_capa_number} or
+     * {@code capa_reference}) inside their own transaction.
+     *
+     * Idempotency is handled by the caller — they should check whether
+     * their parent already carries a CAPA reference before invoking this.
+     */
+    @Audited(action = AuditAction.CREATE, module = AuditModule.CAPA,
+             entityType = "Capa",
+             description = "CAPA spawned from a parent record cross-link")
+    @Transactional
+    public CapaResponse spawnFromParent(QmsRecord parent, String preliminaryInvestigation) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = (auth != null && auth.isAuthenticated()) ? auth.getName() : "SYSTEM";
+
+        Capa capa = Capa.builder().build();
+        capa.setRecordNumber(recordNumberGenerator.generate(QmsRecordType.CAPA, TABLE));
+        capa.setStatus(QmsStatus.DRAFT);
+        capa.setRecordType(QmsRecordType.CAPA);
+        capa.setTitle("[From " + parent.getRecordType() + " " + parent.getRecordNumber() + "] "
+                      + parent.getTitle());
+        capa.setDescription(preliminaryInvestigation == null
+                ? parent.getDescription() : preliminaryInvestigation);
+        capa.setPriority(parent.getPriority());
+        capa.setDepartmentId(parent.getDepartmentId());
+        capa.setDepartment(parent.getDepartment());
+        capa.setRaisedById(parent.getRaisedById());
+        capa.setRaisedByName(username);
+
+        capa.setCapaOrigin("EXISTING");
+        capa.setParentRecordType(parent.getRecordType().name());
+        capa.setParentRecordId(parent.getId());
+        capa.setParentRecordNumber(parent.getRecordNumber());
+
+        // Source mirrors the parent's module so reports group cleanly.
+        switch (parent.getRecordType()) {
+            case INCIDENT         -> capa.setSource("Incident");
+            case DEVIATION        -> capa.setSource("Deviation");
+            case CHANGE_CONTROL   -> capa.setSource("Change Control");
+            case MARKET_COMPLAINT -> capa.setSource("Market Complaint");
+            default               -> capa.setSource("Internal");
+        }
+        capa.setCapaType("Corrective");
+
+        // Legacy compat — populate the deviation-specific column when
+        // appropriate so any old report/UI that still keys on it keeps working.
+        if (parent.getRecordType() == QmsRecordType.DEVIATION) {
+            capa.setLinkedDeviationNumber(parent.getRecordNumber());
+        }
+
+        Capa saved = capaRepository.save(capa);
+        log.info("Spawned CAPA {} from {} {}",
+                saved.getRecordNumber(), parent.getRecordType(), parent.getRecordNumber());
+        return toResponse(saved);
     }
 
     @Transactional
@@ -215,22 +292,39 @@ public class CapaService {
     }
 
     private void applyCapaFields(CapaRequest req, Capa capa) {
-        if (req.getSource()                 != null) capa.setSource(req.getSource());
-        if (req.getCapaType()               != null) capa.setCapaType(req.getCapaType());
-        if (req.getPreventiveAction()       != null) capa.setPreventiveAction(req.getPreventiveAction());
-        if (req.getEffectivenessCheckDate() != null) capa.setEffectivenessCheckDate(req.getEffectivenessCheckDate());
-        if (req.getLinkedDeviationNumber()  != null) capa.setLinkedDeviationNumber(req.getLinkedDeviationNumber());
+        if (req.getCapaOrigin()              != null) capa.setCapaOrigin(req.getCapaOrigin());
+        if (req.getParentRecordType()        != null) capa.setParentRecordType(req.getParentRecordType());
+        if (req.getParentRecordId()          != null) capa.setParentRecordId(req.getParentRecordId());
+        if (req.getParentRecordNumber()      != null) capa.setParentRecordNumber(req.getParentRecordNumber());
+        if (req.getSource()                  != null) capa.setSource(req.getSource());
+        if (req.getCapaType()                != null) capa.setCapaType(req.getCapaType());
+        if (req.getPreventiveAction()        != null) capa.setPreventiveAction(req.getPreventiveAction());
+        if (req.getSiteHeadRequired()        != null) capa.setSiteHeadRequired(req.getSiteHeadRequired());
+        if (req.getVerificationReviewComment()!= null) capa.setVerificationReviewComment(req.getVerificationReviewComment());
+        if (req.getEffectivenessCheckDate()  != null) capa.setEffectivenessCheckDate(req.getEffectivenessCheckDate());
+        if (req.getAssessmentFrequency()     != null) capa.setAssessmentFrequency(req.getAssessmentFrequency());
+        if (req.getAssessmentCount()         != null) capa.setAssessmentCount(req.getAssessmentCount());
+        if (req.getLinkedDeviationNumber()   != null) capa.setLinkedDeviationNumber(req.getLinkedDeviationNumber());
     }
 
     private CapaResponse toResponse(Capa capa) {
         CapaResponse r = new CapaResponse();
         recordMapper.applyResponse(capa, r);
+        r.setCapaOrigin(capa.getCapaOrigin());
+        r.setParentRecordType(capa.getParentRecordType());
+        r.setParentRecordId(capa.getParentRecordId());
+        r.setParentRecordNumber(capa.getParentRecordNumber());
         r.setSource(capa.getSource());
         r.setCapaType(capa.getCapaType());
         r.setPreventiveAction(capa.getPreventiveAction());
+        r.setSiteHeadRequired(capa.getSiteHeadRequired());
+        r.setVerificationReviewComment(capa.getVerificationReviewComment());
         r.setEffectivenessCheckDate(capa.getEffectivenessCheckDate());
         r.setEffectivenessResult(capa.getEffectivenessResult());
         r.setIsEffective(capa.getIsEffective());
+        r.setAssessmentFrequency(capa.getAssessmentFrequency());
+        r.setAssessmentCount(capa.getAssessmentCount());
+        r.setAssessmentSummaryStatus(capa.getAssessmentSummaryStatus());
         r.setLinkedDeviationNumber(capa.getLinkedDeviationNumber());
         return r;
     }

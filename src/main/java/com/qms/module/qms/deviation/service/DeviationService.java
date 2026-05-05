@@ -11,6 +11,8 @@ import com.qms.module.qms.common.dto.request.WorkflowRequest;
 import com.qms.module.qms.common.service.QmsRecordMapper;
 import com.qms.module.qms.common.service.RecordNumberGenerator;
 import com.qms.module.qms.common.workflow.QmsWorkflowEngine;
+import com.qms.module.qms.capa.dto.response.CapaResponse;
+import com.qms.module.qms.capa.service.CapaService;
 import com.qms.module.qms.deviation.dto.request.DeviationRequest;
 import com.qms.module.qms.deviation.dto.response.DeviationResponse;
 import com.qms.module.qms.deviation.entity.Deviation;
@@ -41,6 +43,7 @@ public class DeviationService {
     private static final String TABLE = "qms_deviation";
 
     private final DeviationRepository    deviationRepository;
+    private final CapaService            capaService;
     private final QmsWorkflowEngine      workflowEngine;
     private final RecordNumberGenerator  recordNumberGenerator;
     private final QmsRecordMapper        recordMapper;
@@ -162,6 +165,35 @@ public class DeviationService {
                 .build());
         d.setIsDeleted(true);
         deviationRepository.save(d);
+    }
+
+    /**
+     * Cross-module CAPA spawn — called from this Deviation's HOD Assessment
+     * stage when {@code capa_required = true}. Idempotent: returns null if
+     * the Deviation already carries a {@code linked_capa_number}.
+     */
+    @Audited(action = AuditAction.SUBMIT, module = AuditModule.DEVIATION,
+             entityType = "Deviation", entityIdArgIndex = 0,
+             description = "Deviation spawned a CAPA cross-link")
+    @Transactional
+    public CapaResponse spawnCapa(Long id, String preliminaryInvestigation) {
+        Deviation d = findById(id);
+        if (d.getLinkedCapaNumber() != null && !d.getLinkedCapaNumber().isBlank()) {
+            log.info("Deviation {} already linked to CAPA {}; skipping spawn.",
+                    d.getRecordNumber(), d.getLinkedCapaNumber());
+            return null;
+        }
+        AuditContextHolder.set(AuditContext.builder()
+                .oldValue(auditSerializer.serialize(toResponse(d)))
+                .build());
+
+        CapaResponse capa = capaService.spawnFromParent(d, preliminaryInvestigation);
+        d.setCapaRequired(true);
+        d.setLinkedCapaNumber(capa.getRecordNumber());
+        d.setCapaReference(capa.getRecordNumber());
+        deviationRepository.save(d);
+        log.info("Spawned CAPA {} from Deviation {}", capa.getRecordNumber(), d.getRecordNumber());
+        return capa;
     }
 
     private Deviation findById(Long id) {

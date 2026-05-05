@@ -101,6 +101,23 @@ public class DeviationController {
         return ApiResponse.ok("Deviation reopened", deviationService.reopen(id, comment));
     }
 
+    /**
+     * Cross-module handoff: spawns a CAPA from this Deviation. Stamps the
+     * new CAPA's record number on the Deviation's {@code linked_capa_number}.
+     * Idempotent — returns null when already linked.
+     */
+    @PostMapping("/{id}/spawn-capa")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<com.qms.module.qms.capa.dto.response.CapaResponse>> spawnCapa(
+            @PathVariable Long id,
+            @RequestParam(required = false) String preliminaryInvestigation) {
+        var capa = deviationService.spawnCapa(id, preliminaryInvestigation);
+        return ApiResponse.ok(capa == null
+                ? "Deviation already linked to a CAPA — no new record created"
+                : "CAPA spawned from Deviation",
+                capa);
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {

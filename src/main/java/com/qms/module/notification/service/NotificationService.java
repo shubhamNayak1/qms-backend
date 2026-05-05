@@ -323,9 +323,16 @@ public class NotificationService {
      *   PENDING_CUSTOMER_COMMENT    → QA Reviewer / QA Head
      *                                  (proxy actor — they paste the customer
      *                                   feedback once the customer responds)
+     *   PENDING_VERIFICATION_REVIEW → QA Reviewer / QA Head
+     *                                  (CAPA: dual-actor split between dept
+     *                                   HOD's verification and QA's review)
      *   PENDING_ATTACHMENTS         → QA Head + originating dept HOD
      *                                  (Head QA approves each row; dept HOD
      *                                   coordinates the uploads)
+     *   EFFECTIVENESS_PENDING       → originating dept HOD + responsible
+     *                                   dept members (CAPA post-closure)
+     *   EFFECTIVENESS_REVIEW        → QA Reviewer / QA Head
+     *                                  (CAPA post-closure cycle accept/reject)
      */
     private List<NotificationItem> buildPositionalQmsNotifications(User user,
                                                                     LocalDate today,
@@ -376,19 +383,36 @@ public class NotificationService {
         }
 
         // PENDING_QA_REVIEW + PENDING_VERIFICATION + PENDING_INVESTIGATION
-        // + PENDING_CUSTOMER_COMMENT
+        // + PENDING_CUSTOMER_COMMENT + PENDING_VERIFICATION_REVIEW
+        // + EFFECTIVENESS_REVIEW
         // → QA Reviewer / QA Head. MC's investigation hub lives at
         // PENDING_INVESTIGATION; the customer-comment branch is proxied by
-        // QA (they paste the customer feedback once received), so QA
-        // needs to see those records in their bell too.
+        // QA (they paste the customer feedback once received). The CAPA
+        // verification-review and effectiveness-review queues sit with QA
+        // too — the dual-actor verification split + the post-closure
+        // effectiveness loop both need QA's attention here.
         if (isQaReviewer || isQaHead) {
             addPositionalItems(items, alreadyShown, today,
                     List.of(QmsStatus.PENDING_QA_REVIEW,
                             QmsStatus.PENDING_VERIFICATION,
                             QmsStatus.PENDING_INVESTIGATION,
-                            QmsStatus.PENDING_CUSTOMER_COMMENT),
+                            QmsStatus.PENDING_CUSTOMER_COMMENT,
+                            QmsStatus.PENDING_VERIFICATION_REVIEW,
+                            QmsStatus.EFFECTIVENESS_REVIEW),
                     r -> true);
         }
+
+        // EFFECTIVENESS_PENDING (CAPA-only) → originating-department HOD +
+        // anyone in the responsible dept. The dept-HOD path is the same
+        // member-of-record-dept check we use for PENDING_VERIFICATION on
+        // Deviation/Incident; for the wider responsible dept we also surface
+        // it to anyone whose departmentId matches the record's.
+        addPositionalItems(items, alreadyShown, today,
+                List.of(QmsStatus.EFFECTIVENESS_PENDING),
+                r -> r.getDepartmentId() != null
+                        && (orgSecurityService.isHodOfDepartment(user.getId(), r.getDepartmentId())
+                            || (user.getDepartmentId() != null
+                                && user.getDepartmentId().equals(r.getDepartmentId()))));
 
         // PENDING_VERIFICATION (Deviation) — also surface to the
         // originating-department HOD because they write the Investigation
@@ -849,11 +873,15 @@ public class NotificationService {
             case PENDING_INVESTIGATION   -> "Under Investigation";
             case PENDING_ATTACHMENTS     -> "Awaiting Attachments";
             case PENDING_VERIFICATION    -> "Pending Verification";
+            case PENDING_VERIFICATION_REVIEW -> "Pending Verification Review";
             case REJECTED                -> "Rejected";
             case CLOSED                  -> "Closed";
             case CANCELLED               -> "Cancelled";
             case REOPENED                -> "Reopened";
             case DEVIATION_SPAWNED       -> "Deviation Spawned";
+            case EFFECTIVENESS_PENDING   -> "Effectiveness — Pending Assessment";
+            case EFFECTIVENESS_REVIEW    -> "Effectiveness — Pending Review";
+            case EFFECTIVENESS_VERIFIED  -> "Effectiveness Verified";
         };
     }
 

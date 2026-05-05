@@ -117,6 +117,24 @@ public class IncidentController {
                               incidentService.spawnDeviation(id, comment));
     }
 
+    /**
+     * Cross-module handoff: spawns a CAPA from this Incident. Stamps the new
+     * CAPA's record number on the Incident's {@code linked_capa_number} so
+     * the cross-link UI shows on both sides. Idempotent — returns null when
+     * the Incident is already linked to a CAPA.
+     */
+    @PostMapping("/{id}/spawn-capa")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<com.qms.module.qms.capa.dto.response.CapaResponse>> spawnCapa(
+            @PathVariable Long id,
+            @RequestParam(required = false) String preliminaryInvestigation) {
+        var capa = incidentService.spawnCapa(id, preliminaryInvestigation);
+        return ApiResponse.ok(capa == null
+                ? "Incident already linked to a CAPA — no new record created"
+                : "CAPA spawned from Incident",
+                capa);
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {

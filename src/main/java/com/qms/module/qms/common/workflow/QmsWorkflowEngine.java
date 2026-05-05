@@ -314,7 +314,8 @@ public class QmsWorkflowEngine {
     private void requireDeptAttachmentsApproved(QmsRecord record, QmsStatus from, QmsStatus to) {
         boolean applies =
                 record.getRecordType() == com.qms.common.enums.QmsRecordType.DEVIATION
-             || record.getRecordType() == com.qms.common.enums.QmsRecordType.INCIDENT;
+             || record.getRecordType() == com.qms.common.enums.QmsRecordType.INCIDENT
+             || record.getRecordType() == com.qms.common.enums.QmsRecordType.CAPA;
         if (!applies) return;
         if (from != QmsStatus.PENDING_ATTACHMENTS || to != QmsStatus.PENDING_VERIFICATION) return;
 
@@ -322,8 +323,12 @@ public class QmsWorkflowEngine {
                 .countByRecordTypeAndRecordIdAndStatusNotAndIsDeletedFalse(
                         record.getRecordType(), record.getId(), "APPROVED");
         if (unapproved > 0) {
-            String nextLabel = (record.getRecordType() == com.qms.common.enums.QmsRecordType.DEVIATION)
-                    ? "Investigation Summary" : "Verification";
+            String nextLabel;
+            switch (record.getRecordType()) {
+                case DEVIATION -> nextLabel = "Investigation Summary";
+                case CAPA      -> nextLabel = "Verification/Add";
+                default        -> nextLabel = "Verification";
+            }
             throw AppException.badRequest(
                     "Cannot move to " + nextLabel + " while " + unapproved +
                     " department attachment(s) are not yet APPROVED. " +
@@ -339,7 +344,8 @@ public class QmsWorkflowEngine {
     private void requireExtensionForLateClose30(QmsRecord record, QmsStatus from, QmsStatus to) {
         boolean applies =
                 record.getRecordType() == com.qms.common.enums.QmsRecordType.DEVIATION
-             || record.getRecordType() == com.qms.common.enums.QmsRecordType.INCIDENT;
+             || record.getRecordType() == com.qms.common.enums.QmsRecordType.INCIDENT
+             || record.getRecordType() == com.qms.common.enums.QmsRecordType.CAPA;
         if (!applies) return;
         if (to != QmsStatus.CLOSED) return;
         if (record.getCreatedAt() == null) return;

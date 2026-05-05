@@ -10,6 +10,8 @@ import com.qms.module.qms.changecontrol.dto.response.ChangeControlResponse;
 import com.qms.module.qms.changecontrol.entity.ChangeControl;
 import com.qms.module.qms.changecontrol.repository.ChangeControlRepository;
 import com.qms.module.qms.changecontrol.repository.ChangeControlSpecification;
+import com.qms.module.qms.capa.dto.response.CapaResponse;
+import com.qms.module.qms.capa.service.CapaService;
 import com.qms.module.qms.common.dto.request.WorkflowRequest;
 import com.qms.module.qms.common.service.QmsRecordMapper;
 import com.qms.module.qms.common.service.RecordNumberGenerator;
@@ -41,6 +43,7 @@ public class ChangeControlService {
     private static final String TABLE = "qms_change_control";
 
     private final ChangeControlRepository changeControlRepository;
+    private final CapaService             capaService;
     private final QmsWorkflowEngine       workflowEngine;
     private final RecordNumberGenerator   recordNumberGenerator;
     private final QmsRecordMapper         recordMapper;
@@ -163,6 +166,33 @@ public class ChangeControlService {
                 .build());
         cc.setIsDeleted(true);
         changeControlRepository.save(cc);
+    }
+
+    /**
+     * Cross-module CAPA spawn — called when this Change Control needs a
+     * CAPA cross-link. Stamps the new CAPA's record number on this CC's
+     * {@code linked_capa_number}. Idempotent.
+     */
+    @Audited(action = AuditAction.SUBMIT, module = AuditModule.CHANGE_CONTROL,
+             entityType = "ChangeControl", entityIdArgIndex = 0,
+             description = "Change Control spawned a CAPA cross-link")
+    @Transactional
+    public ChangeControlResponse spawnCapa(Long id, String preliminaryInvestigation) {
+        ChangeControl cc = findById(id);
+        if (cc.getLinkedCapaNumber() != null && !cc.getLinkedCapaNumber().isBlank()) {
+            log.info("Change Control {} already linked to CAPA {}; skipping spawn.",
+                    cc.getRecordNumber(), cc.getLinkedCapaNumber());
+            return toResponse(cc);
+        }
+        AuditContextHolder.set(AuditContext.builder()
+                .oldValue(auditSerializer.serialize(toResponse(cc)))
+                .build());
+
+        CapaResponse capa = capaService.spawnFromParent(cc, preliminaryInvestigation);
+        cc.setLinkedCapaNumber(capa.getRecordNumber());
+        log.info("Spawned CAPA {} from Change Control {}",
+                capa.getRecordNumber(), cc.getRecordNumber());
+        return toResponse(changeControlRepository.save(cc));
     }
 
     private ChangeControl findById(Long id) {

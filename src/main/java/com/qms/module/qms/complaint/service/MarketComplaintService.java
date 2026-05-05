@@ -44,6 +44,7 @@ public class MarketComplaintService {
     private static final String TABLE = "qms_market_complaint";
 
     private final MarketComplaintRepository complaintRepository;
+    private final com.qms.module.qms.capa.service.CapaService capaService;
     private final QmsWorkflowEngine         workflowEngine;
     private final RecordNumberGenerator     recordNumberGenerator;
     private final QmsRecordMapper           recordMapper;
@@ -167,6 +168,36 @@ public class MarketComplaintService {
                 .build());
         mc.setIsDeleted(true);
         complaintRepository.save(mc);
+    }
+
+    /**
+     * Cross-module CAPA spawn — called when this Market Complaint needs a
+     * CAPA cross-link. Stamps the new CAPA's record number on this MC's
+     * {@code capa_reference}. Idempotent.
+     */
+    @Audited(action = AuditAction.SUBMIT, module = AuditModule.MARKET_COMPLAINT,
+             entityType = "MarketComplaint", entityIdArgIndex = 0,
+             description = "Market Complaint spawned a CAPA cross-link")
+    @Transactional
+    public com.qms.module.qms.capa.dto.response.CapaResponse spawnCapa(
+            Long id, String preliminaryInvestigation) {
+        MarketComplaint mc = findById(id);
+        if (mc.getCapaReference() != null && !mc.getCapaReference().isBlank()) {
+            log.info("Market Complaint {} already linked to CAPA {}; skipping spawn.",
+                    mc.getRecordNumber(), mc.getCapaReference());
+            return null;
+        }
+        AuditContextHolder.set(AuditContext.builder()
+                .oldValue(auditSerializer.serialize(toResponse(mc)))
+                .build());
+
+        var capa = capaService.spawnFromParent(mc, preliminaryInvestigation);
+        mc.setCapaRequired(true);
+        mc.setCapaReference(capa.getRecordNumber());
+        complaintRepository.save(mc);
+        log.info("Spawned CAPA {} from Market Complaint {}",
+                capa.getRecordNumber(), mc.getRecordNumber());
+        return capa;
     }
 
     private MarketComplaint findById(Long id) {

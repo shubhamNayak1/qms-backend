@@ -102,6 +102,22 @@ public class MarketComplaintController {
         return ApiResponse.ok("Complaint reopened", complaintService.reopen(id, comment));
     }
 
+    /**
+     * Cross-module handoff: spawns a CAPA from this Market Complaint. Stamps
+     * the new CAPA's record number on the MC's {@code capa_reference}.
+     */
+    @PostMapping("/{id}/spawn-capa")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<com.qms.module.qms.capa.dto.response.CapaResponse>> spawnCapa(
+            @PathVariable Long id,
+            @RequestParam(required = false) String preliminaryInvestigation) {
+        var capa = complaintService.spawnCapa(id, preliminaryInvestigation);
+        return ApiResponse.ok(capa == null
+                ? "Market Complaint already linked to a CAPA — no new record created"
+                : "CAPA spawned from Market Complaint",
+                capa);
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {

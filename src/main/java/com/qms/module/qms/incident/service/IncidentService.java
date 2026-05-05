@@ -11,6 +11,8 @@ import com.qms.module.qms.common.dto.request.WorkflowRequest;
 import com.qms.module.qms.common.service.QmsRecordMapper;
 import com.qms.module.qms.common.service.RecordNumberGenerator;
 import com.qms.module.qms.common.workflow.QmsWorkflowEngine;
+import com.qms.module.qms.capa.dto.response.CapaResponse;
+import com.qms.module.qms.capa.service.CapaService;
 import com.qms.module.qms.deviation.entity.Deviation;
 import com.qms.module.qms.deviation.repository.DeviationRepository;
 import com.qms.module.qms.incident.dto.request.IncidentRequest;
@@ -44,6 +46,7 @@ public class IncidentService {
 
     private final IncidentRepository    incidentRepository;
     private final DeviationRepository   deviationRepository;
+    private final CapaService           capaService;
     private final QmsWorkflowEngine     workflowEngine;
     private final RecordNumberGenerator recordNumberGenerator;
     private final QmsRecordMapper       recordMapper;
@@ -252,6 +255,40 @@ public class IncidentService {
 
         Incident savedInc = incidentRepository.save(i);
         return toResponse(savedInc);
+    }
+
+    /**
+     * Cross-module CAPA spawn — called from this Incident's HOD Assessment
+     * stage when {@code capa_required = true}. Idempotent: if the Incident
+     * already carries a {@code linked_capa_number}, returns the existing CAPA.
+     */
+    @Audited(action = AuditAction.SUBMIT, module = AuditModule.INCIDENT,
+             entityType = "Incident", entityIdArgIndex = 0,
+             description = "Incident spawned a CAPA cross-link")
+    @Transactional
+    public CapaResponse spawnCapa(Long id, String preliminaryInvestigation) {
+        Incident i = findById(id);
+
+        if (i.getLinkedCapaNumber() != null && !i.getLinkedCapaNumber().isBlank()) {
+            log.info("Incident {} already linked to CAPA {}; skipping spawn.",
+                    i.getRecordNumber(), i.getLinkedCapaNumber());
+            // Caller must look up the existing CAPA themselves; we return the
+            // current incident response in the controller layer.
+            return null;
+        }
+
+        AuditContextHolder.set(AuditContext.builder()
+                .oldValue(auditSerializer.serialize(toResponse(i)))
+                .build());
+
+        CapaResponse capa = capaService.spawnFromParent(i, preliminaryInvestigation);
+        i.setCapaRequired(true);
+        i.setLinkedCapaNumber(capa.getRecordNumber());
+        i.setCapaReference(capa.getRecordNumber());
+        incidentRepository.save(i);
+
+        log.info("Spawned CAPA {} from Incident {}", capa.getRecordNumber(), i.getRecordNumber());
+        return capa;
     }
 
     private Incident findById(Long id) {

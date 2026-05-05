@@ -103,6 +103,19 @@ public class ChangeControlController {
         return ApiResponse.ok("Change Control reopened", changeControlService.reopen(id, comment));
     }
 
+    /**
+     * Cross-module handoff: spawns a CAPA from this Change Control. Stamps
+     * the new CAPA's record number on the CC's {@code linked_capa_number}.
+     */
+    @PostMapping("/{id}/spawn-capa")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<ChangeControlResponse>> spawnCapa(
+            @PathVariable Long id,
+            @RequestParam(required = false) String preliminaryInvestigation) {
+        return ApiResponse.ok("CAPA spawned from Change Control",
+                changeControlService.spawnCapa(id, preliminaryInvestigation));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {

@@ -19,9 +19,17 @@ import static com.qms.common.enums.QmsStatus.*;
  *
  * Flow summaries:
  * ─────────────────────────────────────────────────────────────────────
- * CAPA:
- *   DRAFT→PENDING_HOD→PENDING_QA_REVIEW↔PENDING_DEPT_COMMENT
- *   →PENDING_HEAD_QA→CLOSED
+ * CAPA (Kedar-sir spec):
+ *   DRAFT→PENDING_HOD (Proposed CAPA: HOD's Initial Remedial + Preventive)
+ *   →PENDING_QA_REVIEW ↔ PENDING_DEPT_COMMENT (cross-functional fan-out)
+ *   →[PENDING_SITE_HEAD]→PENDING_HEAD_QA
+ *   →PENDING_ATTACHMENTS (dept attachments — all rows must be APPROVED)
+ *   →PENDING_VERIFICATION (Verification/Add — dept HOD's Action Taken)
+ *   →PENDING_VERIFICATION_REVIEW (QA Reviewer accepts the verification)
+ *   →CLOSED (Head QA — sets effectiveness assessment frequency + count)
+ *   Post-closure effectiveness lifecycle:
+ *   CLOSED→EFFECTIVENESS_PENDING ↔ EFFECTIVENESS_REVIEW
+ *         →EFFECTIVENESS_VERIFIED (terminal — every cycle accepted)
  *
  * DEVIATION (Kedar-sir spec):
  *   DRAFT→PENDING_HOD (HOD assessment + optional CAPA cross-link)
@@ -74,13 +82,37 @@ public final class WorkflowTransition {
 
     static {
         // ── CAPA ─────────────────────────────────────────────
+        // Per the May 2026 Kedar-sir flow chart. Two-pass QA Review with
+        // dept-comment fan-out, optional Site Head, dept-attachment gate,
+        // and a verification-review split (HOD writes verification, QA
+        // reviews it). Closure seeds the post-closure effectiveness
+        // lifecycle on the qms_capa_assessments sidecar.
         CAPA_T.put(DRAFT,                Set.of(PENDING_HOD, CANCELLED));
         CAPA_T.put(PENDING_HOD,          Set.of(PENDING_QA_REVIEW, REJECTED, CANCELLED));
-        CAPA_T.put(PENDING_QA_REVIEW,    Set.of(PENDING_DEPT_COMMENT, PENDING_HEAD_QA, REJECTED, CANCELLED));
-        CAPA_T.put(PENDING_DEPT_COMMENT, Set.of(PENDING_QA_REVIEW));
-        CAPA_T.put(PENDING_HEAD_QA,      Set.of(CLOSED, REJECTED));
+        // QA Review's two passes share PENDING_QA_REVIEW. Primary forward
+        // is to Head QA (skipping Site Head); secondary actions on the
+        // stage panel pick "Invite Departments" or "Forward to Site Head".
+        CAPA_T.put(PENDING_QA_REVIEW,    Set.of(PENDING_DEPT_COMMENT, PENDING_SITE_HEAD,
+                                                 PENDING_HEAD_QA, PENDING_HOD,
+                                                 REJECTED, CANCELLED));
+        CAPA_T.put(PENDING_DEPT_COMMENT, Set.of(PENDING_QA_REVIEW, REJECTED, CANCELLED));
+        CAPA_T.put(PENDING_SITE_HEAD,    Set.of(PENDING_HEAD_QA, PENDING_QA_REVIEW, REJECTED, CANCELLED));
+        CAPA_T.put(PENDING_HEAD_QA,      Set.of(PENDING_ATTACHMENTS, PENDING_QA_REVIEW, REJECTED));
+        CAPA_T.put(PENDING_ATTACHMENTS,  Set.of(PENDING_VERIFICATION, REJECTED, CANCELLED));
+        CAPA_T.put(PENDING_VERIFICATION, Set.of(PENDING_VERIFICATION_REVIEW, REJECTED, CANCELLED));
+        // QA Review either accepts (→ CLOSED via Head QA) or sends back
+        // to dept HOD for re-verification.
+        CAPA_T.put(PENDING_VERIFICATION_REVIEW,
+                                          Set.of(CLOSED, PENDING_VERIFICATION, REJECTED));
+        // CLOSED is gateway to either REOPENED (rare reopen for legacy
+        // reasons) or the post-closure effectiveness lifecycle. We also
+        // allow CLOSED → EFFECTIVENESS_PENDING when the assessment cycles
+        // are seeded by Head QA at closure time.
+        CAPA_T.put(CLOSED,               Set.of(REOPENED, EFFECTIVENESS_PENDING));
+        CAPA_T.put(EFFECTIVENESS_PENDING, Set.of(EFFECTIVENESS_REVIEW, EFFECTIVENESS_VERIFIED));
+        CAPA_T.put(EFFECTIVENESS_REVIEW,  Set.of(EFFECTIVENESS_PENDING, EFFECTIVENESS_VERIFIED, REJECTED));
+        CAPA_T.put(EFFECTIVENESS_VERIFIED, Set.of());  // terminal
         CAPA_T.put(REJECTED,             Set.of(DRAFT, CANCELLED));
-        CAPA_T.put(CLOSED,               Set.of(REOPENED));
         CAPA_T.put(REOPENED,             Set.of(DRAFT, CANCELLED));
         CAPA_T.put(CANCELLED,            Set.of());
 
@@ -199,11 +231,20 @@ public final class WorkflowTransition {
 
     static {
         Map<QmsStatus, QmsStatus> capaFwd = new EnumMap<>(QmsStatus.class);
-        capaFwd.put(DRAFT,                PENDING_HOD);
-        capaFwd.put(PENDING_HOD,          PENDING_QA_REVIEW);
-        capaFwd.put(PENDING_QA_REVIEW,    PENDING_HEAD_QA);
-        capaFwd.put(PENDING_DEPT_COMMENT, PENDING_QA_REVIEW);
-        capaFwd.put(PENDING_HEAD_QA,      CLOSED);
+        capaFwd.put(DRAFT,                       PENDING_HOD);
+        capaFwd.put(PENDING_HOD,                 PENDING_QA_REVIEW);
+        // QA's canonical forward target is Head QA (skipping site head + dept
+        // comments). Stage panel exposes explicit secondaries for "Invite
+        // Departments" and "Forward to Site Head".
+        capaFwd.put(PENDING_QA_REVIEW,           PENDING_HEAD_QA);
+        capaFwd.put(PENDING_DEPT_COMMENT,        PENDING_QA_REVIEW);
+        capaFwd.put(PENDING_SITE_HEAD,           PENDING_HEAD_QA);
+        capaFwd.put(PENDING_HEAD_QA,             PENDING_ATTACHMENTS);
+        capaFwd.put(PENDING_ATTACHMENTS,         PENDING_VERIFICATION);
+        capaFwd.put(PENDING_VERIFICATION,        PENDING_VERIFICATION_REVIEW);
+        capaFwd.put(PENDING_VERIFICATION_REVIEW, CLOSED);
+        capaFwd.put(EFFECTIVENESS_PENDING,       EFFECTIVENESS_REVIEW);
+        capaFwd.put(EFFECTIVENESS_REVIEW,        EFFECTIVENESS_VERIFIED);
         PRIMARY_FORWARD.put(QmsRecordType.CAPA, capaFwd);
 
         Map<QmsStatus, QmsStatus> devFwd = new EnumMap<>(QmsStatus.class);
