@@ -118,6 +118,9 @@ public class CapaService {
         return toResponse(capaRepository.save(capa));
     }
 
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.CAPA,
+             entityType = "Capa", entityIdArgIndex = 0,
+             description = "CAPA workflow transition")
     @Transactional
     public CapaResponse transition(Long id, WorkflowRequest req) {
         Capa capa = findById(id);
@@ -225,6 +228,12 @@ public class CapaService {
         capa.setDepartment(parent.getDepartment());
         capa.setRaisedById(parent.getRaisedById());
         capa.setRaisedByName(username);
+        // Assign to the parent's raiser by default so the spawned CAPA shows
+        // in their bell — they need to flesh out the proposed CAPA at
+        // PENDING_HOD next. Without this, the legacy assignment-based
+        // notification path leaves DRAFT records invisible.
+        capa.setAssignedToId(parent.getRaisedById());
+        capa.setAssignedToName(parent.getRaisedByName());
 
         capa.setCapaOrigin("EXISTING");
         capa.setParentRecordType(parent.getRecordType().name());
@@ -253,12 +262,18 @@ public class CapaService {
         return toResponse(saved);
     }
 
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.CAPA,
+             entityType = "Capa", entityIdArgIndex = 0,
+             description = "CAPA effectiveness verdict recorded (legacy single-shot path)")
     @Transactional
     public CapaResponse recordEffectiveness(Long id, EffectivenessRequest req) {
         Capa capa = findById(id);
         if (capa.getStatus() != QmsStatus.CLOSED) {
             throw AppException.badRequest("Effectiveness can only be recorded for CLOSED CAPAs");
         }
+        AuditContextHolder.set(AuditContext.builder()
+                .oldValue(auditSerializer.serialize(toResponse(capa)))
+                .build());
         capa.setIsEffective(req.getIsEffective());
         capa.setEffectivenessResult(req.getEffectivenessResult());
         return toResponse(capaRepository.save(capa));

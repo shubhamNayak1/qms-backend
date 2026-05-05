@@ -233,6 +233,12 @@ public class IncidentService {
         d.setDepartment(i.getDepartment());
         d.setRaisedById(i.getRaisedById());
         d.setRaisedByName(username);
+        // Assign to the original Incident raiser so the spawned Deviation
+        // shows in their bell at DRAFT — the legacy assignment-based
+        // notification path needs assignedToId set, otherwise DRAFT records
+        // are invisible.
+        d.setAssignedToId(i.getRaisedById());
+        d.setAssignedToName(i.getRaisedByName());
         d.setParentIncidentId(i.getId());
         d.setProductBatch(null);                      // Incident has no batch — left for Deviation HOD to fill
         d.setProcessArea(i.getLocation());            // Incident.location maps onto Deviation.processArea

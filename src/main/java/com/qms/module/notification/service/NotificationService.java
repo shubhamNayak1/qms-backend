@@ -21,6 +21,7 @@ import com.qms.module.qms.capa.repository.CapaRepository;
 import com.qms.module.qms.changecontrol.repository.ChangeControlRepository;
 import com.qms.module.qms.common.entity.QmsRecord;
 import com.qms.module.qms.complaint.repository.MarketComplaintRepository;
+import com.qms.module.qms.common.repository.QmsDepartmentAttachmentRepository;
 import com.qms.module.qms.common.repository.QmsDepartmentCommentRepository;
 import com.qms.module.qms.deviation.repository.DeviationRepository;
 import com.qms.module.qms.incident.repository.IncidentRepository;
@@ -54,6 +55,7 @@ public class NotificationService {
     private final PasswordPolicyService           passwordPolicyService;
     private final OrgSecurityService              orgSecurityService;
     private final QmsDepartmentCommentRepository  deptCommentRepository;
+    private final QmsDepartmentAttachmentRepository deptAttachmentRepository;
 
     // QMS
     private final CapaRepository               capaRepository;
@@ -326,9 +328,10 @@ public class NotificationService {
      *   PENDING_VERIFICATION_REVIEW → QA Reviewer / QA Head
      *                                  (CAPA: dual-actor split between dept
      *                                   HOD's verification and QA's review)
-     *   PENDING_ATTACHMENTS         → QA Head + originating dept HOD
-     *                                  (Head QA approves each row; dept HOD
-     *                                   coordinates the uploads)
+     *   PENDING_ATTACHMENTS         → QA Head + originating dept HOD +
+     *                                  any member or HOD of an invited
+     *                                  department (dept-attachment row
+     *                                  with status != APPROVED)
      *   EFFECTIVENESS_PENDING       → originating dept HOD + responsible
      *                                   dept members (CAPA post-closure)
      *   EFFECTIVENESS_REVIEW        → QA Reviewer / QA Head
@@ -423,16 +426,24 @@ public class NotificationService {
                 r -> r.getDepartmentId() != null
                         && orgSecurityService.isHodOfDepartment(user.getId(), r.getDepartmentId()));
 
-        // PENDING_ATTACHMENTS → QA Head (approves each row) + originating
-        // dept HOD (coordinates the uploads).
+        // PENDING_ATTACHMENTS routes to three audiences:
+        //   1. QA Head — approves each row.
+        //   2. Originating-dept HOD — coordinates the uploads on behalf of
+        //      the record's home department.
+        //   3. Any dept (HOD or member) that has a non-APPROVED row in
+        //      qms_department_attachments for this record. This is the
+        //      attachment-side equivalent of isUserHodOfAnyPendingComment
+        //      we use for PENDING_DEPT_COMMENT, but broader: dept members
+        //      can fill an attachment too, not just the HOD.
         if (isQaHead) {
             addPositionalItems(items, alreadyShown, today,
                     List.of(QmsStatus.PENDING_ATTACHMENTS), r -> true);
         }
         addPositionalItems(items, alreadyShown, today,
                 List.of(QmsStatus.PENDING_ATTACHMENTS),
-                r -> r.getDepartmentId() != null
-                        && orgSecurityService.isHodOfDepartment(user.getId(), r.getDepartmentId()));
+                r -> (r.getDepartmentId() != null
+                        && orgSecurityService.isHodOfDepartment(user.getId(), r.getDepartmentId()))
+                     || isUserInAnyPendingAttachmentDept(user, r));
 
         // PENDING_SITE_HEAD → Site Head
         if (isSiteHead) {
@@ -518,6 +529,32 @@ public class NotificationService {
                 .filter(r -> "PENDING".equalsIgnoreCase(r.getStatus()))
                 .toList();
         for (var row : pendingRows) {
+            if (orgSecurityService.isHodOfDepartment(user.getId(), row.getDepartmentId())) return true;
+        }
+        return false;
+    }
+
+    /**
+     * True when the given user belongs to any department that currently has
+     * a non-APPROVED attachment row on this record. Drives PENDING_ATTACHMENTS
+     * notifications: any member of an invited department needs to see the
+     * record so they can upload the file (the canFill check on the UI side
+     * uses the same membership rule).
+     */
+    private boolean isUserInAnyPendingAttachmentDept(User user, QmsRecord record) {
+        if (user == null || user.getId() == null || user.getDepartmentId() == null) return false;
+        var openRows = deptAttachmentRepository
+                .findAllByRecordTypeAndRecordIdAndIsDeletedFalseOrderByCreatedAtAsc(
+                        record.getRecordType(), record.getId())
+                .stream()
+                .filter(r -> !"APPROVED".equalsIgnoreCase(r.getStatus()))
+                .toList();
+        for (var row : openRows) {
+            if (user.getDepartmentId().equals(row.getDepartmentId())) return true;
+            // The HOD-of-the-row case is already covered by the dedicated
+            // isHodOfDepartment branch in the caller, but include it here
+            // too in case the user is the HOD of an invited dept that's
+            // different from the record's originating dept.
             if (orgSecurityService.isHodOfDepartment(user.getId(), row.getDepartmentId())) return true;
         }
         return false;
