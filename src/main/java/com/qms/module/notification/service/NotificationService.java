@@ -308,17 +308,24 @@ public class NotificationService {
      * PENDING_DEPT_COMMENT records — both are bugs reported in the field.
      *
      * Routing:
-     *   DRAFT (Market Complaint)  → Department Reviewer of complainant's dept
-     *                                (Employee drafts, Reviewer submits per spec)
-     *   PENDING_HOD               → HOD of record's originating department
-     *   PENDING_DEPT_COMMENT      → HOD of any dept with a PENDING comment row
-     *   PENDING_INVESTIGATION     → QA Reviewer or QA Head
-     *                                (MC: investigation hub; DEV: investigation step)
-     *   PENDING_RA_REVIEW         → any member of an RA-typed department
-     *   PENDING_QA_REVIEW         → QA Reviewer or QA Head
-     *   PENDING_VERIFICATION      → QA Reviewer or QA Head
-     *   PENDING_SITE_HEAD         → Site Head
-     *   PENDING_HEAD_QA           → QA Head
+     *   DRAFT (Market Complaint)    → Department Reviewer of complainant's dept
+     *                                  (Employee drafts, Reviewer submits per spec)
+     *   PENDING_HOD                 → HOD of record's originating department
+     *   PENDING_DEPT_COMMENT        → HOD of any dept with a PENDING comment row
+     *   PENDING_INVESTIGATION       → QA Reviewer or QA Head
+     *                                  (MC: investigation hub; DEV: investigation step)
+     *   PENDING_RA_REVIEW           → any member of an RA-typed department
+     *   PENDING_QA_REVIEW           → QA Reviewer or QA Head
+     *   PENDING_VERIFICATION        → QA Reviewer / QA Head + originating dept HOD
+     *                                  (DEV: HOD writes the Investigation Summary)
+     *   PENDING_SITE_HEAD           → Site Head
+     *   PENDING_HEAD_QA             → QA Head
+     *   PENDING_CUSTOMER_COMMENT    → QA Reviewer / QA Head
+     *                                  (proxy actor — they paste the customer
+     *                                   feedback once the customer responds)
+     *   PENDING_ATTACHMENTS         → QA Head + originating dept HOD
+     *                                  (Head QA approves each row; dept HOD
+     *                                   coordinates the uploads)
      */
     private List<NotificationItem> buildPositionalQmsNotifications(User user,
                                                                     LocalDate today,
@@ -369,15 +376,39 @@ public class NotificationService {
         }
 
         // PENDING_QA_REVIEW + PENDING_VERIFICATION + PENDING_INVESTIGATION
+        // + PENDING_CUSTOMER_COMMENT
         // → QA Reviewer / QA Head. MC's investigation hub lives at
-        // PENDING_INVESTIGATION so QA needs to see it in the bell.
+        // PENDING_INVESTIGATION; the customer-comment branch is proxied by
+        // QA (they paste the customer feedback once received), so QA
+        // needs to see those records in their bell too.
         if (isQaReviewer || isQaHead) {
             addPositionalItems(items, alreadyShown, today,
                     List.of(QmsStatus.PENDING_QA_REVIEW,
                             QmsStatus.PENDING_VERIFICATION,
-                            QmsStatus.PENDING_INVESTIGATION),
+                            QmsStatus.PENDING_INVESTIGATION,
+                            QmsStatus.PENDING_CUSTOMER_COMMENT),
                     r -> true);
         }
+
+        // PENDING_VERIFICATION (Deviation) — also surface to the
+        // originating-department HOD because they write the Investigation
+        // Summary at this stage. QA already saw it via the block above;
+        // the dedup keeps each user seeing the record only once.
+        addPositionalItems(items, alreadyShown, today,
+                List.of(QmsStatus.PENDING_VERIFICATION),
+                r -> r.getDepartmentId() != null
+                        && orgSecurityService.isHodOfDepartment(user.getId(), r.getDepartmentId()));
+
+        // PENDING_ATTACHMENTS → QA Head (approves each row) + originating
+        // dept HOD (coordinates the uploads).
+        if (isQaHead) {
+            addPositionalItems(items, alreadyShown, today,
+                    List.of(QmsStatus.PENDING_ATTACHMENTS), r -> true);
+        }
+        addPositionalItems(items, alreadyShown, today,
+                List.of(QmsStatus.PENDING_ATTACHMENTS),
+                r -> r.getDepartmentId() != null
+                        && orgSecurityService.isHodOfDepartment(user.getId(), r.getDepartmentId()));
 
         // PENDING_SITE_HEAD → Site Head
         if (isSiteHead) {

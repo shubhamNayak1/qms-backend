@@ -170,25 +170,35 @@ public class DeviationService {
     }
 
     private void applyFields(DeviationRequest req, Deviation d) {
-        if (req.getDeviationType()       != null) d.setDeviationType(req.getDeviationType());
-        if (req.getProductBatch()        != null) d.setProductBatch(req.getProductBatch());
-        if (req.getProcessArea()         != null) d.setProcessArea(req.getProcessArea());
-        if (req.getImpactAssessment()    != null) d.setImpactAssessment(req.getImpactAssessment());
-        if (req.getCapaRequired()        != null) d.setCapaRequired(req.getCapaRequired());
-        if (req.getCapaReference()       != null) d.setCapaReference(req.getCapaReference());
-        if (req.getRegulatoryReportable() != null) d.setRegulatoryReportable(req.getRegulatoryReportable());
+        if (req.getParentIncidentId()        != null) d.setParentIncidentId(req.getParentIncidentId());
+        if (req.getDeviationType()           != null) d.setDeviationType(req.getDeviationType());
+        if (req.getProductBatch()            != null) d.setProductBatch(req.getProductBatch());
+        if (req.getProcessArea()             != null) d.setProcessArea(req.getProcessArea());
+        if (req.getImpactAssessment()        != null) d.setImpactAssessment(req.getImpactAssessment());
+        if (req.getCapaRequired()            != null) d.setCapaRequired(req.getCapaRequired());
+        if (req.getCapaReference()           != null) d.setCapaReference(req.getCapaReference());
+        if (req.getLinkedCapaNumber()        != null) d.setLinkedCapaNumber(req.getLinkedCapaNumber());
+        if (req.getRegulatoryReportable()    != null) d.setRegulatoryReportable(req.getRegulatoryReportable());
+        if (req.getSiteHeadRequired()        != null) d.setSiteHeadRequired(req.getSiteHeadRequired());
+        if (req.getCustomerCommentRequired() != null) d.setCustomerCommentRequired(req.getCustomerCommentRequired());
+        if (req.getInvestigationSummary()    != null) d.setInvestigationSummary(req.getInvestigationSummary());
     }
 
     private DeviationResponse toResponse(Deviation d) {
         DeviationResponse r = new DeviationResponse();
         recordMapper.applyResponse(d, r);
+        r.setParentIncidentId(d.getParentIncidentId());
         r.setDeviationType(d.getDeviationType());
         r.setProductBatch(d.getProductBatch());
         r.setProcessArea(d.getProcessArea());
         r.setImpactAssessment(d.getImpactAssessment());
         r.setCapaRequired(d.getCapaRequired());
         r.setCapaReference(d.getCapaReference());
+        r.setLinkedCapaNumber(d.getLinkedCapaNumber());
         r.setRegulatoryReportable(d.getRegulatoryReportable());
+        r.setSiteHeadRequired(d.getSiteHeadRequired());
+        r.setCustomerCommentRequired(d.getCustomerCommentRequired());
+        r.setInvestigationSummary(d.getInvestigationSummary());
         return r;
     }
 }

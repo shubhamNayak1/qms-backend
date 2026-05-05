@@ -15,6 +15,16 @@ import lombok.*;
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Deviation extends QmsRecord {
 
+    /**
+     * Parent Incident this Deviation was raised against. Per Kedar-sir spec
+     * every Deviation must originate from an Incident where the HOD ticked
+     * deviation_required and QA confirmed it during evaluation. The Initiator
+     * picks the parent Incident on the Deviation create form; the form
+     * pre-fills product/batch/process-area from the Incident.
+     */
+    @Column(name = "parent_incident_id")
+    private Long parentIncidentId;
+
     /** Planned (pre-approved) or Unplanned (unexpected occurrence). */
     @Column(name = "deviation_type", length = 80)
     private String deviationType;   // Planned / Unplanned
@@ -39,9 +49,41 @@ public class Deviation extends QmsRecord {
     @Column(name = "capa_reference", length = 30)
     private String capaReference;
 
+    /**
+     * CAPA record number generated at HOD Assessment when capaRequired is
+     * flipped on. The HOD either creates a fresh CAPA (which stamps its
+     * number back here) or links to an existing CAPA #.
+     *
+     * Kept distinct from {@link #capaReference} so the audit diff makes
+     * the lifecycle moment explicit (HOD assessment vs. earlier note).
+     */
+    @Column(name = "linked_capa_number", length = 30)
+    private String linkedCapaNumber;
+
     /** Regulatory reporting required? */
     @Column(name = "regulatory_reportable")
     private Boolean regulatoryReportable = false;
+
+    /**
+     * Set at the 2nd PENDING_QA_REVIEW pass. When true the workflow routes
+     * through PENDING_SITE_HEAD before reaching Head QA.
+     */
+    @Column(name = "site_head_required")
+    private Boolean siteHeadRequired = false;
+
+    /**
+     * Set at the 2nd PENDING_QA_REVIEW pass. When true the workflow routes
+     * through PENDING_CUSTOMER_COMMENT in parallel with RA evaluation.
+     */
+    @Column(name = "customer_comment_required")
+    private Boolean customerCommentRequired = false;
+
+    /**
+     * Closure cover-sheet narrative captured at PENDING_VERIFICATION by
+     * the originating dept HOD — the final summary printed for closure.
+     */
+    @Column(name = "investigation_summary", columnDefinition = "TEXT")
+    private String investigationSummary;
 
     @PrePersist
     private void prePersist() { setRecordType(QmsRecordType.DEVIATION); }

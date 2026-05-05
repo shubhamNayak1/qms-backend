@@ -23,9 +23,13 @@ import static com.qms.common.enums.QmsStatus.*;
  *   DRAFT→PENDING_HOD→PENDING_QA_REVIEW↔PENDING_DEPT_COMMENT
  *   →PENDING_HEAD_QA→CLOSED
  *
- * DEVIATION:
- *   DRAFT→PENDING_HOD→PENDING_QA_REVIEW→PENDING_RA_REVIEW
- *   →[PENDING_SITE_HEAD]→PENDING_INVESTIGATION→PENDING_VERIFICATION→CLOSED
+ * DEVIATION (Kedar-sir spec):
+ *   DRAFT→PENDING_HOD (HOD assessment + optional CAPA cross-link)
+ *   →PENDING_QA_REVIEW ↔ PENDING_DEPT_COMMENT (cross-functional fan-out)
+ *   →PENDING_RA_REVIEW + [PENDING_CUSTOMER_COMMENT in parallel]
+ *   →[PENDING_SITE_HEAD]→PENDING_HEAD_QA
+ *   →PENDING_ATTACHMENTS (dept attachments, all rows must be APPROVED)
+ *   →PENDING_VERIFICATION (Investigation Summary)→CLOSED
  *
  * INCIDENT:
  *   DRAFT→PENDING_HOD→PENDING_INVESTIGATION→[PENDING_ATTACHMENTS]
@@ -74,13 +78,34 @@ public final class WorkflowTransition {
         CAPA_T.put(CANCELLED,            Set.of());
 
         // ── DEVIATION ─────────────────────────────────────────
+        // Per the May 2026 Kedar-sir flow chart. Two-pass QA Review with
+        // dept-comment fan-out in between, parallel RA + Customer branch,
+        // optional Site Head, then Head QA → dept attachments → Investigation
+        // Summary → Closed.
         DEVIATION_T.put(DRAFT,                Set.of(PENDING_HOD, CANCELLED));
         DEVIATION_T.put(PENDING_HOD,          Set.of(PENDING_QA_REVIEW, REJECTED, CANCELLED));
-        DEVIATION_T.put(PENDING_QA_REVIEW,    Set.of(PENDING_RA_REVIEW, REJECTED, CANCELLED));
-        DEVIATION_T.put(PENDING_RA_REVIEW,    Set.of(PENDING_SITE_HEAD, PENDING_INVESTIGATION, REJECTED, CANCELLED));
-        DEVIATION_T.put(PENDING_SITE_HEAD,    Set.of(PENDING_INVESTIGATION, REJECTED, CANCELLED));
-        DEVIATION_T.put(PENDING_INVESTIGATION,Set.of(PENDING_VERIFICATION, CANCELLED));
-        DEVIATION_T.put(PENDING_VERIFICATION, Set.of(CLOSED, REJECTED));
+        // QA's two passes share PENDING_QA_REVIEW. From here QA can:
+        //   • invite depts (PENDING_DEPT_COMMENT)
+        //   • forward to RA (PENDING_RA_REVIEW) — canonical advance
+        //   • route customer in parallel (PENDING_CUSTOMER_COMMENT)
+        DEVIATION_T.put(PENDING_QA_REVIEW,    Set.of(PENDING_DEPT_COMMENT, PENDING_RA_REVIEW,
+                                                     PENDING_CUSTOMER_COMMENT, REJECTED, CANCELLED));
+        // Dept comments loop back to QA (and not on to RA directly), so QA
+        // can re-evaluate before deciding the routing flags.
+        DEVIATION_T.put(PENDING_DEPT_COMMENT, Set.of(PENDING_QA_REVIEW, REJECTED, CANCELLED));
+        // RA can converge to Site Head OR Head QA depending on
+        // site_head_required, OR to Customer Comment if QA flagged it.
+        DEVIATION_T.put(PENDING_RA_REVIEW,    Set.of(PENDING_CUSTOMER_COMMENT, PENDING_SITE_HEAD,
+                                                     PENDING_HEAD_QA, REJECTED, CANCELLED));
+        // Customer Comment can converge to Site Head OR Head QA OR back to RA.
+        DEVIATION_T.put(PENDING_CUSTOMER_COMMENT,
+                                              Set.of(PENDING_SITE_HEAD, PENDING_HEAD_QA, PENDING_RA_REVIEW, REJECTED, CANCELLED));
+        DEVIATION_T.put(PENDING_SITE_HEAD,    Set.of(PENDING_HEAD_QA, REJECTED, CANCELLED));
+        DEVIATION_T.put(PENDING_HEAD_QA,      Set.of(PENDING_ATTACHMENTS, PENDING_QA_REVIEW, REJECTED));
+        // PENDING_ATTACHMENTS — gated by dept-attachment-approval guard before
+        // it can move to PENDING_VERIFICATION.
+        DEVIATION_T.put(PENDING_ATTACHMENTS,  Set.of(PENDING_VERIFICATION, REJECTED, CANCELLED));
+        DEVIATION_T.put(PENDING_VERIFICATION, Set.of(CLOSED, PENDING_ATTACHMENTS, REJECTED));
         DEVIATION_T.put(REJECTED,             Set.of(DRAFT, CANCELLED));
         DEVIATION_T.put(CLOSED,               Set.of(REOPENED));
         DEVIATION_T.put(REOPENED,             Set.of(DRAFT, CANCELLED));
@@ -154,13 +179,20 @@ public final class WorkflowTransition {
         PRIMARY_FORWARD.put(QmsRecordType.CAPA, capaFwd);
 
         Map<QmsStatus, QmsStatus> devFwd = new EnumMap<>(QmsStatus.class);
-        devFwd.put(DRAFT,                PENDING_HOD);
-        devFwd.put(PENDING_HOD,          PENDING_QA_REVIEW);
-        devFwd.put(PENDING_QA_REVIEW,    PENDING_RA_REVIEW);
-        devFwd.put(PENDING_RA_REVIEW,    PENDING_INVESTIGATION); // skip site head by default
-        devFwd.put(PENDING_SITE_HEAD,    PENDING_INVESTIGATION);
-        devFwd.put(PENDING_INVESTIGATION,PENDING_VERIFICATION);
-        devFwd.put(PENDING_VERIFICATION, CLOSED);
+        devFwd.put(DRAFT,                    PENDING_HOD);
+        devFwd.put(PENDING_HOD,              PENDING_QA_REVIEW);
+        // QA's canonical "approve" target is PENDING_RA_REVIEW. The dept-
+        // comment fan-out and the customer branch are explicit secondary
+        // actions on the stage panel so the QA Reviewer makes the routing
+        // decision deliberately, not by default.
+        devFwd.put(PENDING_QA_REVIEW,        PENDING_RA_REVIEW);
+        devFwd.put(PENDING_DEPT_COMMENT,     PENDING_QA_REVIEW);
+        devFwd.put(PENDING_RA_REVIEW,        PENDING_HEAD_QA);   // skip site head by default
+        devFwd.put(PENDING_CUSTOMER_COMMENT, PENDING_HEAD_QA);   // skip site head by default
+        devFwd.put(PENDING_SITE_HEAD,        PENDING_HEAD_QA);
+        devFwd.put(PENDING_HEAD_QA,          PENDING_ATTACHMENTS);
+        devFwd.put(PENDING_ATTACHMENTS,      PENDING_VERIFICATION);
+        devFwd.put(PENDING_VERIFICATION,     CLOSED);
         PRIMARY_FORWARD.put(QmsRecordType.DEVIATION, devFwd);
 
         Map<QmsStatus, QmsStatus> incFwd = new EnumMap<>(QmsStatus.class);

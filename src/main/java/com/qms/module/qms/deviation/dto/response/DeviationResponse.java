@@ -7,11 +7,16 @@ import lombok.Setter;
 @Getter
 @Setter
 public class DeviationResponse extends QmsBaseResponse {
+    private Long    parentIncidentId;
     private String  deviationType;
     private String  productBatch;
     private String  processArea;
     private String  impactAssessment;
     private Boolean capaRequired;
     private String  capaReference;
+    private String  linkedCapaNumber;
     private Boolean regulatoryReportable;
+    private Boolean siteHeadRequired;
+    private Boolean customerCommentRequired;
+    private String  investigationSummary;
 }

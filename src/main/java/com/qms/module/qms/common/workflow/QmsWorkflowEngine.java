@@ -7,6 +7,7 @@ import com.qms.common.enums.QmsStatus;
 import com.qms.common.exception.AppException;
 import com.qms.module.org.service.OrgSecurityService;
 import com.qms.module.qms.common.entity.QmsRecord;
+import com.qms.module.qms.common.repository.QmsDepartmentAttachmentRepository;
 import com.qms.module.qms.common.repository.QmsDepartmentCommentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,9 +43,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class QmsWorkflowEngine {
 
-    private final ObjectMapper                   mapper;
-    private final OrgSecurityService             orgSecurity;
-    private final QmsDepartmentCommentRepository deptCommentRepository;
+    private final ObjectMapper                      mapper;
+    private final OrgSecurityService                orgSecurity;
+    private final QmsDepartmentCommentRepository    deptCommentRepository;
+    private final QmsDepartmentAttachmentRepository deptAttachmentRepository;
 
     private static final TypeReference<List<StatusHistoryEntry>> HISTORY_TYPE =
             new TypeReference<>() {};
@@ -87,6 +89,15 @@ public class QmsWorkflowEngine {
         // is only allowed when an approved target-date extension is on
         // record. Forces the regulator-required extension flow.
         requireMcExtensionForLateClose(record, current, newStatus);
+
+        // Deviation: every dept-attachment row must be APPROVED before the
+        // record can move from PENDING_ATTACHMENTS to PENDING_VERIFICATION
+        // (see flow chart's "All Department Attachment Should approved").
+        requireDeptAttachmentsApproved(record, current, newStatus);
+
+        // Deviation 30-day SLA — same pattern as the MC 45-day rule. Forces
+        // an approved target-date extension when closure is late.
+        requireDevExtensionForLateClose(record, current, newStatus);
 
         applyTransition(record, current, newStatus, comment);
 
@@ -254,12 +265,16 @@ public class QmsWorkflowEngine {
      * by clicking "Approve" the moment they invited the depts.
      *
      * Applies to:
-     *   • CHANGE_CONTROL : PENDING_DEPT_COMMENT → PENDING_RA_REVIEW
+     *   • CHANGE_CONTROL   : PENDING_DEPT_COMMENT → PENDING_RA_REVIEW
      *   • MARKET_COMPLAINT : PENDING_DEPT_COMMENT → PENDING_INVESTIGATION
+     *   • DEVIATION        : PENDING_DEPT_COMMENT → PENDING_QA_REVIEW
      *
      * The send-back transitions (e.g. PENDING_DEPT_COMMENT → PENDING_QA_REVIEW
      * for CC) are intentionally NOT gated — a dept HOD spotting a problem
      * must be able to bounce the record without waiting on its peers.
+     * (Deviation's send-back is the same target as its forward, so we don't
+     * gate Deviation here either; QA can re-evaluate when ready and the
+     * forward to RA is the gated edge — see requireDeptCommentsComplete2.)
      */
     private void requireDeptCommentsComplete(QmsRecord record, QmsStatus from, QmsStatus to) {
         if (from != QmsStatus.PENDING_DEPT_COMMENT) return;
@@ -281,6 +296,56 @@ public class QmsWorkflowEngine {
                     "Cannot forward to " + forwardLabel + " while " + pendingCount +
                     " department comment(s) are still pending. " +
                     "Each requested department's HOD must complete their comment first.");
+        }
+    }
+
+    /**
+     * Deviation-specific dept-attachment-approval gate. Per the flow chart's
+     * "All Department Attachment Should approved" callout, Deviation cannot
+     * advance from PENDING_ATTACHMENTS to PENDING_VERIFICATION until every
+     * QmsDepartmentAttachment row on the record has reached APPROVED.
+     *
+     * Pending or REJECTED rows both block progression — the latter forces
+     * Head QA to either flip the row to APPROVED with a note, or send the
+     * dept's row back for a re-upload before closure can run.
+     */
+    private void requireDeptAttachmentsApproved(QmsRecord record, QmsStatus from, QmsStatus to) {
+        if (record.getRecordType() != com.qms.common.enums.QmsRecordType.DEVIATION) return;
+        if (from != QmsStatus.PENDING_ATTACHMENTS || to != QmsStatus.PENDING_VERIFICATION) return;
+
+        long unapproved = deptAttachmentRepository
+                .countByRecordTypeAndRecordIdAndStatusNotAndIsDeletedFalse(
+                        record.getRecordType(), record.getId(), "APPROVED");
+        if (unapproved > 0) {
+            throw AppException.badRequest(
+                    "Cannot move to Investigation Summary while " + unapproved +
+                    " department attachment(s) are not yet APPROVED. " +
+                    "Head QA must approve every department's attachment first.");
+        }
+    }
+
+    /**
+     * Deviation 30-day SLA. Per the spec, after Head QA approves at
+     * PENDING_HEAD_QA the responsible departments have 30 days to complete
+     * their attachments and Investigation Summary. If closure is attempted
+     * past day 30, the engine requires an APPROVED target-date extension —
+     * mirrors the MC 45-day pattern.
+     */
+    private void requireDevExtensionForLateClose(QmsRecord record, QmsStatus from, QmsStatus to) {
+        if (record.getRecordType() != com.qms.common.enums.QmsRecordType.DEVIATION) return;
+        if (to != QmsStatus.CLOSED) return;
+        if (record.getCreatedAt() == null) return;
+
+        long daysSinceCreation = ChronoUnit.DAYS.between(
+                record.getCreatedAt().toLocalDate(), LocalDate.now());
+        if (daysSinceCreation <= 30) return;
+
+        String extStatus = record.getTargetDateExtensionStatus();
+        if (!"APPROVED".equalsIgnoreCase(extStatus)) {
+            throw AppException.badRequest(
+                    "This Deviation is " + daysSinceCreation +
+                    " days old and cannot be closed without an approved target-date extension. " +
+                    "Request an extension from the Target Date Extension panel and have Head QA approve it first.");
         }
     }
 
