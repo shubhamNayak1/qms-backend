@@ -53,6 +53,7 @@ public class ChangeControl extends QmsRecord {
     private LocalDate implementationDate;
 
     @Column(name = "validation_required")
+    @Builder.Default
     private Boolean validationRequired = false;
 
     @Column(name = "validation_details", columnDefinition = "TEXT")
@@ -63,6 +64,7 @@ public class ChangeControl extends QmsRecord {
 
     /** Regulatory submission required for this change? */
     @Column(name = "regulatory_submission_required")
+    @Builder.Default
     private Boolean regulatorySubmissionRequired = false;
 
     @Column(name = "regulatory_submission_reference", length = 100)
@@ -75,6 +77,7 @@ public class ChangeControl extends QmsRecord {
      * Whether this change requires Site Head approval (routes through PENDING_SITE_HEAD).
      */
     @Column(name = "site_head_required")
+    @Builder.Default
     private Boolean siteHeadRequired = false;
 
     // customer_comment moved to QmsRecord parent (shared with all modules).
@@ -84,6 +87,7 @@ public class ChangeControl extends QmsRecord {
     // Change Control. The parent's customer_communication_required is the
     // generic equivalent for other modules.
     @Column(name = "customer_comment_required")
+    @Builder.Default
     private Boolean customerCommentRequired = false;
 
     @PrePersist

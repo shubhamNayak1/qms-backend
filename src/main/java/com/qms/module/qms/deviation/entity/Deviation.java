@@ -43,6 +43,7 @@ public class Deviation extends QmsRecord {
 
     /** Whether a CAPA was raised as a result of this deviation. */
     @Column(name = "capa_required")
+    @Builder.Default
     private Boolean capaRequired = false;
 
     /** Reference to the linked CAPA record number. */
@@ -62,6 +63,7 @@ public class Deviation extends QmsRecord {
 
     /** Regulatory reporting required? */
     @Column(name = "regulatory_reportable")
+    @Builder.Default
     private Boolean regulatoryReportable = false;
 
     /**
@@ -69,6 +71,7 @@ public class Deviation extends QmsRecord {
      * through PENDING_SITE_HEAD before reaching Head QA.
      */
     @Column(name = "site_head_required")
+    @Builder.Default
     private Boolean siteHeadRequired = false;
 
     /**
@@ -76,6 +79,7 @@ public class Deviation extends QmsRecord {
      * through PENDING_CUSTOMER_COMMENT in parallel with RA evaluation.
      */
     @Column(name = "customer_comment_required")
+    @Builder.Default
     private Boolean customerCommentRequired = false;
 
     /**

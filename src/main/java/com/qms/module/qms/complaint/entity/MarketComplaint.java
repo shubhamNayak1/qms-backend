@@ -73,6 +73,7 @@ public class MarketComplaint extends QmsRecord {
     // ── Regulatory ────────────────────────────────────────────
     /** Must this complaint be reported to a health authority? */
     @Column(name = "reportable_to_authority")
+    @Builder.Default
     private Boolean reportableToAuthority = false;
 
     @Column(name = "authority_report_reference", length = 100)
@@ -99,10 +100,12 @@ public class MarketComplaint extends QmsRecord {
 
     /** Set by QA Reviewer at PENDING_INVESTIGATION. */
     @Column(name = "capa_required")
+    @Builder.Default
     private Boolean capaRequired = false;
 
     /** Was the complained product returned for investigation? */
     @Column(name = "sample_returned")
+    @Builder.Default
     private Boolean sampleReturned = false;
 
     // ── QA Investigation fields ───────────────────────────────

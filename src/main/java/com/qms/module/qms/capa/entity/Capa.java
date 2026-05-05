@@ -67,6 +67,7 @@ public class Capa extends QmsRecord {
      * PENDING_SITE_HEAD branch.
      */
     @Column(name = "site_head_required")
+    @Builder.Default
     private Boolean siteHeadRequired = false;
 
     /**
@@ -102,6 +103,7 @@ public class Capa extends QmsRecord {
      * NOT_REQUIRED / IN_PROGRESS / COMPLETE.
      */
     @Column(name = "assessment_summary_status", length = 20)
+    @Builder.Default
     private String assessmentSummaryStatus = "NOT_REQUIRED";
 
     /**

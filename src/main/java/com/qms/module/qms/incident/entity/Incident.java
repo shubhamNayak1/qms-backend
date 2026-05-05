@@ -50,6 +50,7 @@ public class Incident extends QmsRecord {
      * Drives the conditional CAPA/Add branch on both Lab and General paths.
      */
     @Column(name = "capa_required")
+    @Builder.Default
     private Boolean capaRequired = false;
 
     /**
@@ -62,6 +63,7 @@ public class Incident extends QmsRecord {
 
     /** Were any personnel injured? */
     @Column(name = "injury_involved")
+    @Builder.Default
     private Boolean injuryInvolved = false;
 
     @Column(name = "injury_details", columnDefinition = "TEXT")
@@ -77,10 +79,12 @@ public class Incident extends QmsRecord {
 
     /** Whether lab retesting / additional analysis is required (Lab branch fork). */
     @Column(name = "retesting_required")
+    @Builder.Default
     private Boolean retestingRequired = false;
 
     /** Whether a Deviation record needs to be raised as a result of this incident. */
     @Column(name = "deviation_required")
+    @Builder.Default
     private Boolean deviationRequired = false;
 
     /**
@@ -89,6 +93,7 @@ public class Incident extends QmsRecord {
      * Head step and goes straight to PENDING_HEAD_QA.
      */
     @Column(name = "site_head_required")
+    @Builder.Default
     private Boolean siteHeadRequired = false;
 
     /**
