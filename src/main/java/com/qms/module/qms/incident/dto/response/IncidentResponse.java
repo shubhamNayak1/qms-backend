@@ -17,9 +17,16 @@ public class IncidentResponse extends QmsBaseResponse {
     private String    immediateAction;
     private String    investigationDetails;
     private String    capaReference;
+    private Boolean   capaRequired;
+    private String    linkedCapaNumber;
     private Boolean   injuryInvolved;
     private String    injuryDetails;
     private String  incidentSubType;
     private Boolean retestingRequired;
     private Boolean deviationRequired;
+    private Boolean siteHeadRequired;
+    private String  abnormalityRemedialAction;
+    private Long    spawnedDeviationId;
+    private String  spawnedDeviationNumber;
+    private String  verificationNarrative;
 }

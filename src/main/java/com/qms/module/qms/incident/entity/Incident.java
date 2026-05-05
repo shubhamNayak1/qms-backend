@@ -45,6 +45,21 @@ public class Incident extends QmsRecord {
     @Column(name = "capa_reference", length = 30)
     private String capaReference;
 
+    /**
+     * Set by HOD at PENDING_HOD when the Incident needs a CAPA cross-link.
+     * Drives the conditional CAPA/Add branch on both Lab and General paths.
+     */
+    @Column(name = "capa_required")
+    private Boolean capaRequired = false;
+
+    /**
+     * CAPA record number generated at HOD Assessment when capaRequired flips
+     * on. Distinct from {@link #capaReference} so the audit diff captures
+     * the lifecycle moment unambiguously.
+     */
+    @Column(name = "linked_capa_number", length = 30)
+    private String linkedCapaNumber;
+
     /** Were any personnel injured? */
     @Column(name = "injury_involved")
     private Boolean injuryInvolved = false;
@@ -60,13 +75,54 @@ public class Incident extends QmsRecord {
     @Column(name = "incident_sub_type", length = 20)
     private String incidentSubType;  // LABORATORY | GENERAL
 
-    /** Whether lab retesting / additional analysis is required (routes through PENDING_ATTACHMENTS). */
+    /** Whether lab retesting / additional analysis is required (Lab branch fork). */
     @Column(name = "retesting_required")
     private Boolean retestingRequired = false;
 
     /** Whether a Deviation record needs to be raised as a result of this incident. */
     @Column(name = "deviation_required")
     private Boolean deviationRequired = false;
+
+    /**
+     * Set by the QA Reviewer at Assessment by QA. Drives the optional
+     * PENDING_SITE_HEAD branch — when false, the workflow skips the Site
+     * Head step and goes straight to PENDING_HEAD_QA.
+     */
+    @Column(name = "site_head_required")
+    private Boolean siteHeadRequired = false;
+
+    /**
+     * Lab + No-Retest path only — the "Abnormality in Proposed RA"
+     * narrative captured by the QA Reviewer at Assessment by QA. Records
+     * how the lab proposes to handle the abnormality without retesting.
+     */
+    @Column(name = "abnormality_remedial_action", columnDefinition = "TEXT")
+    private String abnormalityRemedialAction;
+
+    /**
+     * Cross-link to the Deviation that was spawned from this Incident.
+     * Populated when {@link #deviationRequired} is true and QA confirms;
+     * also stamped onto {@link com.qms.module.qms.deviation.entity.Deviation#parentIncidentId}.
+     * The Incident's status is moved to {@code DEVIATION_SPAWNED} once the
+     * cross-link is created.
+     */
+    @Column(name = "spawned_deviation_id")
+    private Long spawnedDeviationId;
+
+    /**
+     * Denormalised Deviation record number for the cross-link UI — avoids
+     * a join when rendering the Incident detail page's "Spawned Deviation"
+     * banner.
+     */
+    @Column(name = "spawned_deviation_number", length = 30)
+    private String spawnedDeviationNumber;
+
+    /**
+     * Closure verification narrative captured at PENDING_VERIFICATION by
+     * the originating dept HOD.
+     */
+    @Column(name = "verification_narrative", columnDefinition = "TEXT")
+    private String verificationNarrative;
 
     @PrePersist
     private void prePersist() { setRecordType(QmsRecordType.INCIDENT); }

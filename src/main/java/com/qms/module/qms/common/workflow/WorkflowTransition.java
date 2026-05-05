@@ -31,9 +31,16 @@ import static com.qms.common.enums.QmsStatus.*;
  *   →PENDING_ATTACHMENTS (dept attachments, all rows must be APPROVED)
  *   →PENDING_VERIFICATION (Investigation Summary)→CLOSED
  *
- * INCIDENT:
- *   DRAFT→PENDING_HOD→PENDING_INVESTIGATION→[PENDING_ATTACHMENTS]
- *   →PENDING_VERIFICATION→PENDING_HEAD_QA→CLOSED
+ * INCIDENT (Kedar-sir spec — four end-to-end paths):
+ *   DRAFT→PENDING_HOD (HOD assessment + branching flags)
+ *   →PENDING_QA_REVIEW
+ *      ↔ PENDING_DEPT_COMMENT  (General + No-Dev path only)
+ *   →[PENDING_SITE_HEAD]→PENDING_HEAD_QA
+ *   →PENDING_ATTACHMENTS→PENDING_VERIFICATION→CLOSED
+ *
+ *   Special handoff: General + Deviation Required path goes
+ *   PENDING_QA_REVIEW → DEVIATION_SPAWNED (terminal). The spawned
+ *   Deviation continues independently with parent_incident_id set.
  *
  * CHANGE_CONTROL:
  *   DRAFT→PENDING_HOD→PENDING_QA_REVIEW→PENDING_DEPT_COMMENT→PENDING_RA_REVIEW
@@ -112,16 +119,37 @@ public final class WorkflowTransition {
         DEVIATION_T.put(CANCELLED,            Set.of());
 
         // ── INCIDENT ──────────────────────────────────────────
+        // Per the May 2026 Kedar-sir flow chart. Four end-to-end paths
+        // (Lab + Retest, Lab + No-Retest, General + No-Dev, General + Dev)
+        // share a single graph; the path is selected by HOD's branching
+        // flags (incident_sub_type, retesting_required, deviation_required)
+        // and the QA Reviewer's site_head_required flag.
         INCIDENT_T.put(DRAFT,                Set.of(PENDING_HOD, CANCELLED));
-        INCIDENT_T.put(PENDING_HOD,          Set.of(PENDING_INVESTIGATION, REJECTED, CANCELLED));
-        INCIDENT_T.put(PENDING_INVESTIGATION,Set.of(PENDING_ATTACHMENTS, PENDING_VERIFICATION, CANCELLED));
-        INCIDENT_T.put(PENDING_ATTACHMENTS,  Set.of(PENDING_VERIFICATION));
-        INCIDENT_T.put(PENDING_VERIFICATION, Set.of(PENDING_HEAD_QA));
-        INCIDENT_T.put(PENDING_HEAD_QA,      Set.of(CLOSED, REJECTED));
+        INCIDENT_T.put(PENDING_HOD,          Set.of(PENDING_QA_REVIEW, REJECTED, CANCELLED));
+        // From QA Review:
+        //   • General + No-Dev → invite depts (PENDING_DEPT_COMMENT)
+        //   • General + Dev    → spawn Deviation (DEVIATION_SPAWNED, terminal)
+        //   • Lab branches (both retest cases) skip dept comments —
+        //     QA forwards to Site Head if required, else Head QA
+        INCIDENT_T.put(PENDING_QA_REVIEW,    Set.of(PENDING_DEPT_COMMENT, PENDING_SITE_HEAD,
+                                                    PENDING_HEAD_QA, DEVIATION_SPAWNED,
+                                                    REJECTED, CANCELLED));
+        // Dept comments loop back to QA (similar to Deviation).
+        INCIDENT_T.put(PENDING_DEPT_COMMENT, Set.of(PENDING_QA_REVIEW, REJECTED, CANCELLED));
+        INCIDENT_T.put(PENDING_SITE_HEAD,    Set.of(PENDING_HEAD_QA, REJECTED, CANCELLED));
+        INCIDENT_T.put(PENDING_HEAD_QA,      Set.of(PENDING_ATTACHMENTS, PENDING_QA_REVIEW, REJECTED));
+        INCIDENT_T.put(PENDING_ATTACHMENTS,  Set.of(PENDING_VERIFICATION, REJECTED, CANCELLED));
+        INCIDENT_T.put(PENDING_VERIFICATION, Set.of(CLOSED, PENDING_ATTACHMENTS, REJECTED));
         INCIDENT_T.put(REJECTED,             Set.of(DRAFT, CANCELLED));
         INCIDENT_T.put(CLOSED,               Set.of(REOPENED));
         INCIDENT_T.put(REOPENED,             Set.of(DRAFT, CANCELLED));
         INCIDENT_T.put(CANCELLED,            Set.of());
+        // DEVIATION_SPAWNED is terminal — the spawned Deviation continues
+        // the workflow elsewhere. We deliberately don't allow any
+        // transitions out of it, including REOPENED, because re-opening
+        // the Incident after a Deviation has been spawned would create
+        // dual-tracking confusion.
+        INCIDENT_T.put(DEVIATION_SPAWNED,    Set.of());
 
         // ── CHANGE_CONTROL ────────────────────────────────────
         CC_T.put(DRAFT,                    Set.of(PENDING_HOD, CANCELLED));
@@ -197,11 +225,18 @@ public final class WorkflowTransition {
 
         Map<QmsStatus, QmsStatus> incFwd = new EnumMap<>(QmsStatus.class);
         incFwd.put(DRAFT,                PENDING_HOD);
-        incFwd.put(PENDING_HOD,          PENDING_INVESTIGATION);
-        incFwd.put(PENDING_INVESTIGATION,PENDING_VERIFICATION); // skip attachments by default
+        incFwd.put(PENDING_HOD,          PENDING_QA_REVIEW);
+        // QA's canonical "approve" target depends on path. We default to
+        // Head QA (skipping site head + dept comments) so Lab-branch
+        // approvals work in one click; the stage panel exposes explicit
+        // secondaries for "Invite Departments", "Site Head", and
+        // "Spawn Deviation".
+        incFwd.put(PENDING_QA_REVIEW,    PENDING_HEAD_QA);
+        incFwd.put(PENDING_DEPT_COMMENT, PENDING_QA_REVIEW);
+        incFwd.put(PENDING_SITE_HEAD,    PENDING_HEAD_QA);
+        incFwd.put(PENDING_HEAD_QA,      PENDING_ATTACHMENTS);
         incFwd.put(PENDING_ATTACHMENTS,  PENDING_VERIFICATION);
-        incFwd.put(PENDING_VERIFICATION, PENDING_HEAD_QA);
-        incFwd.put(PENDING_HEAD_QA,      CLOSED);
+        incFwd.put(PENDING_VERIFICATION, CLOSED);
         PRIMARY_FORWARD.put(QmsRecordType.INCIDENT, incFwd);
 
         Map<QmsStatus, QmsStatus> ccFwd = new EnumMap<>(QmsStatus.class);

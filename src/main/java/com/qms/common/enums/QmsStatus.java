@@ -32,5 +32,16 @@ public enum QmsStatus {
     REJECTED,                 // Returned for correction / rework
     CLOSED,                   // Completed and formally closed
     CANCELLED,                // Abandoned — no further action
-    REOPENED                  // Re-opened from CLOSED (transitions to DRAFT)
+    REOPENED,                 // Re-opened from CLOSED (transitions to DRAFT)
+
+    // ── Cross-module handoff terminals ───────────────────────
+    /**
+     * General Incident hands off to the Deviation module (when the HOD ticks
+     * deviation_required = TRUE and QA confirms it). The Incident itself
+     * terminates here; the spawned Deviation continues independently with
+     * parent_incident_id pointing back. The spawned Deviation's number is
+     * stamped on the Incident's spawned_deviation_number column for the
+     * cross-link UI.
+     */
+    DEVIATION_SPAWNED
 }

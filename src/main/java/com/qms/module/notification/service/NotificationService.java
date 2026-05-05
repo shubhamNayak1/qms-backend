@@ -853,6 +853,7 @@ public class NotificationService {
             case CLOSED                  -> "Closed";
             case CANCELLED               -> "Cancelled";
             case REOPENED                -> "Reopened";
+            case DEVIATION_SPAWNED       -> "Deviation Spawned";
         };
     }
 

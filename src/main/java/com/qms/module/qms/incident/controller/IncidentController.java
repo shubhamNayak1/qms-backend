@@ -103,6 +103,20 @@ public class IncidentController {
         return ApiResponse.ok("Incident reopened", incidentService.reopen(id, comment));
     }
 
+    /**
+     * Cross-module handoff: spawns a Deviation from this Incident and moves
+     * the Incident to {@code DEVIATION_SPAWNED}. Only valid on General
+     * Incidents flagged {@code deviation_required = true} and currently at
+     * {@code PENDING_QA_REVIEW} — the service enforces every guard.
+     */
+    @PostMapping("/{id}/spawn-deviation")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<IncidentResponse>> spawnDeviation(
+            @PathVariable Long id, @RequestParam(required = true) String comment) {
+        return ApiResponse.ok("Deviation spawned from Incident",
+                              incidentService.spawnDeviation(id, comment));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {

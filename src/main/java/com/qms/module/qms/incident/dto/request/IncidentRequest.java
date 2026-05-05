@@ -26,15 +26,31 @@ public class IncidentRequest extends QmsBaseRequest {
     private String    immediateAction;
     private String    investigationDetails;
     private String    capaReference;
+
+    @Schema(description = "Set at HOD Assessment — drives the CAPA cross-link")
+    private Boolean   capaRequired;
+
+    @Schema(description = "CAPA record number stamped at HOD Assessment when capaRequired = TRUE")
+    private String    linkedCapaNumber;
+
     private Boolean   injuryInvolved;
     private String    injuryDetails;
 
     @Schema(example = "LABORATORY", description = "LABORATORY (OOS/OOT) or GENERAL incident sub-type")
     private String  incidentSubType;
 
-    @Schema(description = "Whether lab retesting is required — routes through PENDING_ATTACHMENTS step")
+    @Schema(description = "Lab branch fork — drives the Lab + Retest vs Lab + No-Retest path")
     private Boolean retestingRequired;
 
-    @Schema(description = "Whether a Deviation record must be raised as a result of this incident")
+    @Schema(description = "General branch fork — TRUE = spawns a Deviation; Incident terminates at DEVIATION_SPAWNED")
     private Boolean deviationRequired;
+
+    @Schema(description = "Set at Assessment by QA — routes through PENDING_SITE_HEAD when true")
+    private Boolean siteHeadRequired;
+
+    @Schema(description = "Lab + No-Retest path only — the 'Abnormality in Proposed RA' narrative")
+    private String  abnormalityRemedialAction;
+
+    @Schema(description = "Closure verification narrative captured at PENDING_VERIFICATION")
+    private String  verificationNarrative;
 }
