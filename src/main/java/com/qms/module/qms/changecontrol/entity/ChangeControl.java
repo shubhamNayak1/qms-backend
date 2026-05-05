@@ -24,7 +24,23 @@ public class ChangeControl extends QmsRecord {
     @Column(name = "change_reason", columnDefinition = "TEXT")
     private String changeReason;
 
-    /** Low / Medium / High */
+    /** Product / material the change applies to — typed on the Create page. */
+    @Column(name = "product_material", length = 255)
+    private String productMaterial;
+
+    /** Markets / regions impacted — typed on the Create page. */
+    @Column(name = "market_details", columnDefinition = "TEXT")
+    private String marketDetails;
+
+    /**
+     * Optional CAPA record number this change is linked to. Filled by the
+     * HOD at PENDING_HOD review; the UI deep-links to the CAPA detail page
+     * when the value matches a known record.
+     */
+    @Column(name = "linked_capa_number", length = 30)
+    private String linkedCapaNumber;
+
+    /** Low / Medium / High — set by QA Reviewer at QA_REVIEW stage. */
     @Column(name = "risk_level", length = 20)
     private String riskLevel;
 

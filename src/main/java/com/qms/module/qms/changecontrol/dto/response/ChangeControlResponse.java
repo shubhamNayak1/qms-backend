@@ -11,6 +11,9 @@ import java.time.LocalDate;
 public class ChangeControlResponse extends QmsBaseResponse {
     private String    changeType;
     private String    changeReason;
+    private String    productMaterial;
+    private String    marketDetails;
+    private String    linkedCapaNumber;
     private String    riskLevel;
     private String    riskAssessment;
     private String    implementationPlan;

@@ -17,7 +17,16 @@ public class ChangeControlRequest extends QmsBaseRequest {
 
     private String changeReason;
 
-    @Schema(example = "Medium", description = "Low / Medium / High")
+    @Schema(description = "Product / material the change applies to (Initiator-supplied at Create)")
+    private String productMaterial;
+
+    @Schema(description = "Markets / regions impacted by the change (Initiator-supplied at Create)")
+    private String marketDetails;
+
+    @Schema(description = "Optional CAPA record number this change is linked to (filled at PENDING_HOD)")
+    private String linkedCapaNumber;
+
+    @Schema(example = "Medium", description = "Low / Medium / High — set at QA_REVIEW stage")
     private String riskLevel;
 
     private String    riskAssessment;

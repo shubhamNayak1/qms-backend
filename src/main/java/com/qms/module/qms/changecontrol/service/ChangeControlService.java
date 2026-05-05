@@ -173,6 +173,9 @@ public class ChangeControlService {
     private void applyFields(ChangeControlRequest req, ChangeControl cc) {
         if (req.getChangeType()                    != null) cc.setChangeType(req.getChangeType());
         if (req.getChangeReason()                  != null) cc.setChangeReason(req.getChangeReason());
+        if (req.getProductMaterial()               != null) cc.setProductMaterial(req.getProductMaterial());
+        if (req.getMarketDetails()                 != null) cc.setMarketDetails(req.getMarketDetails());
+        if (req.getLinkedCapaNumber()              != null) cc.setLinkedCapaNumber(req.getLinkedCapaNumber());
         if (req.getRiskLevel()                     != null) cc.setRiskLevel(req.getRiskLevel());
         if (req.getRiskAssessment()                != null) cc.setRiskAssessment(req.getRiskAssessment());
         if (req.getImplementationPlan()            != null) cc.setImplementationPlan(req.getImplementationPlan());
@@ -193,6 +196,9 @@ public class ChangeControlService {
         recordMapper.applyResponse(cc, r);
         r.setChangeType(cc.getChangeType());
         r.setChangeReason(cc.getChangeReason());
+        r.setProductMaterial(cc.getProductMaterial());
+        r.setMarketDetails(cc.getMarketDetails());
+        r.setLinkedCapaNumber(cc.getLinkedCapaNumber());
         r.setRiskLevel(cc.getRiskLevel());
         r.setRiskAssessment(cc.getRiskAssessment());
         r.setImplementationPlan(cc.getImplementationPlan());
