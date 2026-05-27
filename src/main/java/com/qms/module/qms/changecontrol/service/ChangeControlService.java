@@ -5,6 +5,7 @@ import com.qms.common.enums.QmsRecordType;
 import com.qms.common.enums.QmsStatus;
 import com.qms.common.exception.AppException;
 import com.qms.common.response.PageResponse;
+import com.qms.module.dms.repository.DocumentRepository;
 import com.qms.module.qms.changecontrol.dto.request.ChangeControlRequest;
 import com.qms.module.qms.changecontrol.dto.response.ChangeControlResponse;
 import com.qms.module.qms.changecontrol.entity.ChangeControl;
@@ -48,6 +49,13 @@ public class ChangeControlService {
     private final RecordNumberGenerator   recordNumberGenerator;
     private final QmsRecordMapper         recordMapper;
     private final AuditValueSerializer    auditSerializer;
+    /**
+     * Used to resolve the Initiator's attachment to its DMS title/version
+     * when the {@code initialAttachmentRef} parses as a numeric document id.
+     * Best-effort: a parse failure or missing doc simply leaves the DMS
+     * fields blank on the response.
+     */
+    private final DocumentRepository      documentRepository;
 
     public PageResponse<ChangeControlResponse> search(QmsStatus status, Priority priority,
                                                        String changeType, String riskLevel,
@@ -204,7 +212,10 @@ public class ChangeControlService {
         if (req.getChangeType()                    != null) cc.setChangeType(req.getChangeType());
         if (req.getChangeReason()                  != null) cc.setChangeReason(req.getChangeReason());
         if (req.getProductMaterial()               != null) cc.setProductMaterial(req.getProductMaterial());
+        if (req.getProductMaterialCode()           != null) cc.setProductMaterialCode(req.getProductMaterialCode());
         if (req.getMarketDetails()                 != null) cc.setMarketDetails(req.getMarketDetails());
+        if (req.getPreRemark()                     != null) cc.setPreRemark(req.getPreRemark());
+        if (req.getInitialAttachmentRef()          != null) cc.setInitialAttachmentRef(req.getInitialAttachmentRef());
         if (req.getLinkedCapaNumber()              != null) cc.setLinkedCapaNumber(req.getLinkedCapaNumber());
         if (req.getRiskLevel()                     != null) cc.setRiskLevel(req.getRiskLevel());
         if (req.getRiskAssessment()                != null) cc.setRiskAssessment(req.getRiskAssessment());
@@ -216,9 +227,9 @@ public class ChangeControlService {
         if (req.getRegulatorySubmissionRequired()  != null) cc.setRegulatorySubmissionRequired(req.getRegulatorySubmissionRequired());
         if (req.getRegulatorySubmissionReference() != null) cc.setRegulatorySubmissionReference(req.getRegulatorySubmissionReference());
         if (req.getRollbackPlan()                  != null) cc.setRollbackPlan(req.getRollbackPlan());
-        if (req.getSiteHeadRequired()          != null) cc.setSiteHeadRequired(req.getSiteHeadRequired());
-        if (req.getCustomerCommentRequired()   != null) cc.setCustomerCommentRequired(req.getCustomerCommentRequired());
-        if (req.getCustomerComment()           != null) cc.setCustomerComment(req.getCustomerComment());
+        if (req.getSiteHeadRequired()              != null) cc.setSiteHeadRequired(req.getSiteHeadRequired());
+        if (req.getCustomerCommentRequired()       != null) cc.setCustomerCommentRequired(req.getCustomerCommentRequired());
+        if (req.getCustomerComment()               != null) cc.setCustomerComment(req.getCustomerComment());
     }
 
     private ChangeControlResponse toResponse(ChangeControl cc) {
@@ -227,7 +238,24 @@ public class ChangeControlService {
         r.setChangeType(cc.getChangeType());
         r.setChangeReason(cc.getChangeReason());
         r.setProductMaterial(cc.getProductMaterial());
+        r.setProductMaterialCode(cc.getProductMaterialCode());
         r.setMarketDetails(cc.getMarketDetails());
+        r.setPreRemark(cc.getPreRemark());
+        r.setInitialAttachmentRef(cc.getInitialAttachmentRef());
+        // DMS resolution for the Initiator's attachment — best-effort.
+        if (cc.getInitialAttachmentRef() != null && !cc.getInitialAttachmentRef().isBlank()) {
+            try {
+                Long dmsId = Long.parseLong(cc.getInitialAttachmentRef().trim());
+                documentRepository.findByIdAndIsDeletedFalse(dmsId).ifPresent(doc -> {
+                    r.setInitialAttachmentDmsId(doc.getId());
+                    r.setInitialAttachmentDmsNumber(doc.getDocNumber());
+                    r.setInitialAttachmentDmsTitle(doc.getTitle());
+                    r.setInitialAttachmentDmsVersion(doc.getVersion());
+                });
+            } catch (NumberFormatException ignored) {
+                // Free-text reference — leave DMS fields blank.
+            }
+        }
         r.setLinkedCapaNumber(cc.getLinkedCapaNumber());
         r.setRiskLevel(cc.getRiskLevel());
         r.setRiskAssessment(cc.getRiskAssessment());

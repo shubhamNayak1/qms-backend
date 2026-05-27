@@ -91,6 +91,14 @@ public enum WorkflowPosition {
         if (from == QmsStatus.PENDING_DEPT_COMMENT && to == QmsStatus.PENDING_INVESTIGATION) {
             return HOD_OF_COMMENTING_DEPT;
         }
+        // "Resend to Initiator" — PENDING_HOD → DRAFT. Owned by the HOD of
+        // the record's originating dept (same actor who got the record at
+        // PENDING_HOD in the first place). Without this override the engine
+        // would look up DRAFT's required position from REQUIRED, which has
+        // no entry, and the gate would be skipped entirely.
+        if (from == QmsStatus.PENDING_HOD && to == QmsStatus.DRAFT) {
+            return HOD_OF_RECORD_DEPT;
+        }
         return requiredFor(to);
     }
 

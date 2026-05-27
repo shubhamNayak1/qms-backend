@@ -88,7 +88,11 @@ public final class WorkflowTransition {
         // reviews it). Closure seeds the post-closure effectiveness
         // lifecycle on the qms_capa_assessments sidecar.
         CAPA_T.put(DRAFT,                Set.of(PENDING_HOD, CANCELLED));
-        CAPA_T.put(PENDING_HOD,          Set.of(PENDING_QA_REVIEW, REJECTED, CANCELLED));
+        // PENDING_HOD → DRAFT is the "Resend to Initiator" transition (May 2026
+        // tester feedback). Distinct from REJECTED — the record stays alive;
+        // the Initiator edits + re-submits. Engine increments resend_count
+        // and re-assigns the record to the original raiser.
+        CAPA_T.put(PENDING_HOD,          Set.of(PENDING_QA_REVIEW, DRAFT, REJECTED, CANCELLED));
         // QA Review's two passes share PENDING_QA_REVIEW. Primary forward
         // is to Head QA (skipping Site Head); secondary actions on the
         // stage panel pick "Invite Departments" or "Forward to Site Head".
@@ -122,7 +126,7 @@ public final class WorkflowTransition {
         // optional Site Head, then Head QA → dept attachments → Investigation
         // Summary → Closed.
         DEVIATION_T.put(DRAFT,                Set.of(PENDING_HOD, CANCELLED));
-        DEVIATION_T.put(PENDING_HOD,          Set.of(PENDING_QA_REVIEW, REJECTED, CANCELLED));
+        DEVIATION_T.put(PENDING_HOD,          Set.of(PENDING_QA_REVIEW, DRAFT, REJECTED, CANCELLED));
         // QA's two passes share PENDING_QA_REVIEW. From here QA can:
         //   • invite depts (PENDING_DEPT_COMMENT)
         //   • forward to RA (PENDING_RA_REVIEW) — canonical advance
@@ -157,7 +161,7 @@ public final class WorkflowTransition {
         // flags (incident_sub_type, retesting_required, deviation_required)
         // and the QA Reviewer's site_head_required flag.
         INCIDENT_T.put(DRAFT,                Set.of(PENDING_HOD, CANCELLED));
-        INCIDENT_T.put(PENDING_HOD,          Set.of(PENDING_QA_REVIEW, REJECTED, CANCELLED));
+        INCIDENT_T.put(PENDING_HOD,          Set.of(PENDING_QA_REVIEW, DRAFT, REJECTED, CANCELLED));
         // From QA Review:
         //   • General + No-Dev → invite depts (PENDING_DEPT_COMMENT)
         //   • General + Dev    → spawn Deviation (DEVIATION_SPAWNED, terminal)
@@ -185,7 +189,7 @@ public final class WorkflowTransition {
 
         // ── CHANGE_CONTROL ────────────────────────────────────
         CC_T.put(DRAFT,                    Set.of(PENDING_HOD, CANCELLED));
-        CC_T.put(PENDING_HOD,              Set.of(PENDING_QA_REVIEW, REJECTED, CANCELLED));
+        CC_T.put(PENDING_HOD,              Set.of(PENDING_QA_REVIEW, DRAFT, REJECTED, CANCELLED));
         CC_T.put(PENDING_QA_REVIEW,        Set.of(PENDING_DEPT_COMMENT, REJECTED, CANCELLED));
         // PENDING_DEPT_COMMENT can also loop back to QA (so the dept HOD can
         // bounce the record back if QA needs to re-evaluate before
@@ -209,7 +213,7 @@ public final class WorkflowTransition {
         // then comes back to PENDING_INVESTIGATION. QA Reviewer can also
         // skip dept comments entirely and forward straight to Head QA.
         MC_T.put(DRAFT,                Set.of(PENDING_HOD, CANCELLED));
-        MC_T.put(PENDING_HOD,          Set.of(PENDING_INVESTIGATION, REJECTED, CANCELLED));
+        MC_T.put(PENDING_HOD,          Set.of(PENDING_INVESTIGATION, DRAFT, REJECTED, CANCELLED));
         MC_T.put(PENDING_INVESTIGATION,Set.of(PENDING_DEPT_COMMENT, PENDING_HEAD_QA, REJECTED, CANCELLED));
         MC_T.put(PENDING_DEPT_COMMENT, Set.of(PENDING_INVESTIGATION, REJECTED, CANCELLED));
         MC_T.put(PENDING_HEAD_QA,      Set.of(CLOSED, PENDING_INVESTIGATION, REJECTED));

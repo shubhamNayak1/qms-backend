@@ -11,6 +11,7 @@ import com.qms.module.org.service.OrgSecurityService;
 import com.qms.module.qms.common.dto.request.QmsDepartmentCommentRequest;
 import com.qms.module.qms.common.dto.response.QmsDepartmentCommentResponse;
 import com.qms.module.qms.common.entity.QmsDepartmentComment;
+import com.qms.module.qms.common.entity.QmsRecord;
 import com.qms.module.qms.common.repository.QmsDepartmentCommentRepository;
 import com.qms.module.user.entity.User;
 import lombok.RequiredArgsConstructor;
@@ -110,8 +111,30 @@ public class QmsDepartmentCommentService {
             throw AppException.badRequest("Comment text is required.");
         }
 
+        // Tester feedback (May 2026): if action_required is TRUE, a target_date
+        // must be supplied AND it must be on-or-before the parent record's
+        // target_completion_date. The UI also enforces the upper bound via the
+        // <input type=date max=...> control, but the server is authoritative.
+        final boolean actionReq = Boolean.TRUE.equals(req.getActionRequired());
+        if (actionReq) {
+            if (req.getTargetDate() == null) {
+                throw AppException.badRequest(
+                        "Target date is required when Action / Activity Required is YES.");
+            }
+            QmsRecord parent = recordLookup.findByTypeAndId(row.getRecordType(), row.getRecordId());
+            if (parent.getTargetCompletionDate() != null
+                    && req.getTargetDate().isAfter(parent.getTargetCompletionDate())) {
+                throw AppException.badRequest(
+                        "Department target date " + req.getTargetDate()
+                        + " must be on or before the parent record's target completion date "
+                        + parent.getTargetCompletionDate() + ".");
+            }
+        }
+
         User actor = orgSecurity.currentUser().orElse(null);
         row.setComment(req.getComment());
+        row.setActionRequired(actionReq);
+        row.setTargetDate(actionReq ? req.getTargetDate() : null);
         row.setStatus("COMPLETED");
         row.setDoneAt(LocalDateTime.now());
         if (actor != null) {
@@ -132,6 +155,8 @@ public class QmsDepartmentCommentService {
                 .departmentName(c.getDepartmentName())
                 .status(c.getStatus())
                 .comment(c.getComment())
+                .actionRequired(c.getActionRequired())
+                .targetDate(c.getTargetDate())
                 .doneById(c.getDoneById())
                 .doneByName(c.getDoneByName())
                 .doneAt(c.getDoneAt())

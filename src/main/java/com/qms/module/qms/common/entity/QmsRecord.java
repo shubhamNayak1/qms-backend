@@ -219,6 +219,18 @@ public abstract class QmsRecord extends BaseEntity {
     @Column(name = "target_date_extension_decided_at")
     private LocalDateTime targetDateExtensionDecidedAt;
 
+    // ── Resend counter ─────────────────────────────────────────
+    //
+    // Incremented each time the HOD presses "Resend to Initiator" at
+    // PENDING_HOD. Distinct from REJECTED (which terminates the record);
+    // a resend bounces the record back to DRAFT so the Initiator can edit
+    // and re-submit. The counter lets QA Evaluation later read "this CC
+    // was resent N times" at a glance, alongside the per-resend rows in
+    // the status_history JSON.
+
+    @Column(name = "resend_count", nullable = false)
+    private Integer resendCount = 0;
+
     // ── Workflow history (embedded JSON — avoids extra join table) ──
 
     @Column(name = "status_history", columnDefinition = "TEXT")

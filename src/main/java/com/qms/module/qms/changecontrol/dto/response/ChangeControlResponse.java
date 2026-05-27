@@ -12,7 +12,15 @@ public class ChangeControlResponse extends QmsBaseResponse {
     private String    changeType;
     private String    changeReason;
     private String    productMaterial;
+    private String    productMaterialCode;
     private String    marketDetails;
+    private String    preRemark;
+    private String    initialAttachmentRef;
+    // DMS resolution for initialAttachmentRef when it parses as a doc id.
+    private Long      initialAttachmentDmsId;
+    private String    initialAttachmentDmsNumber;
+    private String    initialAttachmentDmsTitle;
+    private String    initialAttachmentDmsVersion;
     private String    linkedCapaNumber;
     private String    riskLevel;
     private String    riskAssessment;

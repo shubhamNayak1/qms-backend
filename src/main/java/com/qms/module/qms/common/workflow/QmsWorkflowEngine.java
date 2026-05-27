@@ -101,6 +101,27 @@ public class QmsWorkflowEngine {
 
         applyTransition(record, current, newStatus, comment);
 
+        // ── Resend bookkeeping ──────────────────────────────────────
+        // When HOD presses "Resend to Initiator" the record returns to
+        // DRAFT so the Initiator can edit. We:
+        //   1. Increment resend_count so the QA timeline can render
+        //      "this record was resent N times" downstream.
+        //   2. Re-assign the record to the original raiser via
+        //      assignedToId so the existing findActiveForUser query
+        //      surfaces the DRAFT in their bell immediately.
+        //   3. Stamp the resend comment into approval_comments so the
+        //      Initiator opening the record sees the HOD's reason
+        //      without digging through status_history.
+        if (current == QmsStatus.PENDING_HOD && newStatus == QmsStatus.DRAFT) {
+            Integer prior = record.getResendCount() != null ? record.getResendCount() : 0;
+            record.setResendCount(prior + 1);
+            if (record.getRaisedById() != null) {
+                record.setAssignedToId(record.getRaisedById());
+                record.setAssignedToName(record.getRaisedByName());
+            }
+            record.setApprovalComments(comment);
+        }
+
         // Set approval metadata when reaching certain statuses
         if (newStatus == QmsStatus.CLOSED || newStatus == QmsStatus.PENDING_HEAD_QA) {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();

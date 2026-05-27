@@ -564,6 +564,12 @@ public class NotificationService {
                                                                   String baseLink, LocalDate today) {
         boolean overdue = r.getDueDate() != null && r.getDueDate().isBefore(today);
         boolean rejected = r.getStatus() == QmsStatus.REJECTED;
+        // A DRAFT with resend_count > 0 means the HOD just bounced the
+        // record back to the Initiator — surface it as a distinct prompt
+        // ("Record sent back for revision") so the Initiator doesn't
+        // confuse it with their original DRAFT.
+        boolean resent   = r.getStatus() == QmsStatus.DRAFT
+                            && r.getResendCount() != null && r.getResendCount() > 0;
 
         NotificationSeverity severity;
         String actionRequired;
@@ -571,6 +577,9 @@ public class NotificationService {
         if (rejected) {
             severity      = NotificationSeverity.WARNING;
             actionRequired = "Record was rejected — review comments and resubmit";
+        } else if (resent) {
+            severity      = NotificationSeverity.WARNING;
+            actionRequired = "HOD sent the record back for revision — review remarks and re-submit";
         } else if (overdue) {
             severity      = NotificationSeverity.CRITICAL;
             actionRequired = "This record is overdue — take action immediately";
@@ -585,10 +594,19 @@ public class NotificationService {
             actionRequired = formatActionForStatus(r.getStatus());
         }
 
-        String msg = rejected
-                ? module.replace("_", " ") + " " + r.getRecordNumber() + " was REJECTED — review the comments and resubmit."
-                : module.replace("_", " ") + " " + r.getRecordNumber() + " is " + humanStatus(r.getStatus())
-                        + (overdue ? " and is OVERDUE" : "") + ".";
+        String msg;
+        if (rejected) {
+            msg = module.replace("_", " ") + " " + r.getRecordNumber()
+                    + " was REJECTED — review the comments and resubmit.";
+        } else if (resent) {
+            msg = module.replace("_", " ") + " " + r.getRecordNumber()
+                    + " was sent back by HOD for revision (resend #" + r.getResendCount() + ")."
+                    + (r.getApprovalComments() != null && !r.getApprovalComments().isBlank()
+                            ? " HOD said: " + r.getApprovalComments() : "");
+        } else {
+            msg = module.replace("_", " ") + " " + r.getRecordNumber() + " is " + humanStatus(r.getStatus())
+                    + (overdue ? " and is OVERDUE" : "") + ".";
+        }
 
         return NotificationItem.builder()
                 .id(r.getId())

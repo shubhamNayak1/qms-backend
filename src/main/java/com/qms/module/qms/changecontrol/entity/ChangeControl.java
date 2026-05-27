@@ -24,13 +24,39 @@ public class ChangeControl extends QmsRecord {
     @Column(name = "change_reason", columnDefinition = "TEXT")
     private String changeReason;
 
-    /** Product / material the change applies to — typed on the Create page. */
+    /** Product / Material Name typed on the Create page. */
     @Column(name = "product_material", length = 255)
     private String productMaterial;
+
+    /**
+     * Product / Material Code typed on the Create page — split from
+     * {@link #productMaterial} per the May-2026 tester feedback so the
+     * material code becomes a discrete column reports can filter on.
+     */
+    @Column(name = "product_material_code", length = 100)
+    private String productMaterialCode;
 
     /** Markets / regions impacted — typed on the Create page. */
     @Column(name = "market_details", columnDefinition = "TEXT")
     private String marketDetails;
+
+    /**
+     * QA's pre-dept-comment narrative captured at QA Evaluation Phase 1.
+     * Visible to every invited dept HOD while they fill their per-dept
+     * comments — gives them a single QA context paragraph instead of
+     * forcing them to hunt through prior status history.
+     */
+    @Column(name = "pre_remark", columnDefinition = "TEXT")
+    private String preRemark;
+
+    /**
+     * DMS document id (or free text) captured at Create time as the
+     * Initiator's supporting attachment. Resolves to the DMS title /
+     * version on the response — same parse-as-numeric-id pattern as
+     * the dept-attachments table.
+     */
+    @Column(name = "initial_attachment_ref", length = 255)
+    private String initialAttachmentRef;
 
     /**
      * Optional CAPA record number this change is linked to. Filled by the

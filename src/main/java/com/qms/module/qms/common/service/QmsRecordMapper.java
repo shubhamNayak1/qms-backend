@@ -100,6 +100,7 @@ public class QmsRecordMapper {
         response.setTargetDateExtensionDecidedAt(record.getTargetDateExtensionDecidedAt());
         response.setOverdue(record.isOverdue());
         response.setAllowedTransitions(WorkflowTransition.allowedFrom(record.getRecordType(), record.getStatus()));
+        response.setResendCount(record.getResendCount());
         response.setStatusHistory(deserializeHistory(record.getStatusHistory()));
         response.setCreatedAt(record.getCreatedAt());
         response.setUpdatedAt(record.getUpdatedAt());

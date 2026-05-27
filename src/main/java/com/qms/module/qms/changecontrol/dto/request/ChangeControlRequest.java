@@ -17,11 +17,20 @@ public class ChangeControlRequest extends QmsBaseRequest {
 
     private String changeReason;
 
-    @Schema(description = "Product / material the change applies to (Initiator-supplied at Create)")
+    @Schema(description = "Product / Material Name (Initiator-supplied at Create)")
     private String productMaterial;
+
+    @Schema(description = "Product / Material Code (Initiator-supplied at Create)")
+    private String productMaterialCode;
 
     @Schema(description = "Markets / regions impacted by the change (Initiator-supplied at Create)")
     private String marketDetails;
+
+    @Schema(description = "QA Phase-1 narrative — visible to invited depts during dept-comment fan-out")
+    private String preRemark;
+
+    @Schema(description = "DMS document id (or free-text reference) captured at Create as the Initiator's attachment")
+    private String initialAttachmentRef;
 
     @Schema(description = "Optional CAPA record number this change is linked to (filled at PENDING_HOD)")
     private String linkedCapaNumber;

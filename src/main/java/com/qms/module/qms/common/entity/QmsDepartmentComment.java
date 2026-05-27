@@ -56,6 +56,24 @@ public class QmsDepartmentComment extends BaseEntity {
     @Column(name = "comment", columnDefinition = "TEXT")
     private String comment;
 
+    /**
+     * Per the May-2026 tester feedback: when a dept's review concludes
+     * an action is needed, they tick this flag and supply a target_date.
+     * The service enforces target_date ≤ parent record's
+     * target_completion_date.
+     */
+    @Column(name = "action_required", nullable = false)
+    @Builder.Default
+    private Boolean actionRequired = false;
+
+    /**
+     * Required when {@link #actionRequired} is TRUE. Must be on-or-before
+     * the parent record's target_completion_date (enforced in
+     * QmsDepartmentCommentService.fill).
+     */
+    @Column(name = "target_date")
+    private java.time.LocalDate targetDate;
+
     @Column(name = "done_by_id")
     private Long doneById;
 

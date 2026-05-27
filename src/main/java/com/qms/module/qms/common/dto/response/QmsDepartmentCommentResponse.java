@@ -4,6 +4,7 @@ import com.qms.common.enums.QmsRecordType;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -16,6 +17,8 @@ public class QmsDepartmentCommentResponse {
     private String        departmentName;
     private String        status;        // PENDING / COMPLETED
     private String        comment;
+    private Boolean       actionRequired;
+    private LocalDate     targetDate;
     private Long          doneById;
     private String        doneByName;
     private LocalDateTime doneAt;

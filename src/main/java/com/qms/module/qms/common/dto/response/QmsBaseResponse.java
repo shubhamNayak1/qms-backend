@@ -84,6 +84,14 @@ public class QmsBaseResponse {
     private boolean overdue;
     private Set<QmsStatus> allowedTransitions;
 
+    /**
+     * How many times the record has been Resent to the Initiator from
+     * PENDING_HOD. Surfaced for the QA Evaluation history timeline so the
+     * reviewer sees "this record was resent N times" without parsing the
+     * status_history JSON manually.
+     */
+    private Integer resendCount;
+
     // Audit trail
     private List<StatusHistoryEntry> statusHistory;
 
