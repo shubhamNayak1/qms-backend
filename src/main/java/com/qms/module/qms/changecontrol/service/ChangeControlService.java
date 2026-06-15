@@ -56,6 +56,13 @@ public class ChangeControlService {
      * fields blank on the response.
      */
     private final DocumentRepository      documentRepository;
+    /**
+     * Round-2 A1 — used to resolve a local-file attachment when
+     * {@code initialAttachmentRef} starts with "QMS-ATT-". Best-effort:
+     * a missing row leaves the local-file metadata blank on the response.
+     */
+    private final com.qms.module.qms.common.repository.QmsRecordAttachmentRepository
+            recordAttachmentRepository;
 
     public PageResponse<ChangeControlResponse> search(QmsStatus status, Priority priority,
                                                        String changeType, String riskLevel,
@@ -242,18 +249,37 @@ public class ChangeControlService {
         r.setMarketDetails(cc.getMarketDetails());
         r.setPreRemark(cc.getPreRemark());
         r.setInitialAttachmentRef(cc.getInitialAttachmentRef());
-        // DMS resolution for the Initiator's attachment — best-effort.
-        if (cc.getInitialAttachmentRef() != null && !cc.getInitialAttachmentRef().isBlank()) {
-            try {
-                Long dmsId = Long.parseLong(cc.getInitialAttachmentRef().trim());
-                documentRepository.findByIdAndIsDeletedFalse(dmsId).ifPresent(doc -> {
-                    r.setInitialAttachmentDmsId(doc.getId());
-                    r.setInitialAttachmentDmsNumber(doc.getDocNumber());
-                    r.setInitialAttachmentDmsTitle(doc.getTitle());
-                    r.setInitialAttachmentDmsVersion(doc.getVersion());
-                });
-            } catch (NumberFormatException ignored) {
-                // Free-text reference — leave DMS fields blank.
+        // Round-2 A1: resolve attachment metadata for both stores.
+        //   • "QMS-ATT-{id}"  → look up qms_record_attachments (local upload).
+        //   • numeric id      → look up dms_documents (DMS picker).
+        //   • anything else   → free-text reference, no resolution.
+        String ref = cc.getInitialAttachmentRef();
+        if (ref != null && !ref.isBlank()) {
+            String trimmed = ref.trim();
+            if (trimmed.startsWith("QMS-ATT-")) {
+                try {
+                    Long attId = Long.valueOf(trimmed.substring("QMS-ATT-".length()));
+                    recordAttachmentRepository.findByIdAndIsDeletedFalse(attId).ifPresent(att -> {
+                        // We surface the local-file metadata on the SAME
+                        // dmsNumber/Title/Version response slots so the
+                        // existing FE renderer just works — only the
+                        // "version" field is omitted (no concept).
+                        r.setInitialAttachmentDmsNumber(trimmed);
+                        r.setInitialAttachmentDmsTitle(att.getFileName());
+                    });
+                } catch (NumberFormatException ignored) { /* malformed prefix */ }
+            } else {
+                try {
+                    Long dmsId = Long.parseLong(trimmed);
+                    documentRepository.findByIdAndIsDeletedFalse(dmsId).ifPresent(doc -> {
+                        r.setInitialAttachmentDmsId(doc.getId());
+                        r.setInitialAttachmentDmsNumber(doc.getDocNumber());
+                        r.setInitialAttachmentDmsTitle(doc.getTitle());
+                        r.setInitialAttachmentDmsVersion(doc.getVersion());
+                    });
+                } catch (NumberFormatException ignored) {
+                    // Free-text reference — leave DMS fields blank.
+                }
             }
         }
         r.setLinkedCapaNumber(cc.getLinkedCapaNumber());

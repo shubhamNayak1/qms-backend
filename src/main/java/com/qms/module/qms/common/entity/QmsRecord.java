@@ -152,7 +152,25 @@ public abstract class QmsRecord extends BaseEntity {
 
     // ── Risk + categorisation (shared by all 5 modules) ──────
 
-    /** Risk assessment narrative captured during HOD / QA review. */
+    /**
+     * HOD's Initial Assessment narrative captured during HOD Assessment.
+     * Read-only on every downstream stage (QA / RA / Site Head / Customer /
+     * Head QA / Verification).
+     *
+     * Separated from {@link #riskAssessment} per Round-2 tester feedback
+     * item F1: when the two narratives shared a column, the QA Phase-2
+     * Risk Assessment textarea pre-populated with the HOD's text, which
+     * the tester flagged as confusing and risky (QA could accidentally
+     * overwrite the HOD's record).
+     */
+    @Column(name = "initial_assessment", columnDefinition = "TEXT")
+    private String initialAssessment;
+
+    /**
+     * QA's Risk Assessment narrative captured at QA Phase 2 — populated
+     * only when riskAssessmentRequired = TRUE. Stays NULL when QA decides
+     * a formal risk assessment isn't needed.
+     */
     @Column(name = "risk_assessment", columnDefinition = "TEXT")
     private String riskAssessment;
 

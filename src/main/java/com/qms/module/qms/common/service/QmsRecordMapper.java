@@ -41,6 +41,7 @@ public class QmsRecordMapper {
         // Shared common fields lifted to QmsRecord (V19) — let HOD review,
         // RA evaluation, customer comment, verification stages all update
         // their dedicated fields via the per-module PUT endpoint.
+        if (req.getInitialAssessment()           != null) record.setInitialAssessment(req.getInitialAssessment());
         if (req.getRiskAssessment()              != null) record.setRiskAssessment(req.getRiskAssessment());
         if (req.getCategory()                    != null) record.setCategory(req.getCategory());
         if (req.getCustomerCommunicationRequired() != null)
@@ -81,6 +82,7 @@ public class QmsRecordMapper {
         response.setCorrectiveAction(record.getCorrectiveAction());
         response.setComments(record.getComments());
         // Shared common fields lifted to QmsRecord (V19)
+        response.setInitialAssessment(record.getInitialAssessment());
         response.setRiskAssessment(record.getRiskAssessment());
         response.setCategory(record.getCategory());
         response.setCustomerCommunicationRequired(record.getCustomerCommunicationRequired());

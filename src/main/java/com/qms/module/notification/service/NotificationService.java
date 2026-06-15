@@ -918,7 +918,7 @@ public class NotificationService {
     private String humanStatus(QmsStatus status) {
         return switch (status) {
             case DRAFT                   -> "Draft";
-            case PENDING_HOD             -> "Pending HOD Approval";
+            case PENDING_HOD             -> "HOD Assessment Pending";
             case PENDING_QA_REVIEW       -> "Pending QA Review";
             case PENDING_DEPT_COMMENT    -> "Pending Department Comment";
             case PENDING_RA_REVIEW       -> "Pending RA Review";

@@ -60,7 +60,12 @@ public class QmsBaseRequest {
     // These let stage-specific panels (HOD review, RA review, verification)
     // update the same record via PUT without needing per-module endpoints.
 
-    /** Risk assessment narrative, captured during HOD / QA review. */
+    /** HOD's Initial Assessment narrative — captured during HOD Assessment.
+     *  Read-only downstream. Round-2 F1 split from riskAssessment. */
+    private String initialAssessment;
+
+    /** QA's Risk Assessment narrative — captured at QA Phase 2 only when
+     *  riskAssessmentRequired = TRUE. Round-2 F1 split from HOD's text. */
     private String riskAssessment;
 
     /** Critical / Major / Minor — set during RA evaluation. */

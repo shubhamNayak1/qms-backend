@@ -121,6 +121,14 @@ public class QmsDepartmentCommentService {
                 throw AppException.badRequest(
                         "Target date is required when Action / Activity Required is YES.");
             }
+            // Round-2 E1: target date must be strictly in the future. The UI
+            // also blocks past/today via the date picker's min= attribute,
+            // but the server is authoritative.
+            if (!req.getTargetDate().isAfter(java.time.LocalDate.now())) {
+                throw AppException.badRequest(
+                        "Department target date " + req.getTargetDate()
+                        + " must be a future date (later than today).");
+            }
             QmsRecord parent = recordLookup.findByTypeAndId(row.getRecordType(), row.getRecordId());
             if (parent.getTargetCompletionDate() != null
                     && req.getTargetDate().isAfter(parent.getTargetCompletionDate())) {

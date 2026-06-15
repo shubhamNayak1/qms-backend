@@ -38,7 +38,8 @@ public class ChangeControlRequest extends QmsBaseRequest {
     @Schema(example = "Medium", description = "Low / Medium / High — set at QA_REVIEW stage")
     private String riskLevel;
 
-    private String    riskAssessment;
+    // initialAssessment + riskAssessment are inherited from QmsBaseRequest
+    // (Round-2 F1: HOD's narrative and QA's narrative are separate fields).
     private String    implementationPlan;
     private LocalDate implementationDate;
     private Boolean   validationRequired;

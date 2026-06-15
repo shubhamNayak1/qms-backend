@@ -102,17 +102,19 @@ public class QmsWorkflowEngine {
         applyTransition(record, current, newStatus, comment);
 
         // ── Resend bookkeeping ──────────────────────────────────────
-        // When HOD presses "Resend to Initiator" the record returns to
-        // DRAFT so the Initiator can edit. We:
-        //   1. Increment resend_count so the QA timeline can render
+        // ANY reviewer state → DRAFT is a "Resend to Initiator" (Round-2
+        // tester feedback widened this from HOD-only to every reviewer
+        // stage). When that happens we:
+        //   1. Increment resend_count so the timeline can render
         //      "this record was resent N times" downstream.
         //   2. Re-assign the record to the original raiser via
         //      assignedToId so the existing findActiveForUser query
         //      surfaces the DRAFT in their bell immediately.
         //   3. Stamp the resend comment into approval_comments so the
-        //      Initiator opening the record sees the HOD's reason
+        //      Initiator opening the record sees the reviewer's reason
         //      without digging through status_history.
-        if (current == QmsStatus.PENDING_HOD && newStatus == QmsStatus.DRAFT) {
+        if (newStatus == QmsStatus.DRAFT && current != QmsStatus.REJECTED
+                && current != QmsStatus.REOPENED && current != QmsStatus.DRAFT) {
             Integer prior = record.getResendCount() != null ? record.getResendCount() : 0;
             record.setResendCount(prior + 1);
             if (record.getRaisedById() != null) {
@@ -170,6 +172,12 @@ public class QmsWorkflowEngine {
 
     /**
      * Close — moves to CLOSED (only when CLOSED is an allowed next status from current state).
+     *
+     * Round-2 I1: when closing FROM the Verification stage, every verification-
+     * phase column the QA Reviewer is supposed to fill must be populated.
+     * Without this guard a reviewer could click "Close Record" on an empty
+     * verification form and end up with a closed record that's missing the
+     * mandatory verification audit data.
      */
     public void close(QmsRecord record, String comment) {
         if (!WorkflowTransition.isAllowed(record.getRecordType(), record.getStatus(), QmsStatus.CLOSED)) {
@@ -177,7 +185,30 @@ public class QmsWorkflowEngine {
                     "Cannot close a record in status " + record.getStatus() +
                     ". Allowed transitions: " + WorkflowTransition.allowedFrom(record.getRecordType(), record.getStatus()));
         }
+        requireVerificationFieldsFilled(record);
         transition(record, QmsStatus.CLOSED, comment);
+    }
+
+    private void requireVerificationFieldsFilled(QmsRecord record) {
+        // Only enforce when closing from a verification stage. Other
+        // closures (e.g. CAPA's PENDING_VERIFICATION_REVIEW → CLOSED) are
+        // already gated by their stage's distinct guards.
+        QmsStatus s = record.getStatus();
+        if (s != QmsStatus.PENDING_VERIFICATION) return;
+
+        List<String> missing = new ArrayList<>();
+        if (isBlank(record.getVerificationActionTaken()))   missing.add("Action Taken");
+        if (record.getVerificationEffectiveOn() == null)    missing.add("Effective On date");
+        if (record.getVerificationDocumentsReissue() == null) missing.add("Documents Reissue (Yes/No)");
+        if (!missing.isEmpty()) {
+            throw AppException.badRequest(
+                "Cannot close record — the following verification field(s) must be filled first: "
+                + String.join(", ", missing) + ".");
+        }
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 
     /**

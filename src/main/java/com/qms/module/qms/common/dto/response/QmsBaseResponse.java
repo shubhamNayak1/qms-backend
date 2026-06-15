@@ -56,6 +56,9 @@ public class QmsBaseResponse {
     private String comments;
 
     // Risk + categorisation
+    // initialAssessment   — HOD's narrative captured at HOD Assessment (read-only downstream)
+    // riskAssessment      — QA's narrative captured at QA Phase 2 (only when riskAssessmentRequired = TRUE)
+    private String  initialAssessment;
     private String  riskAssessment;
     private String  category;
 

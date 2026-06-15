@@ -98,12 +98,12 @@ public final class WorkflowTransition {
         // stage panel pick "Invite Departments" or "Forward to Site Head".
         CAPA_T.put(PENDING_QA_REVIEW,    Set.of(PENDING_DEPT_COMMENT, PENDING_SITE_HEAD,
                                                  PENDING_HEAD_QA, PENDING_HOD,
-                                                 REJECTED, CANCELLED));
-        CAPA_T.put(PENDING_DEPT_COMMENT, Set.of(PENDING_QA_REVIEW, REJECTED, CANCELLED));
-        CAPA_T.put(PENDING_SITE_HEAD,    Set.of(PENDING_HEAD_QA, PENDING_QA_REVIEW, REJECTED, CANCELLED));
-        CAPA_T.put(PENDING_HEAD_QA,      Set.of(PENDING_ATTACHMENTS, PENDING_QA_REVIEW, REJECTED));
-        CAPA_T.put(PENDING_ATTACHMENTS,  Set.of(PENDING_VERIFICATION, REJECTED, CANCELLED));
-        CAPA_T.put(PENDING_VERIFICATION, Set.of(PENDING_VERIFICATION_REVIEW, REJECTED, CANCELLED));
+                                                 DRAFT, REJECTED, CANCELLED));
+        CAPA_T.put(PENDING_DEPT_COMMENT, Set.of(PENDING_QA_REVIEW, DRAFT, REJECTED, CANCELLED));
+        CAPA_T.put(PENDING_SITE_HEAD,    Set.of(PENDING_HEAD_QA, PENDING_QA_REVIEW, DRAFT, REJECTED, CANCELLED));
+        CAPA_T.put(PENDING_HEAD_QA,      Set.of(PENDING_ATTACHMENTS, PENDING_QA_REVIEW, DRAFT, REJECTED));
+        CAPA_T.put(PENDING_ATTACHMENTS,  Set.of(PENDING_VERIFICATION, DRAFT, REJECTED, CANCELLED));
+        CAPA_T.put(PENDING_VERIFICATION, Set.of(PENDING_VERIFICATION_REVIEW, DRAFT, REJECTED, CANCELLED));
         // QA Review either accepts (→ CLOSED via Head QA) or sends back
         // to dept HOD for re-verification.
         CAPA_T.put(PENDING_VERIFICATION_REVIEW,
@@ -132,23 +132,23 @@ public final class WorkflowTransition {
         //   • forward to RA (PENDING_RA_REVIEW) — canonical advance
         //   • route customer in parallel (PENDING_CUSTOMER_COMMENT)
         DEVIATION_T.put(PENDING_QA_REVIEW,    Set.of(PENDING_DEPT_COMMENT, PENDING_RA_REVIEW,
-                                                     PENDING_CUSTOMER_COMMENT, REJECTED, CANCELLED));
+                                                     PENDING_CUSTOMER_COMMENT, DRAFT, REJECTED, CANCELLED));
         // Dept comments loop back to QA (and not on to RA directly), so QA
         // can re-evaluate before deciding the routing flags.
-        DEVIATION_T.put(PENDING_DEPT_COMMENT, Set.of(PENDING_QA_REVIEW, REJECTED, CANCELLED));
+        DEVIATION_T.put(PENDING_DEPT_COMMENT, Set.of(PENDING_QA_REVIEW, DRAFT, REJECTED, CANCELLED));
         // RA can converge to Site Head OR Head QA depending on
         // site_head_required, OR to Customer Comment if QA flagged it.
         DEVIATION_T.put(PENDING_RA_REVIEW,    Set.of(PENDING_CUSTOMER_COMMENT, PENDING_SITE_HEAD,
-                                                     PENDING_HEAD_QA, REJECTED, CANCELLED));
+                                                     PENDING_HEAD_QA, DRAFT, REJECTED, CANCELLED));
         // Customer Comment can converge to Site Head OR Head QA OR back to RA.
         DEVIATION_T.put(PENDING_CUSTOMER_COMMENT,
-                                              Set.of(PENDING_SITE_HEAD, PENDING_HEAD_QA, PENDING_RA_REVIEW, REJECTED, CANCELLED));
-        DEVIATION_T.put(PENDING_SITE_HEAD,    Set.of(PENDING_HEAD_QA, REJECTED, CANCELLED));
-        DEVIATION_T.put(PENDING_HEAD_QA,      Set.of(PENDING_ATTACHMENTS, PENDING_QA_REVIEW, REJECTED));
+                                              Set.of(PENDING_SITE_HEAD, PENDING_HEAD_QA, PENDING_RA_REVIEW, DRAFT, REJECTED, CANCELLED));
+        DEVIATION_T.put(PENDING_SITE_HEAD,    Set.of(PENDING_HEAD_QA, DRAFT, REJECTED, CANCELLED));
+        DEVIATION_T.put(PENDING_HEAD_QA,      Set.of(PENDING_ATTACHMENTS, PENDING_QA_REVIEW, DRAFT, REJECTED));
         // PENDING_ATTACHMENTS — gated by dept-attachment-approval guard before
         // it can move to PENDING_VERIFICATION.
-        DEVIATION_T.put(PENDING_ATTACHMENTS,  Set.of(PENDING_VERIFICATION, REJECTED, CANCELLED));
-        DEVIATION_T.put(PENDING_VERIFICATION, Set.of(CLOSED, PENDING_ATTACHMENTS, REJECTED));
+        DEVIATION_T.put(PENDING_ATTACHMENTS,  Set.of(PENDING_VERIFICATION, DRAFT, REJECTED, CANCELLED));
+        DEVIATION_T.put(PENDING_VERIFICATION, Set.of(CLOSED, PENDING_ATTACHMENTS, DRAFT, REJECTED));
         DEVIATION_T.put(REJECTED,             Set.of(DRAFT, CANCELLED));
         DEVIATION_T.put(CLOSED,               Set.of(REOPENED));
         DEVIATION_T.put(REOPENED,             Set.of(DRAFT, CANCELLED));
@@ -169,13 +169,13 @@ public final class WorkflowTransition {
         //     QA forwards to Site Head if required, else Head QA
         INCIDENT_T.put(PENDING_QA_REVIEW,    Set.of(PENDING_DEPT_COMMENT, PENDING_SITE_HEAD,
                                                     PENDING_HEAD_QA, DEVIATION_SPAWNED,
-                                                    REJECTED, CANCELLED));
+                                                    DRAFT, REJECTED, CANCELLED));
         // Dept comments loop back to QA (similar to Deviation).
-        INCIDENT_T.put(PENDING_DEPT_COMMENT, Set.of(PENDING_QA_REVIEW, REJECTED, CANCELLED));
-        INCIDENT_T.put(PENDING_SITE_HEAD,    Set.of(PENDING_HEAD_QA, REJECTED, CANCELLED));
-        INCIDENT_T.put(PENDING_HEAD_QA,      Set.of(PENDING_ATTACHMENTS, PENDING_QA_REVIEW, REJECTED));
-        INCIDENT_T.put(PENDING_ATTACHMENTS,  Set.of(PENDING_VERIFICATION, REJECTED, CANCELLED));
-        INCIDENT_T.put(PENDING_VERIFICATION, Set.of(CLOSED, PENDING_ATTACHMENTS, REJECTED));
+        INCIDENT_T.put(PENDING_DEPT_COMMENT, Set.of(PENDING_QA_REVIEW, DRAFT, REJECTED, CANCELLED));
+        INCIDENT_T.put(PENDING_SITE_HEAD,    Set.of(PENDING_HEAD_QA, DRAFT, REJECTED, CANCELLED));
+        INCIDENT_T.put(PENDING_HEAD_QA,      Set.of(PENDING_ATTACHMENTS, PENDING_QA_REVIEW, DRAFT, REJECTED));
+        INCIDENT_T.put(PENDING_ATTACHMENTS,  Set.of(PENDING_VERIFICATION, DRAFT, REJECTED, CANCELLED));
+        INCIDENT_T.put(PENDING_VERIFICATION, Set.of(CLOSED, PENDING_ATTACHMENTS, DRAFT, REJECTED));
         INCIDENT_T.put(REJECTED,             Set.of(DRAFT, CANCELLED));
         INCIDENT_T.put(CLOSED,               Set.of(REOPENED));
         INCIDENT_T.put(REOPENED,             Set.of(DRAFT, CANCELLED));
@@ -188,18 +188,21 @@ public final class WorkflowTransition {
         INCIDENT_T.put(DEVIATION_SPAWNED,    Set.of());
 
         // ── CHANGE_CONTROL ────────────────────────────────────
+        // Round-2 tester feedback: every reviewer stage allows Resend to
+        // Initiator (→ DRAFT). The position rule (WorkflowPosition) gates
+        // who's authorised at each source.
         CC_T.put(DRAFT,                    Set.of(PENDING_HOD, CANCELLED));
         CC_T.put(PENDING_HOD,              Set.of(PENDING_QA_REVIEW, DRAFT, REJECTED, CANCELLED));
-        CC_T.put(PENDING_QA_REVIEW,        Set.of(PENDING_DEPT_COMMENT, REJECTED, CANCELLED));
+        CC_T.put(PENDING_QA_REVIEW,        Set.of(PENDING_DEPT_COMMENT, DRAFT, REJECTED, CANCELLED));
         // PENDING_DEPT_COMMENT can also loop back to QA (so the dept HOD can
         // bounce the record back if QA needs to re-evaluate before
         // forwarding to RA), and supports REJECTED / CANCELLED escape hatches.
-        CC_T.put(PENDING_DEPT_COMMENT,     Set.of(PENDING_RA_REVIEW, PENDING_QA_REVIEW, REJECTED, CANCELLED));
-        CC_T.put(PENDING_RA_REVIEW,        Set.of(PENDING_SITE_HEAD, PENDING_HEAD_QA, REJECTED, CANCELLED));
-        CC_T.put(PENDING_SITE_HEAD,        Set.of(PENDING_CUSTOMER_COMMENT, PENDING_HEAD_QA, REJECTED, CANCELLED));
-        CC_T.put(PENDING_CUSTOMER_COMMENT, Set.of(PENDING_HEAD_QA));
-        CC_T.put(PENDING_HEAD_QA,          Set.of(PENDING_VERIFICATION, REJECTED));
-        CC_T.put(PENDING_VERIFICATION,     Set.of(CLOSED));
+        CC_T.put(PENDING_DEPT_COMMENT,     Set.of(PENDING_RA_REVIEW, PENDING_QA_REVIEW, DRAFT, REJECTED, CANCELLED));
+        CC_T.put(PENDING_RA_REVIEW,        Set.of(PENDING_SITE_HEAD, PENDING_HEAD_QA, DRAFT, REJECTED, CANCELLED));
+        CC_T.put(PENDING_SITE_HEAD,        Set.of(PENDING_CUSTOMER_COMMENT, PENDING_HEAD_QA, DRAFT, REJECTED, CANCELLED));
+        CC_T.put(PENDING_CUSTOMER_COMMENT, Set.of(PENDING_HEAD_QA, DRAFT));
+        CC_T.put(PENDING_HEAD_QA,          Set.of(PENDING_VERIFICATION, DRAFT, REJECTED));
+        CC_T.put(PENDING_VERIFICATION,     Set.of(CLOSED, DRAFT));
         CC_T.put(REJECTED,                 Set.of(DRAFT, CANCELLED));
         CC_T.put(CLOSED,                   Set.of(REOPENED));
         CC_T.put(REOPENED,                 Set.of(DRAFT, CANCELLED));
@@ -214,9 +217,9 @@ public final class WorkflowTransition {
         // skip dept comments entirely and forward straight to Head QA.
         MC_T.put(DRAFT,                Set.of(PENDING_HOD, CANCELLED));
         MC_T.put(PENDING_HOD,          Set.of(PENDING_INVESTIGATION, DRAFT, REJECTED, CANCELLED));
-        MC_T.put(PENDING_INVESTIGATION,Set.of(PENDING_DEPT_COMMENT, PENDING_HEAD_QA, REJECTED, CANCELLED));
-        MC_T.put(PENDING_DEPT_COMMENT, Set.of(PENDING_INVESTIGATION, REJECTED, CANCELLED));
-        MC_T.put(PENDING_HEAD_QA,      Set.of(CLOSED, PENDING_INVESTIGATION, REJECTED));
+        MC_T.put(PENDING_INVESTIGATION,Set.of(PENDING_DEPT_COMMENT, PENDING_HEAD_QA, DRAFT, REJECTED, CANCELLED));
+        MC_T.put(PENDING_DEPT_COMMENT, Set.of(PENDING_INVESTIGATION, DRAFT, REJECTED, CANCELLED));
+        MC_T.put(PENDING_HEAD_QA,      Set.of(CLOSED, PENDING_INVESTIGATION, DRAFT, REJECTED));
         MC_T.put(REJECTED,             Set.of(DRAFT, CANCELLED));
         MC_T.put(CLOSED,               Set.of(REOPENED));
         MC_T.put(REOPENED,             Set.of(DRAFT, CANCELLED));

@@ -23,7 +23,8 @@ public class ChangeControlResponse extends QmsBaseResponse {
     private String    initialAttachmentDmsVersion;
     private String    linkedCapaNumber;
     private String    riskLevel;
-    private String    riskAssessment;
+    // initialAssessment + riskAssessment are inherited from QmsBaseResponse
+    // (Round-2 F1: HOD's narrative and QA's narrative are separate fields).
     private String    implementationPlan;
     private LocalDate implementationDate;
     private Boolean   validationRequired;

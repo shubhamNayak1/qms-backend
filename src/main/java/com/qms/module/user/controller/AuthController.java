@@ -106,6 +106,42 @@ public class AuthController {
     }
 
     // ─────────────────────────────────────────────────────────
+    // POST /api/v1/auth/e-sign
+    // ─────────────────────────────────────────────────────────
+    @PostMapping("/e-sign")
+    @PreAuthorize("isAuthenticated()")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(
+        summary = "21 CFR Part 11 e-signature verification (Round-2 E3)",
+        description = """
+            Re-confirms the logged-in user's password before a QMS workflow
+            transition. Does NOT issue a new JWT — the caller's existing
+            access token continues to authorise the subsequent workflow
+            API call. The verification is logged on the audit_log for
+            traceability.
+
+            Username on the request MUST match the authenticated principal;
+            spoofing is rejected with 403.
+            """
+    )
+    @ApiResponses({
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+            description = "Signature verified"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+            description = "Incorrect password"),
+        @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+            description = "Username doesn't match the logged-in user")
+    })
+    public ResponseEntity<ApiResponse<Void>> eSign(
+            @Valid @RequestBody ESignRequest request) {
+        authService.verifyESignature(
+                request.getUsername(),
+                request.getPassword(),
+                request.getMeaning());
+        return ApiResponse.noContent("Signature verified");
+    }
+
+    // ─────────────────────────────────────────────────────────
     // POST /api/v1/auth/forgot-password
     // ─────────────────────────────────────────────────────────
     @PostMapping("/forgot-password")

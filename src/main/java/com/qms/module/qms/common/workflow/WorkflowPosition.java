@@ -91,13 +91,26 @@ public enum WorkflowPosition {
         if (from == QmsStatus.PENDING_DEPT_COMMENT && to == QmsStatus.PENDING_INVESTIGATION) {
             return HOD_OF_COMMENTING_DEPT;
         }
-        // "Resend to Initiator" — PENDING_HOD → DRAFT. Owned by the HOD of
-        // the record's originating dept (same actor who got the record at
-        // PENDING_HOD in the first place). Without this override the engine
-        // would look up DRAFT's required position from REQUIRED, which has
-        // no entry, and the gate would be skipped entirely.
-        if (from == QmsStatus.PENDING_HOD && to == QmsStatus.DRAFT) {
-            return HOD_OF_RECORD_DEPT;
+        // "Resend to Initiator" — any reviewer state → DRAFT. The actor at
+        // the SOURCE state is the one allowed to bounce the record back
+        // (per Round-2 tester feedback: every reviewer stage gets a Resend
+        // button). Without these overrides the engine would look up DRAFT
+        // in the target REQUIRED map (which is intentionally absent) and
+        // skip the position gate entirely.
+        if (to == QmsStatus.DRAFT) {
+            switch (from) {
+                case PENDING_HOD:                return HOD_OF_RECORD_DEPT;
+                case PENDING_QA_REVIEW:          return QA_REVIEWER;
+                case PENDING_DEPT_COMMENT:       return HOD_OF_COMMENTING_DEPT;
+                case PENDING_RA_REVIEW:          return RA;
+                case PENDING_SITE_HEAD:          return SITE_HEAD;
+                case PENDING_CUSTOMER_COMMENT:   return QA_REVIEWER;   // QA owns the customer leg
+                case PENDING_HEAD_QA:            return QA_HEAD;
+                case PENDING_INVESTIGATION:      return QA_REVIEWER;
+                case PENDING_VERIFICATION:       return QA_REVIEWER;
+                case PENDING_VERIFICATION_REVIEW:return QA_REVIEWER;
+                default:                         /* fall through */
+            }
         }
         return requiredFor(to);
     }

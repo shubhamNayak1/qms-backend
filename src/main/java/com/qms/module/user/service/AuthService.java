@@ -172,6 +172,50 @@ public class AuthService {
         SecurityContextHolder.clearContext();
     }
 
+    // ─── 21 CFR Part 11 e-signature gate (Round-2 E3) ────────
+    //
+    // Workflow transitions (Submit, Approve, Reject, Resend, Close, Cancel)
+    // require the current user to re-confirm their password. We do NOT issue
+    // a new JWT — the caller's existing token continues to authorise the
+    // subsequent workflow API call. The verification is logged via the
+    // @Audited annotation so the audit_log carries who, when, and what was
+    // being signed.
+    //
+    // We keep the surface minimal: client posts { meaning } so the audit
+    // entry can record what the signature was for, and a Basic-style
+    // `username + password` body. The caller MUST already be authenticated;
+    // the username on the request must match the authenticated principal.
+
+    @Audited(action = AuditAction.LOGIN, module = AuditModule.AUTH,
+             entityType = "User", captureNewValue = false,
+             description = "E-signature verification")
+    public boolean verifyESignature(String username, String password, String meaning) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() ||
+                !(auth.getPrincipal() instanceof UserPrincipal principal)) {
+            throw AppException.unauthorized("Not authenticated");
+        }
+        if (!principal.getUsername().equalsIgnoreCase(username)) {
+            // Spoofing a different username is a hard fail.
+            log.warn("E-sign attempted with mismatched username: principal='{}' submitted='{}'",
+                    principal.getUsername(), username);
+            throw AppException.forbidden(
+                    "E-signature username must match the logged-in user.");
+        }
+        User user = userRepository.findByIdAndIsDeletedFalse(principal.getId())
+                .orElseThrow(() -> AppException.unauthorized("User not found"));
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            log.warn("E-sign failed: bad password for user '{}' (meaning='{}')",
+                    username, meaning);
+            // Don't increment lock counters — e-sign re-auth is not a fresh
+            // login attempt. A bad password is just denied and the caller
+            // can retry. Repeated abuse is caught by general rate limits.
+            throw AppException.unauthorized("Incorrect password.");
+        }
+        log.info("E-sign OK: user='{}' meaning='{}'", username, meaning);
+        return true;
+    }
+
     // ─── Helpers ─────────────────────────────────────────────
 
     private void checkAccountLocked(User user) {
