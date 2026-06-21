@@ -148,9 +148,13 @@ public class QmsWorkflowEngine {
         // Round-3 R28: CC primary forward from PENDING_HEAD_QA now goes
         // through PENDING_ATTACHMENTS, so the auto-target-date applies on
         // that transition too.
+        // Round-4 G3: Market Complaint closes directly from PENDING_HEAD_QA
+        // without a verification step, so include CLOSED as a target — the
+        // auto-target still helps the audit report show "due-vs-actual".
         if (current == QmsStatus.PENDING_HEAD_QA
                 && (newStatus == QmsStatus.PENDING_VERIFICATION
-                    || newStatus == QmsStatus.PENDING_ATTACHMENTS)
+                    || newStatus == QmsStatus.PENDING_ATTACHMENTS
+                    || newStatus == QmsStatus.CLOSED)
                 && record.getTargetCompletionDate() == null && record.getCategory() != null) {
             int days = switch (record.getCategory().trim().toLowerCase()) {
                 case "critical" -> 365;
@@ -165,20 +169,27 @@ public class QmsWorkflowEngine {
             }
         }
 
-        // Round-3 R28: when CC enters PENDING_ATTACHMENTS, auto-create a
-        // dept-attachment-request row for each dept comment that flagged
-        // action_required = TRUE. The respective dept HOD then uploads the
-        // supporting document + remark, and Head QA approves each row before
-        // the record can advance to PENDING_VERIFICATION (gated by the
-        // requireDeptAttachmentsApproved guard above).
-        if (record.getRecordType() == com.qms.common.enums.QmsRecordType.CHANGE_CONTROL
+        // Round-3 R28 + Round-4 G4: when CC / Deviation / Incident / CAPA
+        // enter PENDING_ATTACHMENTS, auto-create a dept-attachment-request
+        // row for each dept comment that flagged action_required = TRUE.
+        // The respective dept HOD then uploads the supporting document +
+        // remark, and Head QA approves each row before the record can
+        // advance to PENDING_VERIFICATION (gated by the
+        // requireDeptAttachmentsApproved guard above). Market Complaint
+        // has no PENDING_ATTACHMENTS stage so it's excluded.
+        boolean supportsAttachmentFanOut =
+                record.getRecordType() == com.qms.common.enums.QmsRecordType.CHANGE_CONTROL
+             || record.getRecordType() == com.qms.common.enums.QmsRecordType.DEVIATION
+             || record.getRecordType() == com.qms.common.enums.QmsRecordType.INCIDENT
+             || record.getRecordType() == com.qms.common.enums.QmsRecordType.CAPA;
+        if (supportsAttachmentFanOut
                 && newStatus == QmsStatus.PENDING_ATTACHMENTS
                 && current != QmsStatus.PENDING_ATTACHMENTS) {
-            autoSpawnCcDeptAttachmentRows(record);
+            autoSpawnActionRequiredDeptAttachmentRows(record);
         }
     }
 
-    private void autoSpawnCcDeptAttachmentRows(QmsRecord record) {
+    private void autoSpawnActionRequiredDeptAttachmentRows(QmsRecord record) {
         var actionRequiredComments = deptCommentRepository
                 .findAllByRecordTypeAndRecordIdAndIsDeletedFalseOrderByCreatedAtAsc(
                         record.getRecordType(), record.getId())
@@ -212,8 +223,8 @@ public class QmsWorkflowEngine {
             created++;
         }
         if (created > 0) {
-            log.info("Auto-created {} dept-attachment-request row(s) on CC record id={}",
-                    created, record.getId());
+            log.info("Auto-created {} dept-attachment-request row(s) on {} record id={}",
+                    created, record.getRecordType(), record.getId());
         }
     }
 
