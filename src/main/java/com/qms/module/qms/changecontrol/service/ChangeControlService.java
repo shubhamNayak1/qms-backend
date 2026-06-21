@@ -63,6 +63,9 @@ public class ChangeControlService {
      */
     private final com.qms.module.qms.common.repository.QmsRecordAttachmentRepository
             recordAttachmentRepository;
+    /** Round-3 R8 — used to assert at least one line item exists before submit. */
+    private final com.qms.module.qms.common.repository.QmsLineItemRepository
+            lineItemRepository;
 
     public PageResponse<ChangeControlResponse> search(QmsStatus status, Priority priority,
                                                        String changeType, String riskLevel,
@@ -128,6 +131,16 @@ public class ChangeControlService {
     @Transactional
     public ChangeControlResponse submit(Long id, String comment) {
         ChangeControl cc = findById(id);
+        // Round-3 R8: a Change Control must carry at least one line item. The
+        // Initiator can delete every line item during DRAFT editing — submit
+        // is the gate that catches it.
+        long itemCount = lineItemRepository.countByRecordTypeAndRecordIdAndIsDeletedFalse(
+                com.qms.common.enums.QmsRecordType.CHANGE_CONTROL, id);
+        if (itemCount == 0) {
+            throw com.qms.common.exception.AppException.badRequest(
+                "At least one line item is required to submit a Change Control. " +
+                "Add an Existing System / Proposed System row before submitting.");
+        }
         workflowEngine.submit(cc, comment);
         return toResponse(changeControlRepository.save(cc));
     }

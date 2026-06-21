@@ -48,8 +48,13 @@ public class QmsRecordAttachmentController {
     @Operation(summary = "Upload a local file as a QMS record attachment")
     public ResponseEntity<ApiResponse<Map<String, Object>>> upload(
             @RequestPart("file") MultipartFile file,
-            @RequestPart(value = "recordType", required = false) String recordType,
-            @RequestPart(value = "recordId", required = false) String recordIdStr) {
+            // Round-3 R2: @RequestPart on plain string fields fails when the
+            // client posts FormData without an explicit Content-Type per part
+            // (which is the browser default). Switching to @RequestParam lets
+            // Spring extract them from multipart text parts the same way it
+            // does for traditional form posts.
+            @RequestParam(value = "recordType", required = false) String recordType,
+            @RequestParam(value = "recordId", required = false) String recordIdStr) {
         if (file == null || file.isEmpty()) {
             throw AppException.badRequest("No file supplied.");
         }

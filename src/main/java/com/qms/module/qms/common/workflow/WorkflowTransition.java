@@ -201,7 +201,13 @@ public final class WorkflowTransition {
         CC_T.put(PENDING_RA_REVIEW,        Set.of(PENDING_SITE_HEAD, PENDING_HEAD_QA, DRAFT, REJECTED, CANCELLED));
         CC_T.put(PENDING_SITE_HEAD,        Set.of(PENDING_CUSTOMER_COMMENT, PENDING_HEAD_QA, DRAFT, REJECTED, CANCELLED));
         CC_T.put(PENDING_CUSTOMER_COMMENT, Set.of(PENDING_HEAD_QA, DRAFT));
-        CC_T.put(PENDING_HEAD_QA,          Set.of(PENDING_VERIFICATION, DRAFT, REJECTED));
+        // Round-3 R28: Head QA approve now routes to PENDING_ATTACHMENTS
+        // (when at least one dept comment flagged action_required = true).
+        // The engine auto-creates attachment-request rows for those depts at
+        // that transition. PENDING_ATTACHMENTS gates onward to VERIFICATION
+        // by the existing requireDeptAttachmentsApproved guard.
+        CC_T.put(PENDING_HEAD_QA,          Set.of(PENDING_ATTACHMENTS, PENDING_VERIFICATION, DRAFT, REJECTED));
+        CC_T.put(PENDING_ATTACHMENTS,      Set.of(PENDING_VERIFICATION, DRAFT, REJECTED, CANCELLED));
         CC_T.put(PENDING_VERIFICATION,     Set.of(CLOSED, DRAFT));
         CC_T.put(REJECTED,                 Set.of(DRAFT, CANCELLED));
         CC_T.put(CLOSED,                   Set.of(REOPENED));
@@ -295,7 +301,13 @@ public final class WorkflowTransition {
         ccFwd.put(PENDING_RA_REVIEW,        PENDING_HEAD_QA); // skip site head by default
         ccFwd.put(PENDING_SITE_HEAD,        PENDING_HEAD_QA); // skip customer comment by default
         ccFwd.put(PENDING_CUSTOMER_COMMENT, PENDING_HEAD_QA);
-        ccFwd.put(PENDING_HEAD_QA,          PENDING_VERIFICATION);
+        // Round-3 R28: route via PENDING_ATTACHMENTS so dept-attachment rows
+        // (auto-created by the engine for action_required depts) can be
+        // uploaded before Verification. When no dept flagged action_required,
+        // the PENDING_ATTACHMENTS stage has zero rows and the dept-attachment-
+        // approval guard passes immediately so QA can advance in one click.
+        ccFwd.put(PENDING_HEAD_QA,          PENDING_ATTACHMENTS);
+        ccFwd.put(PENDING_ATTACHMENTS,      PENDING_VERIFICATION);
         ccFwd.put(PENDING_VERIFICATION,     CLOSED);
         PRIMARY_FORWARD.put(QmsRecordType.CHANGE_CONTROL, ccFwd);
 

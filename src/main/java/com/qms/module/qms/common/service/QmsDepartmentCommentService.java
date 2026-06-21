@@ -115,15 +115,11 @@ public class QmsDepartmentCommentService {
         // must be supplied AND it must be on-or-before the parent record's
         // target_completion_date. The UI also enforces the upper bound via the
         // <input type=date max=...> control, but the server is authoritative.
+        // Round-3 R23: Target date is OPTIONAL even when Action Required = YES
+        // (testers' Round-3 amendment to the Round-2 strict mandatory rule).
+        // We still validate it when supplied — strict future + ≤ parent date.
         final boolean actionReq = Boolean.TRUE.equals(req.getActionRequired());
-        if (actionReq) {
-            if (req.getTargetDate() == null) {
-                throw AppException.badRequest(
-                        "Target date is required when Action / Activity Required is YES.");
-            }
-            // Round-2 E1: target date must be strictly in the future. The UI
-            // also blocks past/today via the date picker's min= attribute,
-            // but the server is authoritative.
+        if (actionReq && req.getTargetDate() != null) {
             if (!req.getTargetDate().isAfter(java.time.LocalDate.now())) {
                 throw AppException.badRequest(
                         "Department target date " + req.getTargetDate()

@@ -136,6 +136,85 @@ public class QmsWorkflowEngine {
                 record.setApprovalComments(comment);
             }
         }
+
+        // Round-3 R27: when Head QA approves and forwards (PENDING_HEAD_QA →
+        // PENDING_VERIFICATION) auto-set the target completion date based on
+        // the QA-assigned risk category, IF the field is still null.
+        //   • Critical → +365 days
+        //   • Major    → +90  days
+        //   • Minor    → +30  days
+        // We deliberately do nothing when the field is already set so a
+        // human-supplied date isn't silently overwritten.
+        // Round-3 R28: CC primary forward from PENDING_HEAD_QA now goes
+        // through PENDING_ATTACHMENTS, so the auto-target-date applies on
+        // that transition too.
+        if (current == QmsStatus.PENDING_HEAD_QA
+                && (newStatus == QmsStatus.PENDING_VERIFICATION
+                    || newStatus == QmsStatus.PENDING_ATTACHMENTS)
+                && record.getTargetCompletionDate() == null && record.getCategory() != null) {
+            int days = switch (record.getCategory().trim().toLowerCase()) {
+                case "critical" -> 365;
+                case "major"    -> 90;
+                case "minor"    -> 30;
+                default          -> 0;
+            };
+            if (days > 0) {
+                record.setTargetCompletionDate(LocalDate.now().plusDays(days));
+                log.info("Auto-set target_completion_date = {} ({} days, category={}) on record id={}",
+                        record.getTargetCompletionDate(), days, record.getCategory(), record.getId());
+            }
+        }
+
+        // Round-3 R28: when CC enters PENDING_ATTACHMENTS, auto-create a
+        // dept-attachment-request row for each dept comment that flagged
+        // action_required = TRUE. The respective dept HOD then uploads the
+        // supporting document + remark, and Head QA approves each row before
+        // the record can advance to PENDING_VERIFICATION (gated by the
+        // requireDeptAttachmentsApproved guard above).
+        if (record.getRecordType() == com.qms.common.enums.QmsRecordType.CHANGE_CONTROL
+                && newStatus == QmsStatus.PENDING_ATTACHMENTS
+                && current != QmsStatus.PENDING_ATTACHMENTS) {
+            autoSpawnCcDeptAttachmentRows(record);
+        }
+    }
+
+    private void autoSpawnCcDeptAttachmentRows(QmsRecord record) {
+        var actionRequiredComments = deptCommentRepository
+                .findAllByRecordTypeAndRecordIdAndIsDeletedFalseOrderByCreatedAtAsc(
+                        record.getRecordType(), record.getId())
+                .stream()
+                .filter(c -> Boolean.TRUE.equals(c.getActionRequired()))
+                .toList();
+        if (actionRequiredComments.isEmpty()) return;
+
+        var existingRows = deptAttachmentRepository
+                .findAllByRecordTypeAndRecordIdAndIsDeletedFalseOrderByCreatedAtAsc(
+                        record.getRecordType(), record.getId());
+        var existingOpenDeptIds = new java.util.HashSet<Long>();
+        for (var r : existingRows) {
+            if (!"APPROVED".equalsIgnoreCase(r.getStatus())) {
+                existingOpenDeptIds.add(r.getDepartmentId());
+            }
+        }
+
+        int created = 0;
+        for (var c : actionRequiredComments) {
+            if (c.getDepartmentId() == null) continue;
+            if (existingOpenDeptIds.contains(c.getDepartmentId())) continue;
+            var row = com.qms.module.qms.common.entity.QmsDepartmentAttachment.builder()
+                    .recordType(record.getRecordType())
+                    .recordId(record.getId())
+                    .departmentId(c.getDepartmentId())
+                    .departmentName(c.getDepartmentName())
+                    .status("PENDING")
+                    .build();
+            deptAttachmentRepository.save(row);
+            created++;
+        }
+        if (created > 0) {
+            log.info("Auto-created {} dept-attachment-request row(s) on CC record id={}",
+                    created, record.getId());
+        }
     }
 
     /**
@@ -199,11 +278,18 @@ public class QmsWorkflowEngine {
         List<String> missing = new ArrayList<>();
         if (isBlank(record.getVerificationActionTaken()))   missing.add("Action Taken");
         if (record.getVerificationEffectiveOn() == null)    missing.add("Effective On date");
-        if (record.getVerificationDocumentsReissue() == null) missing.add("Documents Reissue (Yes/No)");
+        // Round-3 R29: Documents Reissue dropped from the verification form
+        // and the close-side guard. The narrative captures it instead.
         if (!missing.isEmpty()) {
             throw AppException.badRequest(
                 "Cannot close record — the following verification field(s) must be filled first: "
                 + String.join(", ", missing) + ".");
+        }
+        // Round-3 R29: effective/implemented date cannot be in the past.
+        if (record.getVerificationEffectiveOn().isBefore(LocalDate.now())) {
+            throw AppException.badRequest(
+                "Cannot close record — Effective / Implemented On date " +
+                record.getVerificationEffectiveOn() + " is before today. Pick today or a future date.");
         }
     }
 
@@ -364,10 +450,14 @@ public class QmsWorkflowEngine {
      * dept's row back for a re-upload before closure can run.
      */
     private void requireDeptAttachmentsApproved(QmsRecord record, QmsStatus from, QmsStatus to) {
+        // Round-3 R28: CHANGE_CONTROL joins Deviation / Incident / CAPA in
+        // routing through PENDING_ATTACHMENTS so dept-uploaded supporting
+        // documents are gated before Verification.
         boolean applies =
                 record.getRecordType() == com.qms.common.enums.QmsRecordType.DEVIATION
              || record.getRecordType() == com.qms.common.enums.QmsRecordType.INCIDENT
-             || record.getRecordType() == com.qms.common.enums.QmsRecordType.CAPA;
+             || record.getRecordType() == com.qms.common.enums.QmsRecordType.CAPA
+             || record.getRecordType() == com.qms.common.enums.QmsRecordType.CHANGE_CONTROL;
         if (!applies) return;
         if (from != QmsStatus.PENDING_ATTACHMENTS || to != QmsStatus.PENDING_VERIFICATION) return;
 
