@@ -5,6 +5,16 @@ spring:
   main:
     lazy-initialization: true   # defer bean creation → faster startup on Render
 
+  # Round-5 H7 — production multipart was using Spring Boot's 1 MB default
+  # which silently rejected any QMS attachment over 1 MB ("cancelled" in
+  # the browser network panel). Align with dev (50 MB) so uploads under
+  # the 10 MB application-layer cap actually reach the controller.
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 50MB
+      max-request-size: 50MB
+
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
