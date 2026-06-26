@@ -368,6 +368,14 @@ public class NotificationService {
                   });
         }
 
+        // Round-L (2026-06-26): PENDING_REVIEW → dept reviewers of record's
+        // originating dept. Surfaces newly-submitted drafts to the four-eyes
+        // peer reviewer in the same department.
+        addPositionalItems(items, alreadyShown, today,
+                List.of(QmsStatus.PENDING_REVIEW),
+                r -> r.getDepartmentId() != null
+                        && orgSecurityService.isDeptReviewerOfDepartment(user.getId(), r.getDepartmentId()));
+
         // PENDING_HOD → HOD of record's department
         addPositionalItems(items, alreadyShown, today,
                 List.of(QmsStatus.PENDING_HOD),
@@ -918,6 +926,7 @@ public class NotificationService {
     private String humanStatus(QmsStatus status) {
         return switch (status) {
             case DRAFT                   -> "Draft";
+            case PENDING_REVIEW          -> "Pending Peer Review";
             case PENDING_HOD             -> "HOD Assessment Pending";
             case PENDING_QA_REVIEW       -> "Pending QA Review";
             case PENDING_DEPT_COMMENT    -> "Pending Department Comment";
@@ -943,7 +952,8 @@ public class NotificationService {
     /** Returns a concise action prompt for a given QMS workflow status. */
     private String formatActionForStatus(QmsStatus status) {
         return switch (status) {
-            case DRAFT                   -> "Complete and submit the record for review";
+            case DRAFT                   -> "Complete and submit the record for peer review";
+            case PENDING_REVIEW          -> "Peer-review the draft and submit to HOD";
             case PENDING_HOD             -> "Awaiting Head of Department approval";
             case PENDING_QA_REVIEW       -> "Awaiting QA team review";
             case PENDING_DEPT_COMMENT    -> "Provide department comment/feedback";

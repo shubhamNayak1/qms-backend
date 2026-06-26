@@ -13,6 +13,15 @@ public enum QmsStatus {
     DRAFT,                    // Record created, not yet submitted for review
 
     // ── Review / Evaluation stages ───────────────────────────
+    /**
+     * Round-L (2026-06-26): inserted between DRAFT and PENDING_HOD.
+     * The creator submits the draft; another user in the same department
+     * (NOT the creator) verifies the captured fields before forwarding to
+     * the HOD. This adds a "four-eyes" gate inside the initiating
+     * department and keeps the Initiator role split into a Draft phase
+     * (creator) and a Review phase (peer reviewer).
+     */
+    PENDING_REVIEW,           // Peer review by another user in the creator's department
     PENDING_HOD,              // Awaiting Head of Department review/forwarding
     PENDING_QA_REVIEW,        // Under QA evaluation (used in CAPA, Deviation, Change Control)
     PENDING_DEPT_COMMENT,     // Awaiting department feedback / comments (CAPA, Change Control)

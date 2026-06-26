@@ -87,7 +87,12 @@ public final class WorkflowTransition {
         // and a verification-review split (HOD writes verification, QA
         // reviews it). Closure seeds the post-closure effectiveness
         // lifecycle on the qms_capa_assessments sidecar.
-        CAPA_T.put(DRAFT,                Set.of(PENDING_HOD, CANCELLED));
+        // Round-L (2026-06-26): peer-review gate. Initiator submits the
+        // draft to PENDING_REVIEW; another user in the same department
+        // (not the creator) verifies and forwards to HOD. Reviewer can
+        // also send back (→ DRAFT) for edits.
+        CAPA_T.put(DRAFT,                Set.of(PENDING_REVIEW, CANCELLED));
+        CAPA_T.put(PENDING_REVIEW,       Set.of(PENDING_HOD, DRAFT, CANCELLED));
         // PENDING_HOD → DRAFT is the "Resend to Initiator" transition (May 2026
         // tester feedback). Distinct from REJECTED — the record stays alive;
         // the Initiator edits + re-submits. Engine increments resend_count
@@ -125,7 +130,9 @@ public final class WorkflowTransition {
         // dept-comment fan-out in between, parallel RA + Customer branch,
         // optional Site Head, then Head QA → dept attachments → Investigation
         // Summary → Closed.
-        DEVIATION_T.put(DRAFT,                Set.of(PENDING_HOD, CANCELLED));
+        // Round-L peer-review gate (see CAPA notes).
+        DEVIATION_T.put(DRAFT,                Set.of(PENDING_REVIEW, CANCELLED));
+        DEVIATION_T.put(PENDING_REVIEW,       Set.of(PENDING_HOD, DRAFT, CANCELLED));
         DEVIATION_T.put(PENDING_HOD,          Set.of(PENDING_QA_REVIEW, DRAFT, REJECTED, CANCELLED));
         // QA's two passes share PENDING_QA_REVIEW. From here QA can:
         //   • invite depts (PENDING_DEPT_COMMENT)
@@ -160,7 +167,9 @@ public final class WorkflowTransition {
         // share a single graph; the path is selected by HOD's branching
         // flags (incident_sub_type, retesting_required, deviation_required)
         // and the QA Reviewer's site_head_required flag.
-        INCIDENT_T.put(DRAFT,                Set.of(PENDING_HOD, CANCELLED));
+        // Round-L peer-review gate (see CAPA notes).
+        INCIDENT_T.put(DRAFT,                Set.of(PENDING_REVIEW, CANCELLED));
+        INCIDENT_T.put(PENDING_REVIEW,       Set.of(PENDING_HOD, DRAFT, CANCELLED));
         INCIDENT_T.put(PENDING_HOD,          Set.of(PENDING_QA_REVIEW, DRAFT, REJECTED, CANCELLED));
         // From QA Review:
         //   • General + No-Dev → invite depts (PENDING_DEPT_COMMENT)
@@ -191,7 +200,9 @@ public final class WorkflowTransition {
         // Round-2 tester feedback: every reviewer stage allows Resend to
         // Initiator (→ DRAFT). The position rule (WorkflowPosition) gates
         // who's authorised at each source.
-        CC_T.put(DRAFT,                    Set.of(PENDING_HOD, CANCELLED));
+        // Round-L peer-review gate (see CAPA notes).
+        CC_T.put(DRAFT,                    Set.of(PENDING_REVIEW, CANCELLED));
+        CC_T.put(PENDING_REVIEW,           Set.of(PENDING_HOD, DRAFT, CANCELLED));
         CC_T.put(PENDING_HOD,              Set.of(PENDING_QA_REVIEW, DRAFT, REJECTED, CANCELLED));
         CC_T.put(PENDING_QA_REVIEW,        Set.of(PENDING_DEPT_COMMENT, DRAFT, REJECTED, CANCELLED));
         // PENDING_DEPT_COMMENT can also loop back to QA (so the dept HOD can
@@ -221,7 +232,9 @@ public final class WorkflowTransition {
         // PENDING_DEPT_COMMENT until every requested dept fills their row,
         // then comes back to PENDING_INVESTIGATION. QA Reviewer can also
         // skip dept comments entirely and forward straight to Head QA.
-        MC_T.put(DRAFT,                Set.of(PENDING_HOD, CANCELLED));
+        // Round-L peer-review gate (see CAPA notes).
+        MC_T.put(DRAFT,                Set.of(PENDING_REVIEW, CANCELLED));
+        MC_T.put(PENDING_REVIEW,       Set.of(PENDING_HOD, DRAFT, CANCELLED));
         MC_T.put(PENDING_HOD,          Set.of(PENDING_INVESTIGATION, DRAFT, REJECTED, CANCELLED));
         MC_T.put(PENDING_INVESTIGATION,Set.of(PENDING_DEPT_COMMENT, PENDING_HEAD_QA, DRAFT, REJECTED, CANCELLED));
         MC_T.put(PENDING_DEPT_COMMENT, Set.of(PENDING_INVESTIGATION, DRAFT, REJECTED, CANCELLED));
@@ -244,7 +257,8 @@ public final class WorkflowTransition {
 
     static {
         Map<QmsStatus, QmsStatus> capaFwd = new EnumMap<>(QmsStatus.class);
-        capaFwd.put(DRAFT,                       PENDING_HOD);
+        capaFwd.put(DRAFT,                       PENDING_REVIEW);
+        capaFwd.put(PENDING_REVIEW,              PENDING_HOD);
         capaFwd.put(PENDING_HOD,                 PENDING_QA_REVIEW);
         // QA's canonical forward target is Head QA (skipping site head + dept
         // comments). Stage panel exposes explicit secondaries for "Invite
@@ -261,7 +275,8 @@ public final class WorkflowTransition {
         PRIMARY_FORWARD.put(QmsRecordType.CAPA, capaFwd);
 
         Map<QmsStatus, QmsStatus> devFwd = new EnumMap<>(QmsStatus.class);
-        devFwd.put(DRAFT,                    PENDING_HOD);
+        devFwd.put(DRAFT,                    PENDING_REVIEW);
+        devFwd.put(PENDING_REVIEW,           PENDING_HOD);
         devFwd.put(PENDING_HOD,              PENDING_QA_REVIEW);
         // QA's canonical "approve" target is PENDING_RA_REVIEW. The dept-
         // comment fan-out and the customer branch are explicit secondary
@@ -278,7 +293,8 @@ public final class WorkflowTransition {
         PRIMARY_FORWARD.put(QmsRecordType.DEVIATION, devFwd);
 
         Map<QmsStatus, QmsStatus> incFwd = new EnumMap<>(QmsStatus.class);
-        incFwd.put(DRAFT,                PENDING_HOD);
+        incFwd.put(DRAFT,                PENDING_REVIEW);
+        incFwd.put(PENDING_REVIEW,       PENDING_HOD);
         incFwd.put(PENDING_HOD,          PENDING_QA_REVIEW);
         // QA's canonical "approve" target depends on path. We default to
         // Head QA (skipping site head + dept comments) so Lab-branch
@@ -294,7 +310,8 @@ public final class WorkflowTransition {
         PRIMARY_FORWARD.put(QmsRecordType.INCIDENT, incFwd);
 
         Map<QmsStatus, QmsStatus> ccFwd = new EnumMap<>(QmsStatus.class);
-        ccFwd.put(DRAFT,                    PENDING_HOD);
+        ccFwd.put(DRAFT,                    PENDING_REVIEW);
+        ccFwd.put(PENDING_REVIEW,           PENDING_HOD);
         ccFwd.put(PENDING_HOD,              PENDING_QA_REVIEW);
         ccFwd.put(PENDING_QA_REVIEW,        PENDING_DEPT_COMMENT);
         ccFwd.put(PENDING_DEPT_COMMENT,     PENDING_RA_REVIEW);
@@ -312,7 +329,8 @@ public final class WorkflowTransition {
         PRIMARY_FORWARD.put(QmsRecordType.CHANGE_CONTROL, ccFwd);
 
         Map<QmsStatus, QmsStatus> mcFwd = new EnumMap<>(QmsStatus.class);
-        mcFwd.put(DRAFT,                PENDING_HOD);
+        mcFwd.put(DRAFT,                PENDING_REVIEW);
+        mcFwd.put(PENDING_REVIEW,       PENDING_HOD);
         mcFwd.put(PENDING_HOD,          PENDING_INVESTIGATION);
         // QA Reviewer's canonical "approve" target depends on whether they
         // need dept input. Both targets are graph-allowed; the UI exposes

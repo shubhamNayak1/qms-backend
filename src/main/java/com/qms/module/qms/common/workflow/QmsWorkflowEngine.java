@@ -229,10 +229,16 @@ public class QmsWorkflowEngine {
     }
 
     /**
-     * Submit — DRAFT → PENDING_HOD.
+     * Submit — DRAFT → PENDING_REVIEW.
+     *
+     * Round-L (2026-06-26): the submit shortcut now routes to the new
+     * peer-review gate, not directly to HOD. The reviewer (another user
+     * in the same department flagged is_dept_reviewer) is responsible
+     * for forwarding the record to PENDING_HOD via approve() once they
+     * have verified the captured fields.
      */
     public void submit(QmsRecord record, String comment) {
-        transition(record, QmsStatus.PENDING_HOD, comment);
+        transition(record, QmsStatus.PENDING_REVIEW, comment);
     }
 
     /**

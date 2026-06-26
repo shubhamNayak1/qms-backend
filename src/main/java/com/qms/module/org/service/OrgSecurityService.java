@@ -157,6 +157,20 @@ public class OrgSecurityService {
                 .orElse(false);
     }
 
+    /**
+     * Round-L (2026-06-26): per-user variant for notification routing.
+     * True when {@code userId} is flagged is_dept_reviewer AND belongs
+     * to department {@code deptId}. Used by the bell to surface
+     * PENDING_REVIEW records to peer reviewers in the originating dept.
+     */
+    public boolean isDeptReviewerOfDepartment(Long userId, Long deptId) {
+        if (userId == null || deptId == null) return false;
+        return userRepository.findByIdAndIsDeletedFalse(userId)
+                .map(u -> Boolean.TRUE.equals(u.getIsDeptReviewer())
+                        && deptId.equals(u.getDepartmentId()))
+                .orElse(false);
+    }
+
     // ─────────────────────────────────────────────────────────
     //  Lookups used by other services
     // ─────────────────────────────────────────────────────────

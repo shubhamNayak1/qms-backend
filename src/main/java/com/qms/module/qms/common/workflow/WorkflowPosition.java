@@ -46,7 +46,14 @@ public enum WorkflowPosition {
     private static final Map<QmsStatus, WorkflowPosition> REQUIRED = new EnumMap<>(QmsStatus.class);
 
     static {
-        REQUIRED.put(QmsStatus.PENDING_HOD,             ANY_INITIATOR);
+        // Round-L (2026-06-26): the new peer-review gate sits between DRAFT
+        // and PENDING_HOD. The creator submits their draft (any initiator);
+        // a different user in the same department flagged is_dept_reviewer
+        // verifies the captured fields and forwards to the HOD. PENDING_HOD
+        // is now reached only from PENDING_REVIEW, so its required position
+        // moves from ANY_INITIATOR to DEPT_REVIEWER_OF_RECORD_DEPT.
+        REQUIRED.put(QmsStatus.PENDING_REVIEW,          ANY_INITIATOR);
+        REQUIRED.put(QmsStatus.PENDING_HOD,             DEPT_REVIEWER_OF_RECORD_DEPT);
         REQUIRED.put(QmsStatus.PENDING_QA_REVIEW,       HOD_OF_RECORD_DEPT);
         REQUIRED.put(QmsStatus.PENDING_DEPT_COMMENT,    QA_REVIEWER);
         REQUIRED.put(QmsStatus.PENDING_RA_REVIEW,       QA_REVIEWER);
@@ -99,6 +106,7 @@ public enum WorkflowPosition {
         // skip the position gate entirely.
         if (to == QmsStatus.DRAFT) {
             switch (from) {
+                case PENDING_REVIEW:             return DEPT_REVIEWER_OF_RECORD_DEPT;
                 case PENDING_HOD:                return HOD_OF_RECORD_DEPT;
                 case PENDING_QA_REVIEW:          return QA_REVIEWER;
                 case PENDING_DEPT_COMMENT:       return HOD_OF_COMMENTING_DEPT;
@@ -128,6 +136,11 @@ public enum WorkflowPosition {
     public static WorkflowPosition requiredFor(QmsRecordType type,
                                                 QmsStatus from,
                                                 QmsStatus to) {
+        // Round-L: the old MC-only DRAFT → PENDING_HOD = DEPT_REVIEWER override
+        // is now obsolete because every module goes DRAFT → PENDING_REVIEW
+        // first. Kept as a defensive no-op since the transition is no longer
+        // in the graph; the check still returns the right answer if it ever
+        // does fire.
         if (type == QmsRecordType.MARKET_COMPLAINT
                 && from == QmsStatus.DRAFT
                 && to == QmsStatus.PENDING_HOD) {
