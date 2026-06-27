@@ -204,7 +204,12 @@ public final class WorkflowTransition {
         CC_T.put(DRAFT,                    Set.of(PENDING_REVIEW, CANCELLED));
         CC_T.put(PENDING_REVIEW,           Set.of(PENDING_HOD, DRAFT, CANCELLED));
         CC_T.put(PENDING_HOD,              Set.of(PENDING_QA_REVIEW, DRAFT, REJECTED, CANCELLED));
-        CC_T.put(PENDING_QA_REVIEW,        Set.of(PENDING_DEPT_COMMENT, DRAFT, REJECTED, CANCELLED));
+        // Round-L (2026-06-27): QA Reviewer can now skip the dept-comment
+        // loop entirely when no departments are invited and forward
+        // straight to RA Evaluation. The frontend picks the target based
+        // on dept count: 0 depts → PENDING_RA_REVIEW; ≥1 → PENDING_DEPT_COMMENT.
+        CC_T.put(PENDING_QA_REVIEW,        Set.of(PENDING_DEPT_COMMENT, PENDING_RA_REVIEW,
+                                                   DRAFT, REJECTED, CANCELLED));
         // PENDING_DEPT_COMMENT can also loop back to QA (so the dept HOD can
         // bounce the record back if QA needs to re-evaluate before
         // forwarding to RA), and supports REJECTED / CANCELLED escape hatches.
