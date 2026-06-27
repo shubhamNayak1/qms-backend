@@ -136,6 +136,20 @@ public class QmsCommonController {
                 deptCommentService.fill(commentRowId, request));
     }
 
+    // Round-L (2026-06-27): soft-delete a PENDING dept-comment row so QA
+    // can fix an accidental invite. COMPLETED rows are protected by the
+    // service layer.
+    @DeleteMapping("/department-comments/{commentRowId}")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Soft-delete a PENDING department comment row (QA Reviewer / QA Head)")
+    public ResponseEntity<ApiResponse<Void>> deleteDeptComment(
+            @PathVariable String recordType,
+            @PathVariable Long   recordId,
+            @PathVariable Long   commentRowId) {
+        deptCommentService.delete(commentRowId);
+        return ApiResponse.noContent("Department comment row removed");
+    }
+
     // ─────────────────────────────────────────────────────────
     //  Department attachments — per-dept upload + Head QA approval rows
     //  backing the PENDING_ATTACHMENTS gate (Deviation / Incident / CAPA /

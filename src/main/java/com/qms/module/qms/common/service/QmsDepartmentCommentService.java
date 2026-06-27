@@ -148,6 +148,35 @@ public class QmsDepartmentCommentService {
         return toResponse(repository.save(row));
     }
 
+    // ─── Removal — by QA Reviewer / QA Head ─────────────────
+    //
+    // Round-L (2026-06-27): tester wanted a remove option on each dept
+    // row in the QA Evaluation accordion (in case the wrong dept was
+    // invited). Soft-deletes PENDING rows only — once a dept has
+    // COMPLETED its comment the row is part of the audit trail and
+    // can't be removed.
+    @Audited(action = AuditAction.DELETE, module = AuditModule.QMS,
+             entityType = "QmsDepartmentComment", entityIdArgIndex = 0,
+             captureNewValue = false,
+             description = "Department comment row removed")
+    @Transactional
+    public void delete(Long commentRowId) {
+        QmsDepartmentComment row = repository.findByIdAndIsDeletedFalse(commentRowId)
+                .orElseThrow(() -> AppException.notFound("QmsDepartmentComment", commentRowId));
+        if (!"PENDING".equalsIgnoreCase(row.getStatus())) {
+            throw AppException.badRequest(
+                    "Cannot remove a department comment row once it is " + row.getStatus() + ".");
+        }
+        if (!orgSecurity.isSuperAdmin()
+                && !orgSecurity.isCurrentUserQaReviewer()
+                && !orgSecurity.isCurrentUserQaHead()) {
+            throw AppException.forbidden(
+                    "Only the QA Reviewer / QA Head can remove a department comment row.");
+        }
+        row.setIsDeleted(true);
+        repository.save(row);
+    }
+
     // ─── Internals ──────────────────────────────────────────
 
     private QmsDepartmentCommentResponse toResponse(QmsDepartmentComment c) {
