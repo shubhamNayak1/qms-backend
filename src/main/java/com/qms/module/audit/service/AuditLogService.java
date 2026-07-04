@@ -129,8 +129,20 @@ public class AuditLogService {
     @Transactional(readOnly = true)
     public PageResponse<AuditLogResponse> search(AuditSearchRequest req) {
         Specification<AuditLog> spec = AuditLogSpecification.filter(req.getUserId(),req.getUsername(),req.getAction(),req.getModule(),req.getEntityType(),req.getEntityId(),req.getOutcome(),req.getIpAddress(),req.getFrom(),req.getTo());
+        // Round-M (2026-06-27) tester CC-Point-1 · Issue 3: the User
+        // Activity Trail was rendering events in reverse chronological
+        // order which made the tester think earlier events had happened
+        // later. Flipping the primary sort to ASCENDING (oldest first)
+        // so the trail reads top-to-bottom as "first thing happened,
+        // then second thing, then third".
+        //
+        // The secondary id-ASC tie-breaker prevents same-millisecond
+        // events (batched saves, async audit writes) from swapping
+        // order between page loads — insertion order is the tie-break.
         var page = auditLogRepository.findAll(spec,
-                PageRequest.of(req.getPage(), req.getSize(), Sort.by("timestamp").descending()));
+                PageRequest.of(req.getPage(), req.getSize(),
+                        Sort.by("timestamp").ascending()
+                                .and(Sort.by("id").ascending())));
 
 //        var page = auditLogRepository.search(
 //                req.getUserId(), req.getUsername(),
