@@ -4,6 +4,8 @@ import com.qms.common.enums.AuditAction;
 import com.qms.common.enums.AuditModule;
 import com.qms.common.exception.AppException;
 import com.qms.module.audit.annotation.Audited;
+import com.qms.module.audit.context.AuditContext;
+import com.qms.module.audit.context.AuditContextHolder;
 import com.qms.module.license.service.LicenseService;
 import com.qms.module.user.dto.request.LoginRequest;
 import com.qms.module.user.dto.request.RefreshTokenRequest;
@@ -106,10 +108,63 @@ public class AuthService {
             return buildTokenResponse(principal, accessToken, refreshToken);
 
         } catch (BadCredentialsException ex) {
+            // Round-M (2026-06-27) tester CC-Point-1 · Issue 1: publish
+            // a friendly description for the failed-login audit row so
+            // the User Activity Trail records who tried to log in with
+            // what username and why it failed. The @Audited(logOnFailure)
+            // aspect will pick this context up when it builds the FAILURE
+            // row after the exception is re-thrown.
+            publishFailedLoginContext(req.getUsernameOrEmail(),
+                    "BAD_CREDENTIALS", "wrong password");
             // Increment failed attempts and potentially lock the account
             handleFailedLogin(req.getUsernameOrEmail());
             throw ex; // re-throw for GlobalExceptionHandler to produce correct 401
+        } catch (LockedException ex) {
+            publishFailedLoginContext(req.getUsernameOrEmail(),
+                    "ACCOUNT_LOCKED", "account is temporarily locked");
+            throw ex;
+        } catch (AppException ex) {
+            // Covers the LICENSE_REQUIRED / other business-rule failures
+            // thrown between successful auth and token issuance so the
+            // audit trail explains why login was blocked.
+            publishFailedLoginContext(req.getUsernameOrEmail(),
+                    ex.getErrorCode() != null ? ex.getErrorCode() : "LOGIN_BLOCKED",
+                    ex.getMessage());
+            throw ex;
         }
+    }
+
+    /**
+     * Round-M (2026-06-27) tester CC-Point-1 · Issue 1: writes a
+     * description + attempted-username payload into the thread-local
+     * audit context so the FAILURE audit row surfaces the *what* and
+     * *why*. Called from every catch branch of {@link #login}.
+     */
+    private void publishFailedLoginContext(String attemptedUsername,
+                                            String reason,
+                                            String detail) {
+        // If the username matches a real user, populate entityId so the
+        // Audit Trail's user-filter can find the row. When the username
+        // does not exist we still write the FAILURE row with entityId=null
+        // — the description carries the attempted string.
+        Long userId = userRepository.findByUsernameOrEmail(attemptedUsername)
+                .map(User::getId)
+                .orElse(null);
+        String desc = String.format(
+                "Failed login attempt: username='%s' · reason=%s%s",
+                attemptedUsername,
+                reason,
+                (detail != null && !detail.isBlank()) ? " · " + detail : "");
+        java.util.Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("attemptedUsername", attemptedUsername);
+        payload.put("reason", reason);
+        if (detail != null && !detail.isBlank()) payload.put("detail", detail);
+        AuditContextHolder.set(AuditContext.builder()
+                .entityType("User")
+                .entityId(userId)
+                .description(desc.length() > 480 ? desc.substring(0, 479) + "…" : desc)
+                .additionalData(payload)
+                .build());
     }
 
     // ─── Refresh ─────────────────────────────────────────────
