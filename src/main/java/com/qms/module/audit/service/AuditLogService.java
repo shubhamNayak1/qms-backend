@@ -260,6 +260,11 @@ public class AuditLogService {
                 .username(log.getUsername())
                 .userFullName(log.getUserFullName())
                 .userDepartment(log.getUserDepartment())
+                // Round-M (2026-06-27) tester CC-Point-1 · Issue 2 —
+                // surface Role + Browser fields to the frontend Audit
+                // Trail table.
+                .userRole(log.getUserRole())
+                .userAgent(log.getUserAgent())
                 .action(log.getAction())
                 .module(log.getModule())
                 .entityType(log.getEntityType())

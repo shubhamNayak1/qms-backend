@@ -5,6 +5,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qms.common.enums.QmsStatus;
 import com.qms.common.exception.AppException;
+import com.qms.module.audit.context.AuditContext;
+import com.qms.module.audit.context.AuditContextHolder;
 import com.qms.module.org.service.OrgSecurityService;
 import com.qms.module.qms.common.entity.QmsRecord;
 import com.qms.module.qms.common.repository.QmsDepartmentAttachmentRepository;
@@ -187,6 +189,62 @@ public class QmsWorkflowEngine {
                 && current != QmsStatus.PENDING_ATTACHMENTS) {
             autoSpawnActionRequiredDeptAttachmentRows(record);
         }
+
+        // Round-M (2026-06-27) tester CC-Point-1 · Issues 4 + 9: push a
+        // human-readable description into the thread-local audit context
+        // so the @Audited interceptor on the calling service method
+        // writes something like
+        //   "Change Control CC-202606-0021: DRAFT → PENDING_REVIEW ·
+        //    Remark: Ready for review"
+        // instead of the auto-generated boilerplate
+        //   "SUBMIT on ChangeControl:51".
+        // The interceptor prefers ctx.getDescription() over the annotation
+        // default, so this takes over cleanly with no service-side changes.
+        publishAuditDescription(record, current, newStatus, comment);
+    }
+
+    /**
+     * Round-M audit description builder — see comment inside transition().
+     * The resulting string is what a QA auditor sees on the Audit Trail
+     * table's Description column, so keep it short, factual, and include
+     * the record number, status transition, and the actor's remark.
+     */
+    private void publishAuditDescription(QmsRecord record,
+                                          QmsStatus from,
+                                          QmsStatus to,
+                                          String comment) {
+        String moduleLabel = humanModuleLabel(record.getRecordType());
+        String recordRef   = record.getRecordNumber() != null
+                ? record.getRecordNumber()
+                : ("#" + record.getId());
+        String remarkPart  = (comment != null && !comment.isBlank())
+                ? " · Remark: " + truncate(comment.trim(), 200)
+                : "";
+        String desc = String.format("%s %s: %s → %s%s",
+                moduleLabel, recordRef, from, to, remarkPart);
+
+        // Truncate defensively — audit_logs.description is VARCHAR(500).
+        AuditContextHolder.set(AuditContext.builder()
+                .entityType(record.getRecordType().name())
+                .entityId(record.getId())
+                .description(truncate(desc, 480))
+                .build());
+    }
+
+    private String humanModuleLabel(com.qms.common.enums.QmsRecordType type) {
+        return switch (type) {
+            case CHANGE_CONTROL   -> "Change Control";
+            case CAPA             -> "CAPA";
+            case DEVIATION        -> "Deviation";
+            case INCIDENT         -> "Incident";
+            case MARKET_COMPLAINT -> "Market Complaint";
+            case AUDIT_SCHEDULE   -> "Audit Schedule";
+        };
+    }
+
+    private String truncate(String s, int max) {
+        if (s == null) return null;
+        return s.length() <= max ? s : s.substring(0, max - 1) + "…";
     }
 
     private void autoSpawnActionRequiredDeptAttachmentRows(QmsRecord record) {

@@ -21,6 +21,8 @@ public class AuditLogResponse {
     private String      username;
     private String      userFullName;
     private String      userDepartment;
+    /** Round-M (2026-06-27) tester CC-Point-1 · Issue 2 — role list. */
+    private String      userRole;
 
     // ── What ─────────────────────────────────────────────────
     private AuditAction action;
@@ -40,6 +42,13 @@ public class AuditLogResponse {
 
     // ── Network context ──────────────────────────────────────
     private String      ipAddress;
+    /**
+     * Round-M (2026-06-27) tester CC-Point-1 · Issue 2 — raw User-Agent
+     * header. The Audit Trail frontend already renders a Browser column
+     * that parses this string; it was empty because the DTO field was
+     * missing.
+     */
+    private String      userAgent;
     private String      requestUri;
     private String      correlationId;
     private String      sessionId;

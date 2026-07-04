@@ -18,6 +18,13 @@ public class AuditPrincipal {
     private final String fullName;
     private final String department;
 
+    /**
+     * Round-M (2026-06-27) tester CC-Point-1 · Issue 2: comma-separated
+     * role list drawn from the authenticated user's authorities. Written
+     * into audit_logs.user_role so the Audit Trail table can show it.
+     */
+    private final String role;
+
     /** JWT token id (jti claim) — used as sessionId in audit logs. */
     private final String sessionId;
 

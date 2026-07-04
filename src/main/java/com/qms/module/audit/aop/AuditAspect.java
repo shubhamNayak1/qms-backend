@@ -167,6 +167,12 @@ public class AuditAspect {
             builder.userId(p.getId())
                    .username(p.getUsername())
                    .userFullName(p.getFullName())
+                   // Round-M (2026-06-27) tester CC-Point-1 · Issue 2:
+                   // write the acting user's role list so the Role
+                   // column on the Audit Trail table shows something
+                   // other than "—".
+                   .userRole(p.getRole())
+                   .userDepartment(p.getDepartment())
                    .sessionId(p.getSessionId());
         });
 

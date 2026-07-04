@@ -69,6 +69,17 @@ public class AuditLog {
     @Column(name = "user_department", length = 100)
     private String userDepartment;
 
+    /**
+     * Round-M (2026-06-27) tester CC-Point-1 · Issue 2: the frontend
+     * User Activity Trail table renders a Role column that was always
+     * "—" because the entity had no corresponding field. The AOP
+     * interceptor now writes the acting user's role(s) here (comma-
+     * separated when a user holds more than one). Populated from
+     * Spring Security's authorities via SecurityUtils.
+     */
+    @Column(name = "user_role", length = 120)
+    private String userRole;
+
     // ── What ───────────────────────────────────────────────
 
     @Enumerated(EnumType.STRING)
