@@ -250,6 +250,18 @@ public class ChangeControlService {
         if (req.getSiteHeadRequired()              != null) cc.setSiteHeadRequired(req.getSiteHeadRequired());
         if (req.getCustomerCommentRequired()       != null) cc.setCustomerCommentRequired(req.getCustomerCommentRequired());
         if (req.getCustomerComment()               != null) cc.setCustomerComment(req.getCustomerComment());
+
+        // Round-N (2026-07-04) tester CC-Point-2 · Issues 1 + 2.
+        if (req.getImpactOnQualification()         != null) cc.setImpactOnQualification(req.getImpactOnQualification());
+        if (req.getImpactOnDocumentation()         != null) cc.setImpactOnDocumentation(req.getImpactOnDocumentation());
+        if (req.getImpactOnValidation()            != null) cc.setImpactOnValidation(req.getImpactOnValidation());
+        if (req.getImpactOnMaterialSource()        != null) cc.setImpactOnMaterialSource(req.getImpactOnMaterialSource());
+        if (req.getImpactRegulatoryAspects()       != null) cc.setImpactRegulatoryAspects(req.getImpactRegulatoryAspects());
+        if (req.getImpactOnArtworkPack()           != null) cc.setImpactOnArtworkPack(req.getImpactOnArtworkPack());
+        if (req.getImpactOther()                   != null) cc.setImpactOther(req.getImpactOther());
+        if (req.getImpactOtherComment()            != null) cc.setImpactOtherComment(req.getImpactOtherComment());
+        if (req.getInitialRiskAssessmentRequired() != null) cc.setInitialRiskAssessmentRequired(req.getInitialRiskAssessmentRequired());
+        if (req.getInitialRiskAssessment()         != null) cc.setInitialRiskAssessment(req.getInitialRiskAssessment());
     }
 
     private ChangeControlResponse toResponse(ChangeControl cc) {
@@ -309,6 +321,18 @@ public class ChangeControlService {
         r.setSiteHeadRequired(cc.getSiteHeadRequired());
         r.setCustomerCommentRequired(cc.getCustomerCommentRequired());
         r.setCustomerComment(cc.getCustomerComment());
+
+        // Round-N (2026-07-04) tester CC-Point-2 · Issues 1 + 2.
+        r.setImpactOnQualification(cc.getImpactOnQualification());
+        r.setImpactOnDocumentation(cc.getImpactOnDocumentation());
+        r.setImpactOnValidation(cc.getImpactOnValidation());
+        r.setImpactOnMaterialSource(cc.getImpactOnMaterialSource());
+        r.setImpactRegulatoryAspects(cc.getImpactRegulatoryAspects());
+        r.setImpactOnArtworkPack(cc.getImpactOnArtworkPack());
+        r.setImpactOther(cc.getImpactOther());
+        r.setImpactOtherComment(cc.getImpactOtherComment());
+        r.setInitialRiskAssessmentRequired(cc.getInitialRiskAssessmentRequired());
+        r.setInitialRiskAssessment(cc.getInitialRiskAssessment());
         return r;
     }
 }

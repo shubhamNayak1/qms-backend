@@ -57,4 +57,19 @@ public class ChangeControlRequest extends QmsBaseRequest {
 
     @Schema(description = "Customer comment text — filled during PENDING_CUSTOMER_COMMENT stage")
     private String customerComment;
+
+    // ── Round-N (2026-07-04) tester CC-Point-2 · Issues 1 + 2 ──────
+    // HOD Assessment 7-checkbox Impact panel + Initial Risk Assessment
+    // toggle. All fields nullable so partial saves keep working.
+    private Boolean impactOnQualification;
+    private Boolean impactOnDocumentation;
+    private Boolean impactOnValidation;
+    private Boolean impactOnMaterialSource;
+    private Boolean impactRegulatoryAspects;
+    private Boolean impactOnArtworkPack;
+    private Boolean impactOther;
+    private String  impactOtherComment;
+
+    private Boolean initialRiskAssessmentRequired;
+    private String  initialRiskAssessment;
 }

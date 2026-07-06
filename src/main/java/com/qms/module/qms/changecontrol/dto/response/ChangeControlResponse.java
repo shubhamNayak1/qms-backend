@@ -36,4 +36,16 @@ public class ChangeControlResponse extends QmsBaseResponse {
     private Boolean siteHeadRequired;
     private Boolean customerCommentRequired;
     private String  customerComment;
+
+    // Round-N (2026-07-04) tester CC-Point-2 · Issues 1 + 2.
+    private Boolean impactOnQualification;
+    private Boolean impactOnDocumentation;
+    private Boolean impactOnValidation;
+    private Boolean impactOnMaterialSource;
+    private Boolean impactRegulatoryAspects;
+    private Boolean impactOnArtworkPack;
+    private Boolean impactOther;
+    private String  impactOtherComment;
+    private Boolean initialRiskAssessmentRequired;
+    private String  initialRiskAssessment;
 }

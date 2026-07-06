@@ -116,6 +116,56 @@ public class ChangeControl extends QmsRecord {
     @Builder.Default
     private Boolean customerCommentRequired = false;
 
+    // ── Round-N (2026-07-04) tester CC-Point-2 · Issue 1 ───────────
+    // The HOD Assessment form gains a 7-checkbox "Impact" panel so
+    // the HOD can flag what areas of the business are affected.
+    // Each column defaults to FALSE via the V29 migration; the entity
+    // marks them non-nullable via @Builder.Default to match.
+
+    @Column(name = "impact_on_qualification")
+    @Builder.Default
+    private Boolean impactOnQualification = false;
+
+    @Column(name = "impact_on_documentation")
+    @Builder.Default
+    private Boolean impactOnDocumentation = false;
+
+    @Column(name = "impact_on_validation")
+    @Builder.Default
+    private Boolean impactOnValidation = false;
+
+    @Column(name = "impact_on_material_source")
+    @Builder.Default
+    private Boolean impactOnMaterialSource = false;
+
+    @Column(name = "impact_regulatory_aspects")
+    @Builder.Default
+    private Boolean impactRegulatoryAspects = false;
+
+    @Column(name = "impact_on_artwork_pack")
+    @Builder.Default
+    private Boolean impactOnArtworkPack = false;
+
+    @Column(name = "impact_other")
+    @Builder.Default
+    private Boolean impactOther = false;
+
+    /** Populated only when {@link #impactOther} is TRUE. */
+    @Column(name = "impact_other_comment", columnDefinition = "TEXT")
+    private String impactOtherComment;
+
+    // ── Round-N tester CC-Point-2 · Issue 2 ────────────────────────
+    // Initial Risk Assessment toggle + conditional narrative. Same
+    // pattern as regulatory_submission_required + reference: boolean
+    // gates whether the narrative field is required.
+
+    @Column(name = "initial_risk_assessment_required")
+    @Builder.Default
+    private Boolean initialRiskAssessmentRequired = false;
+
+    @Column(name = "initial_risk_assessment", columnDefinition = "TEXT")
+    private String initialRiskAssessment;
+
     @PrePersist
     private void prePersist() { setRecordType(QmsRecordType.CHANGE_CONTROL); }
 }
