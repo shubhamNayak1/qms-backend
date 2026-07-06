@@ -62,8 +62,23 @@ public class QmsWorkflowEngine {
      * error and an audit trail entry is always meaningful.
      */
     public void transition(QmsRecord record, QmsStatus newStatus, String comment) {
-        requireComment(comment);
         QmsStatus current = record.getStatus();
+        // Round-N (2026-07-04) tester CC-Point-2 · Issue 4: the QA
+        // Evaluation Phase-1 forward (PENDING_QA_REVIEW → PENDING_DEPT_COMMENT)
+        // is a "route to depts for comment" step where the Remark /
+        // Justification is intentionally optional. The frontend already
+        // treats it as optional but the backend requireComment(...) check
+        // was still 400ing every save with an empty comment. Skip the
+        // hard requirement for this specific transition and fall back to
+        // an audit-trail placeholder so the log row still says something
+        // useful. All other transitions still require a comment.
+        boolean remarkOptional = (current == QmsStatus.PENDING_QA_REVIEW
+                                   && newStatus == QmsStatus.PENDING_DEPT_COMMENT);
+        if (remarkOptional && (comment == null || comment.isBlank())) {
+            comment = "(no additional remark — routed to departments for comment)";
+        } else {
+            requireComment(comment);
+        }
         if (current == newStatus) {
             throw AppException.badRequest("Record is already in status " + current);
         }
