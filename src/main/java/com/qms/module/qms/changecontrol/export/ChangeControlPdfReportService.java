@@ -444,18 +444,35 @@ public class ChangeControlPdfReportService {
     private class PageFooter extends PdfPageEventHelper {
         private final String recordNumber;
         private final String user;
+        private BaseFont     footerFont;
+
         PageFooter(String recordNumber, String user) {
             this.recordNumber = recordNumber;
             this.user = user;
         }
+
+        @Override
+        public void onOpenDocument(PdfWriter writer, Document doc) {
+            // Round-N follow-up: mirrors PdfExporter — resolve BaseFont
+            // directly rather than via FontFactory.getFont().getBaseFont(),
+            // which can return null and NPE the footer.
+            try {
+                footerFont = BaseFont.createFont(
+                        BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
+            } catch (Exception e) {
+                log.warn("Footer BaseFont init failed: {}", e.getMessage());
+            }
+        }
+
         @Override
         public void onEndPage(PdfWriter writer, Document doc) {
+            if (footerFont == null) return;
             String left = companyName + " · " + safe(recordNumber);
             String right = safe(user) + " · " + DT_FMT.format(LocalDateTime.now())
                     + " · Page " + writer.getPageNumber();
             PdfContentByte cb = writer.getDirectContent();
             cb.beginText();
-            cb.setFontAndSize(FontFactory.getFont(FontFactory.HELVETICA, 7).getBaseFont(), 7);
+            cb.setFontAndSize(footerFont, 7);
             cb.setColorFill(Color.DARK_GRAY);
             cb.showTextAligned(Element.ALIGN_LEFT, left, 30, 20, 0);
             cb.showTextAligned(Element.ALIGN_RIGHT, right, doc.getPageSize().getWidth() - 30, 20, 0);
