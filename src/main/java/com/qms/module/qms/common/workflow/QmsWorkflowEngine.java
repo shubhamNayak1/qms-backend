@@ -82,7 +82,17 @@ public class QmsWorkflowEngine {
         if (current == newStatus) {
             throw AppException.badRequest("Record is already in status " + current);
         }
-        if (!WorkflowTransition.isAllowed(record.getRecordType(), current, newStatus)) {
+        // Round-N (2026-07-04) tester CC-Point-2 · Issue 3: allow
+        // "send back to any prior stage" — the actor at the current
+        // stage can bounce the record to any status the record has
+        // previously been in. This bypasses the forward-only graph
+        // when the target appears in status_history but keeps the
+        // position + comment gates intact. Returns to REJECTED /
+        // CANCELLED / DEVIATION_SPAWNED terminal states are excluded.
+        boolean isReturn = isReturnToPriorStage(record, newStatus)
+                && !isTerminalStatus(newStatus);
+        if (!isReturn
+                && !WorkflowTransition.isAllowed(record.getRecordType(), current, newStatus)) {
             throw AppException.badRequest(
                     WorkflowTransition.transitionError(record.getRecordType(), current, newStatus));
         }
@@ -93,7 +103,17 @@ public class QmsWorkflowEngine {
         // legitimate loop-backs (e.g. PENDING_DEPT_COMMENT → PENDING_QA_REVIEW
         // is owned by the HOD of the commenting dept, not by the HOD of
         // record's originating dept).
-        requirePosition(record, current, newStatus);
+        // Round-N (2026-07-04) tester CC-Point-2 · Issue 3: for
+        // "return to prior stage" the CURRENT stage's actor is the one
+        // sending back, so the position rule is drawn from the source
+        // (current) — same pattern as the existing Resend-to-DRAFT
+        // override. We treat any prior-stage return like the DRAFT
+        // resend for position purposes.
+        if (isReturn) {
+            requirePosition(record, current, QmsStatus.DRAFT);
+        } else {
+            requirePosition(record, current, newStatus);
+        }
 
         // ── Cross-cutting state guards ───────────────────────────
         // Block forward-progression to RA Review (CC) / QA Investigation (MC)
@@ -631,6 +651,32 @@ public class QmsWorkflowEngine {
      */
     public List<StatusHistoryEntry> getHistory(QmsRecord record) {
         return deserializeHistory(record.getStatusHistory());
+    }
+
+    // Round-N (2026-07-04) tester CC-Point-2 · Issue 3 — helpers for
+    // "send back to any prior stage".
+
+    /**
+     * True when the target status appears in the record's status
+     * history — i.e. the record has been in that state before, so a
+     * bounce-back to it is a legitimate "return" transition rather
+     * than an arbitrary forward jump.
+     */
+    private boolean isReturnToPriorStage(QmsRecord record, QmsStatus target) {
+        if (target == null) return false;
+        var history = deserializeHistory(record.getStatusHistory());
+        for (var entry : history) {
+            if (entry.getFromStatus() == target || entry.getToStatus() == target) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isTerminalStatus(QmsStatus s) {
+        return s == QmsStatus.CLOSED || s == QmsStatus.REJECTED
+            || s == QmsStatus.CANCELLED || s == QmsStatus.DEVIATION_SPAWNED
+            || s == QmsStatus.EFFECTIVENESS_VERIFIED;
     }
 
     // ── Internals ─────────────────────────────────────────────
