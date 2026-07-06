@@ -25,6 +25,8 @@ import org.springframework.web.bind.annotation.*;
 public class ChangeControlController {
 
     private final ChangeControlService changeControlService;
+    // Round-N (2026-07-04) tester CC-Point-2 · new "Report" ask.
+    private final com.qms.module.qms.changecontrol.export.ChangeControlPdfReportService pdfReportService;
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
@@ -46,6 +48,26 @@ public class ChangeControlController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChangeControlResponse>> getById(@PathVariable Long id) {
         return ApiResponse.ok(changeControlService.getById(id));
+    }
+
+    /**
+     * Round-N (2026-07-04) tester CC-Point-2 · new "Report" ask.
+     * Streams a printable PDF snapshot of the Change Control record in the
+     * layout supplied by the tester (Vinfro CC form).
+     */
+    @GetMapping(value = "/{id}/report.pdf", produces = "application/pdf")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Download the Change Control form as PDF")
+    public ResponseEntity<byte[]> reportPdf(@PathVariable Long id) {
+        ChangeControlResponse cc = changeControlService.getById(id);
+        byte[] pdf = pdfReportService.render(cc);
+        String filename = "CC-Report-" + (cc.getRecordNumber() != null
+                ? cc.getRecordNumber().replaceAll("[^A-Za-z0-9_-]", "_")
+                : String.valueOf(id)) + ".pdf";
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                .header("Content-Type", "application/pdf")
+                .body(pdf);
     }
 
     @PostMapping
