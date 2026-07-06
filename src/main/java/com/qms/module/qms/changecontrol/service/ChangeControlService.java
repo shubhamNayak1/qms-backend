@@ -49,6 +49,8 @@ public class ChangeControlService {
     private final RecordNumberGenerator   recordNumberGenerator;
     private final QmsRecordMapper         recordMapper;
     private final AuditValueSerializer    auditSerializer;
+    // Round-N (2026-07-04) tester CC-Point-2 · Issue 7 — row-level ACL.
+    private final com.qms.module.org.service.OrgSecurityService orgSecurity;
     /**
      * Used to resolve the Initiator's attachment to its DMS title/version
      * when the {@code initialAttachmentRef} parses as a numeric document id.
@@ -72,6 +74,12 @@ public class ChangeControlService {
                                                        Long assignedTo, String department,
                                                        String search, int page, int size) {
         Specification<ChangeControl> spec = ChangeControlSpecification.filter(status,priority,changeType,riskLevel,assignedTo,department,search);
+        // Round-N (2026-07-04) tester CC-Point-2 · Issue 7 — restrict
+        // the list to records the current user has authority on. See
+        // QmsVisibilitySpecification for the rule set.
+        spec = spec.and(com.qms.module.qms.common.repository.QmsVisibilitySpecification
+                .visibleToCurrentUser(orgSecurity,
+                        com.qms.common.enums.QmsRecordType.CHANGE_CONTROL));
         var pageResult = changeControlRepository.findAll(spec,
                 PageRequest.of(page, size, Sort.by("createdAt").descending()));
 

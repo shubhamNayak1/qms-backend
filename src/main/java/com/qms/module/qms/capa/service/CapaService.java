@@ -52,6 +52,8 @@ public class CapaService {
     private final QmsRecordMapper          recordMapper;
     private final AuditValueSerializer     auditSerializer;
     private final QmsCapaAssessmentService assessmentService;
+    // Round-N (2026-07-04) tester CC-Point-2 · Issue 7.
+    private final com.qms.module.org.service.OrgSecurityService orgSecurity;
 
     // ── Queries ──────────────────────────────────────────────
 
@@ -60,6 +62,9 @@ public class CapaService {
                                               String source, String search,
                                               int page, int size) {
         Specification<Capa> spec = CapaSpecification.filter(status,priority,assignedTo,department,source,search);
+        spec = spec.and(com.qms.module.qms.common.repository.QmsVisibilitySpecification
+                .visibleToCurrentUser(orgSecurity,
+                        com.qms.common.enums.QmsRecordType.CAPA));
         var pageResult = capaRepository.findAll(spec,
                 PageRequest.of(page, size, Sort.by("createdAt").descending()));
 

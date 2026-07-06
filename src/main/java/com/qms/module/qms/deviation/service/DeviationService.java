@@ -48,6 +48,8 @@ public class DeviationService {
     private final RecordNumberGenerator  recordNumberGenerator;
     private final QmsRecordMapper        recordMapper;
     private final AuditValueSerializer   auditSerializer;
+    // Round-N (2026-07-04) tester CC-Point-2 · Issue 7.
+    private final com.qms.module.org.service.OrgSecurityService orgSecurity;
 
     public PageResponse<DeviationResponse> search(QmsStatus status, Priority priority,
                                                    Long assignedTo, String department,
@@ -55,6 +57,9 @@ public class DeviationService {
                                                    int page, int size) {
 
         Specification<Deviation> spec = DeviationSpecification.filter(status,priority,assignedTo,department,deviationType,search);
+        spec = spec.and(com.qms.module.qms.common.repository.QmsVisibilitySpecification
+                .visibleToCurrentUser(orgSecurity,
+                        com.qms.common.enums.QmsRecordType.DEVIATION));
         var pageResult = deviationRepository.findAll(spec,
                 PageRequest.of(page, size, Sort.by("createdAt").descending()));
 

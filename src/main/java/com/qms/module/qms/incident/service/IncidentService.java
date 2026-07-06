@@ -51,6 +51,8 @@ public class IncidentService {
     private final RecordNumberGenerator recordNumberGenerator;
     private final QmsRecordMapper       recordMapper;
     private final AuditValueSerializer  auditSerializer;
+    // Round-N (2026-07-04) tester CC-Point-2 · Issue 7.
+    private final com.qms.module.org.service.OrgSecurityService orgSecurity;
 
     public PageResponse<IncidentResponse> search(QmsStatus status, Priority priority,
                                                   String severity, String incidentType,
@@ -58,6 +60,9 @@ public class IncidentService {
                                                   String search, int page, int size) {
 
         Specification<Incident> spec = IncidentSpecification.filter(status,priority,severity,incidentType,assignedTo,department,search);
+        spec = spec.and(com.qms.module.qms.common.repository.QmsVisibilitySpecification
+                .visibleToCurrentUser(orgSecurity,
+                        com.qms.common.enums.QmsRecordType.INCIDENT));
         var pageResult = incidentRepository.findAll(spec,
                 PageRequest.of(page, size, Sort.by("createdAt").descending()));
 

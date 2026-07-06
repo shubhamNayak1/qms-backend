@@ -49,6 +49,8 @@ public class MarketComplaintService {
     private final RecordNumberGenerator     recordNumberGenerator;
     private final QmsRecordMapper           recordMapper;
     private final AuditValueSerializer      auditSerializer;
+    // Round-N (2026-07-04) tester CC-Point-2 · Issue 7.
+    private final com.qms.module.org.service.OrgSecurityService orgSecurity;
 
     public PageResponse<MarketComplaintResponse> search(QmsStatus status, Priority priority,
                                                          String category, Long assignedTo,
@@ -56,6 +58,9 @@ public class MarketComplaintService {
                                                          int page, int size) {
 
         Specification<MarketComplaint> spec = MarketComplaintSpecification.filter(status,priority,category,assignedTo,reportableOnly,search);
+        spec = spec.and(com.qms.module.qms.common.repository.QmsVisibilitySpecification
+                .visibleToCurrentUser(orgSecurity,
+                        com.qms.common.enums.QmsRecordType.MARKET_COMPLAINT));
         var pageResult = complaintRepository.findAll(spec,
                 PageRequest.of(page, size, Sort.by("createdAt").descending()));
 
