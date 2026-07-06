@@ -2,16 +2,19 @@ package com.qms.module.qms.common.controller;
 
 import com.qms.common.enums.QmsRecordType;
 import com.qms.common.response.ApiResponse;
+import com.qms.module.qms.common.dto.request.QmsDepartmentActionItemRequest;
 import com.qms.module.qms.common.dto.request.QmsDepartmentAttachmentDecision;
 import com.qms.module.qms.common.dto.request.QmsDepartmentAttachmentRequest;
 import com.qms.module.qms.common.dto.request.QmsDepartmentCommentRequest;
 import com.qms.module.qms.common.dto.request.QmsLineItemRequest;
 import com.qms.module.qms.common.dto.request.TargetDateExtensionDecision;
 import com.qms.module.qms.common.dto.request.TargetDateExtensionRequest;
+import com.qms.module.qms.common.dto.response.QmsDepartmentActionItemResponse;
 import com.qms.module.qms.common.dto.response.QmsDepartmentAttachmentResponse;
 import com.qms.module.qms.common.dto.response.QmsDepartmentCommentResponse;
 import com.qms.module.qms.common.dto.response.QmsLineItemResponse;
 import com.qms.module.qms.common.dto.response.TargetDateExtensionResponse;
+import com.qms.module.qms.common.service.QmsDepartmentActionItemService;
 import com.qms.module.qms.common.service.QmsDepartmentAttachmentService;
 import com.qms.module.qms.common.service.QmsDepartmentCommentService;
 import com.qms.module.qms.common.service.QmsLineItemService;
@@ -51,6 +54,7 @@ public class QmsCommonController {
     private final QmsLineItemService             lineItemService;
     private final QmsDepartmentCommentService    deptCommentService;
     private final QmsDepartmentAttachmentService deptAttachmentService;
+    private final QmsDepartmentActionItemService deptActionItemService;
     private final TargetDateExtensionService     extensionService;
 
     // ─────────────────────────────────────────────────────────
@@ -148,6 +152,61 @@ public class QmsCommonController {
             @PathVariable Long   commentRowId) {
         deptCommentService.delete(commentRowId);
         return ApiResponse.noContent("Department comment row removed");
+    }
+
+    // ─────────────────────────────────────────────────────────
+    //  Department action items — Round-N (2026-07-04) tester CC-Point-2
+    //  · Issue 6. Each dept-comment row can now carry many action items,
+    //  each with its own target date and status. Path is nested under
+    //  the parent comment row so authorisation flows through the
+    //  parent's dept.
+    // ─────────────────────────────────────────────────────────
+
+    @GetMapping("/department-comments/{commentRowId}/action-items")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "List action items attached to a dept-comment row")
+    public ResponseEntity<ApiResponse<List<QmsDepartmentActionItemResponse>>> listActionItems(
+            @PathVariable String recordType,
+            @PathVariable Long   recordId,
+            @PathVariable Long   commentRowId) {
+        return ApiResponse.ok(deptActionItemService.list(commentRowId));
+    }
+
+    @PostMapping("/department-comments/{commentRowId}/action-items")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Add an action item to a dept-comment row (dept HOD only)")
+    public ResponseEntity<ApiResponse<QmsDepartmentActionItemResponse>> createActionItem(
+            @PathVariable String recordType,
+            @PathVariable Long   recordId,
+            @PathVariable Long   commentRowId,
+            @Valid @RequestBody  QmsDepartmentActionItemRequest request) {
+        return ApiResponse.created("Action item added",
+                deptActionItemService.create(commentRowId, request));
+    }
+
+    @PutMapping("/department-comments/{commentRowId}/action-items/{itemId}")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Edit an action item (dept HOD only) — description / target date / status")
+    public ResponseEntity<ApiResponse<QmsDepartmentActionItemResponse>> updateActionItem(
+            @PathVariable String recordType,
+            @PathVariable Long   recordId,
+            @PathVariable Long   commentRowId,
+            @PathVariable Long   itemId,
+            @Valid @RequestBody  QmsDepartmentActionItemRequest request) {
+        return ApiResponse.ok("Action item updated",
+                deptActionItemService.update(itemId, request));
+    }
+
+    @DeleteMapping("/department-comments/{commentRowId}/action-items/{itemId}")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Soft-delete an action item (dept HOD only)")
+    public ResponseEntity<ApiResponse<Void>> deleteActionItem(
+            @PathVariable String recordType,
+            @PathVariable Long   recordId,
+            @PathVariable Long   commentRowId,
+            @PathVariable Long   itemId) {
+        deptActionItemService.delete(itemId);
+        return ApiResponse.noContent("Action item removed");
     }
 
     // ─────────────────────────────────────────────────────────
