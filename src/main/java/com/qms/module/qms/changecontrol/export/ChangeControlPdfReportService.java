@@ -1,66 +1,72 @@
 package com.qms.module.qms.changecontrol.export;
 
-import com.lowagie.text.*;
-import com.lowagie.text.Font;
-import com.lowagie.text.pdf.*;
+import com.lowagie.text.Document;
+import com.lowagie.text.DocumentException;
+import com.lowagie.text.Element;
+import com.lowagie.text.PageSize;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.pdf.PdfPTable;
+import com.lowagie.text.pdf.PdfWriter;
+import com.qms.common.enums.QmsRecordType;
+import com.qms.common.enums.QmsStatus;
 import com.qms.common.exception.AppException;
+import com.qms.module.qms.changecontrol.dto.response.ChangeControlResponse;
 import com.qms.module.qms.common.dto.response.QmsDepartmentActionItemResponse;
 import com.qms.module.qms.common.dto.response.QmsDepartmentCommentResponse;
 import com.qms.module.qms.common.dto.response.QmsLineItemResponse;
-import com.qms.module.qms.changecontrol.dto.response.ChangeControlResponse;
+import com.qms.module.qms.common.export.QmsPdfReportSupport;
 import com.qms.module.qms.common.service.QmsDepartmentActionItemService;
 import com.qms.module.qms.common.service.QmsDepartmentCommentService;
 import com.qms.module.qms.common.service.QmsLineItemService;
-import com.qms.common.enums.QmsRecordType;
+import com.qms.module.qms.common.workflow.StatusHistoryEntry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import java.awt.Color;
 import java.io.ByteArrayOutputStream;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
+
+import static com.qms.module.qms.common.export.QmsPdfReportSupport.DATE_FMT;
+import static com.qms.module.qms.common.export.QmsPdfReportSupport.DT_FMT;
+import static com.qms.module.qms.common.export.QmsPdfReportSupport.FONT_HEADER;
+import static com.qms.module.qms.common.export.QmsPdfReportSupport.FONT_SECTION;
+import static com.qms.module.qms.common.export.QmsPdfReportSupport.FONT_TITLE;
+import static com.qms.module.qms.common.export.QmsPdfReportSupport.FONT_BODY;
+import static com.qms.module.qms.common.export.QmsPdfReportSupport.addBody;
+import static com.qms.module.qms.common.export.QmsPdfReportSupport.addHeader;
+import static com.qms.module.qms.common.export.QmsPdfReportSupport.addKv;
+import static com.qms.module.qms.common.export.QmsPdfReportSupport.addLabeled;
+import static com.qms.module.qms.common.export.QmsPdfReportSupport.addSpanCell;
+import static com.qms.module.qms.common.export.QmsPdfReportSupport.appendIfTrue;
+import static com.qms.module.qms.common.export.QmsPdfReportSupport.cell;
+import static com.qms.module.qms.common.export.QmsPdfReportSupport.safe;
+import static com.qms.module.qms.common.export.QmsPdfReportSupport.sectionBanner;
+import static com.qms.module.qms.common.export.QmsPdfReportSupport.singleColTable;
+import static com.qms.module.qms.common.export.QmsPdfReportSupport.twoColTable;
+import static com.qms.module.qms.common.export.QmsPdfReportSupport.yesNo;
 
 /**
  * Round-N (2026-07-04) tester CC-Point-2 · new "Report" ask.
+ * Round-N follow-up (2026-07-07): primitives moved to QmsPdfReportSupport
+ * so CAPA / Deviation / Incident / Market Complaint can share the layout.
  *
- * Generates a single-page-per-section PDF for a Change Control record
- * matching the reference layout the tester supplied (Vinfro CC form).
- * Sections rendered:
- *   1. Header (company + record number)
- *   2. Initiation of Change (initiator's captured fields + line items)
- *   3. Review (HOD Assessment: impact panel + Initial Risk Assessment +
- *      Initial Assessment)
- *   4. Evaluation by QA (pre-remark, post-remark, communication flags)
- *   5. Department Comments (Department / Comment / Target Date / Actor
- *      table plus action items when present)
- *   6. Site Head Concurrence
- *   7. Customer Representative comments
- *   8. Regulatory Affairs Evaluation
- *   9. Head QA Approval
- *  10. Verification of Change Implementation
- *  11. Verification Review + Approval
- * Footer on every page: application / user / timestamp / page X of Y.
+ * Round-N bug fix (2026-07-07 pm): tester reported the PDF was showing
+ * data as though downstream steps had happened when they had not — e.g.
+ * "Site Head: Concurrence By Site Head = &lt;QA's Post-Remark&gt;" and
+ * "Approval By Head QA: Category = Critical" even though Head QA had
+ * not clicked Approve. Root cause: the section guards were "field is
+ * populated" (siteHeadRequired = Yes) rather than "the responsible actor
+ * has actually completed the step". Fixed by adding stage-guard checks
+ * that consult the status_history log for a matching transition, and
+ * sourcing per-stage comments from that same log instead of the shared
+ * cc.comments slot.
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ChangeControlPdfReportService {
-
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
-    private static final DateTimeFormatter DT_FMT   = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm:ss");
-
-    private static final Font FONT_HEADER  = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, Color.BLACK);
-    private static final Font FONT_TITLE   = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, Color.BLACK);
-    private static final Font FONT_SECTION = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Color.BLACK);
-    private static final Font FONT_LABEL   = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 8, Color.BLACK);
-    private static final Font FONT_BODY    = FontFactory.getFont(FontFactory.HELVETICA, 8, Color.BLACK);
-    private static final Font FONT_FOOTER  = FontFactory.getFont(FontFactory.HELVETICA, 7, Color.DARK_GRAY);
-
-    private static final Color SECTION_BG = new Color(230, 230, 230);
-    private static final Color BORDER     = new Color(140, 140, 140);
 
     private final QmsLineItemService              lineItemService;
     private final QmsDepartmentCommentService     deptCommentService;
@@ -72,13 +78,12 @@ public class ChangeControlPdfReportService {
     @Value("${reports.export.company-location:Pune}")
     private String companyLocation;
 
-    // ── Public API ───────────────────────────────────────────
-
     public byte[] render(ChangeControlResponse cc) {
         try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
             Document doc = new Document(PageSize.A4, 30, 30, 40, 40);
             PdfWriter writer = PdfWriter.getInstance(doc, out);
-            writer.setPageEvent(new PageFooter(cc.getRecordNumber(), cc.getRaisedByName()));
+            writer.setPageEvent(new QmsPdfReportSupport.PageFooter(
+                    companyName, cc.getRecordNumber(), cc.getRaisedByName()));
             doc.open();
 
             renderCoverHeader(doc, cc);
@@ -101,8 +106,6 @@ public class ChangeControlPdfReportService {
         }
     }
 
-    // ── Section renderers ────────────────────────────────────
-
     private void renderCoverHeader(Document doc, ChangeControlResponse cc) throws DocumentException {
         Paragraph company = new Paragraph(companyName, FONT_HEADER);
         company.setAlignment(Element.ALIGN_CENTER);
@@ -117,7 +120,8 @@ public class ChangeControlPdfReportService {
 
         PdfPTable no = new PdfPTable(1);
         no.setWidthPercentage(100);
-        no.addCell(cell(bold("Change Control No. : ") + safe(cc.getRecordNumber()), null));
+        no.addCell(cell("Change Control No. : " + safe(cc.getRecordNumber())
+                + "     Current Status : " + humanStatus(cc.getStatus()), null));
         doc.add(no);
     }
 
@@ -133,11 +137,10 @@ public class ChangeControlPdfReportService {
         addKv(t, "Product/Material Name", safe(cc.getProductMaterial()));
         addKv(t, "Product/Material Code", safe(cc.getProductMaterialCode()));
         if (cc.getMarketDetails() != null && !cc.getMarketDetails().isBlank()) {
-            addKvSpan(t, "Market", safe(cc.getMarketDetails()));
+            addKv(t, "Market", safe(cc.getMarketDetails()));
         }
         doc.add(t);
 
-        // Line items table
         List<QmsLineItemResponse> items = lineItemService.list(
                 QmsRecordType.CHANGE_CONTROL, cc.getId());
         Paragraph liTitle = new Paragraph("Changes Proposed with Justification.", FONT_SECTION);
@@ -161,7 +164,7 @@ public class ChangeControlPdfReportService {
                 addBody(li, safe(r.getExistingSystem()));
                 addBody(li, safe(r.getProposedSystem()));
                 addBody(li, safe(r.getJustification()));
-                addBody(li, (safe(r.getProposedByName()))
+                addBody(li, safe(r.getProposedByName())
                         + (r.getProposedDate() != null
                             ? " / " + DATE_FMT.format(r.getProposedDate()) : ""));
             }
@@ -176,11 +179,14 @@ public class ChangeControlPdfReportService {
     }
 
     private void renderReview(Document doc, ChangeControlResponse cc) throws DocumentException {
+        // Only render once HOD has actually completed the review (record is at
+        // or past QA Review). Otherwise the Impact checkboxes / Initial Risk
+        // are undefined and the PDF misleads the reader.
+        if (!hasPassed(cc, QmsStatus.PENDING_HOD)) return;
+
         sectionBanner(doc, "Review");
         PdfPTable t = singleColTable();
 
-        // Round-N Issue 1: 7 Impact checkboxes rendered as a bullet list of ticked
-        // areas. Any-Other comment surfaces below when present.
         StringBuilder impacts = new StringBuilder();
         appendIfTrue(impacts, cc.getImpactOnQualification(),    "Impact on Qualification");
         appendIfTrue(impacts, cc.getImpactOnDocumentation(),    "Impact on Documentation");
@@ -204,18 +210,34 @@ public class ChangeControlPdfReportService {
     }
 
     private void renderQaEvaluation(Document doc, ChangeControlResponse cc) throws DocumentException {
+        // Render as soon as QA has captured a pre-remark (Phase 1). Fields that
+        // belong to Phase 2 are guarded individually below.
+        boolean phase1Started = hasPassed(cc, QmsStatus.PENDING_QA_REVIEW)
+                || (cc.getPreRemark() != null && !cc.getPreRemark().isBlank());
+        if (!phase1Started) return;
+
         sectionBanner(doc, "Evaluation By QA");
         PdfPTable t = singleColTable();
         addLabeled(t, "Pre Remark/Justification", safe(cc.getPreRemark()));
-        addLabeled(t, "Post Remark/Justification", safe(cc.getComments()));
-        if (cc.getRiskAssessment() != null && !cc.getRiskAssessment().isBlank()) {
-            addLabeled(t, "Risk Assessment", safe(cc.getRiskAssessment()));
+
+        // Phase-2-only rows — only render once Phase 2 has actually finished
+        // (record has left PENDING_QA_REVIEW).
+        boolean phase2Done = hasLeft(cc, QmsStatus.PENDING_QA_REVIEW);
+        if (phase2Done) {
+            addLabeled(t, "Post Remark/Justification",
+                    findTransitionComment(cc, QmsStatus.PENDING_QA_REVIEW, cc.getComments()));
+            if (cc.getRiskAssessment() != null && !cc.getRiskAssessment().isBlank()) {
+                addLabeled(t, "Risk Assessment", safe(cc.getRiskAssessment()));
+            }
+            addLabeled(t, "Site Head Required", yesNo(cc.getSiteHeadRequired()));
+            addLabeled(t, "Customer Communication Required",
+                    Boolean.TRUE.equals(cc.getCustomerCommunicationRequired())
+                            || Boolean.TRUE.equals(cc.getCustomerCommentRequired()) ? "Yes" : "No");
+            // Category is set by QA at Phase 2 (Head QA can confirm at approval).
+            if (cc.getCategory() != null && !cc.getCategory().isBlank()) {
+                addLabeled(t, "Category / Risk Level", safe(cc.getCategory()));
+            }
         }
-        addLabeled(t, "Site Head Required",
-                Boolean.TRUE.equals(cc.getSiteHeadRequired()) ? "Yes" : "No");
-        addLabeled(t, "Customer Communication Required",
-                Boolean.TRUE.equals(cc.getCustomerCommunicationRequired()) ? "Yes"
-                    : Boolean.TRUE.equals(cc.getCustomerCommentRequired()) ? "Yes" : "No");
         doc.add(t);
     }
 
@@ -240,7 +262,6 @@ public class ChangeControlPdfReportService {
         }
         doc.add(t);
 
-        // Round-N Issue 6: emit any action items per dept row.
         for (QmsDepartmentCommentResponse r : rows) {
             List<QmsDepartmentActionItemResponse> items = actionItemService.list(r.getId());
             if (items.isEmpty()) continue;
@@ -269,60 +290,93 @@ public class ChangeControlPdfReportService {
     }
 
     private void renderSiteHead(Document doc, ChangeControlResponse cc) throws DocumentException {
-        if (!Boolean.TRUE.equals(cc.getSiteHeadRequired())) return;
+        // ONLY render if Site Head has actually acted — i.e. the record has
+        // moved OUT of PENDING_SITE_HEAD. The old code guarded on "required =
+        // Yes", which meant this section rendered with QA's Post-Remark
+        // leaking through cc.comments — the tester's exact complaint.
+        Optional<StatusHistoryEntry> sh = findTransition(cc, QmsStatus.PENDING_SITE_HEAD);
+        if (sh.isEmpty()) return;
+
         sectionBanner(doc, "Site Head");
         PdfPTable t = singleColTable();
-        addLabeled(t, "Concurrence By Site Head",
-                safe(cc.getComments())); // reuse workflow-remark slot
+        addLabeled(t, "Concurrence By Site Head", safe(sh.get().getComment()));
+        addLabeled(t, "Site Head / Designee",
+                safe(sh.get().getChangedByUsername())
+                        + (sh.get().getChangedAt() != null
+                            ? "  ·  " + DT_FMT.format(sh.get().getChangedAt()) : ""));
         doc.add(t);
     }
 
     private void renderCustomer(Document doc, ChangeControlResponse cc) throws DocumentException {
-        boolean any = Boolean.TRUE.equals(cc.getCustomerCommunicationRequired())
-                || Boolean.TRUE.equals(cc.getCustomerCommentRequired())
-                || (cc.getCustomerComment() != null && !cc.getCustomerComment().isBlank())
-                || (cc.getCustomerRepresentative() != null && !cc.getCustomerRepresentative().isBlank());
-        if (!any) return;
+        // Only render once the Customer step has actually been performed. The
+        // representative name alone was populated at QA Phase 2, so keying off
+        // that gave false positives.
+        Optional<StatusHistoryEntry> cu = findTransition(cc, QmsStatus.PENDING_CUSTOMER_COMMENT);
+        boolean hasCustomerComment = cc.getCustomerComment() != null && !cc.getCustomerComment().isBlank();
+        if (cu.isEmpty() && !hasCustomerComment) return;
+
         sectionBanner(doc, "Customer Representative");
         PdfPTable t = singleColTable();
         addLabeled(t, "Customer Representative", safe(cc.getCustomerRepresentative()));
-        addLabeled(t, "Comments By Customer", safe(cc.getCustomerComment()));
+        addLabeled(t, "Comments By Customer",
+                hasCustomerComment ? cc.getCustomerComment()
+                        : cu.map(StatusHistoryEntry::getComment).map(QmsPdfReportSupport::safe).orElse("—"));
         doc.add(t);
     }
 
     private void renderRegulatoryAffairs(Document doc, ChangeControlResponse cc) throws DocumentException {
-        boolean any = Boolean.TRUE.equals(cc.getRegulatorySubmissionRequired())
-                || (cc.getRegulatorySubmissionReference() != null
-                    && !cc.getRegulatorySubmissionReference().isBlank());
-        if (!any) return;
+        Optional<StatusHistoryEntry> ra = findTransition(cc, QmsStatus.PENDING_RA_REVIEW);
+        boolean hasRef = cc.getRegulatorySubmissionReference() != null
+                && !cc.getRegulatorySubmissionReference().isBlank();
+        if (ra.isEmpty() && !hasRef) return;
+
         sectionBanner(doc, "Evaluation By Regulatory Affairs Department");
         PdfPTable t = singleColTable();
         addLabeled(t, "Regulatory Submission Required",
-                Boolean.TRUE.equals(cc.getRegulatorySubmissionRequired()) ? "Yes" : "No");
+                yesNo(cc.getRegulatorySubmissionRequired()));
         addLabeled(t, "Dossier Details With No.",
                 safe(cc.getRegulatorySubmissionReference()));
-        doc.add(t);
-    }
-
-    private void renderHeadQaApproval(Document doc, ChangeControlResponse cc) throws DocumentException {
-        sectionBanner(doc, "Approval By Head QA");
-        PdfPTable t = singleColTable();
-        addLabeled(t, "Category / Risk Level", safe(cc.getCategory() != null ? cc.getCategory() : cc.getRiskLevel()));
-        addLabeled(t, "Approval Comment", safe(cc.getApprovalComments()));
-        addLabeled(t, "Change Proposal Is",
-                "CLOSED".equalsIgnoreCase(String.valueOf(cc.getStatus())) ? "Approved" : safe(String.valueOf(cc.getStatus())));
-        if (cc.getApprovedByName() != null) {
-            addLabeled(t, "Head QA / Designee", safe(cc.getApprovedByName())
-                    + (cc.getApprovedAt() != null ? "  ·  " + DT_FMT.format(cc.getApprovedAt()) : ""));
+        if (ra.isPresent()) {
+            addLabeled(t, "RA Comment", safe(ra.get().getComment()));
+            addLabeled(t, "RA Officer",
+                    safe(ra.get().getChangedByUsername())
+                            + (ra.get().getChangedAt() != null
+                                ? "  ·  " + DT_FMT.format(ra.get().getChangedAt()) : ""));
         }
         doc.add(t);
     }
 
+    private void renderHeadQaApproval(Document doc, ChangeControlResponse cc) throws DocumentException {
+        // Head QA has to actually approve for this section to exist. Guarding on
+        // approvedAt is stricter than approvedByName — a name can be pre-set,
+        // but the timestamp is only stamped by the approve action.
+        if (cc.getApprovedAt() == null) return;
+
+        sectionBanner(doc, "Approval By Head QA");
+        PdfPTable t = singleColTable();
+        addLabeled(t, "Category / Risk Level",
+                safe(cc.getRiskLevel() != null ? cc.getRiskLevel() : cc.getCategory()));
+        addLabeled(t, "Approval Comment", safe(cc.getApprovalComments()));
+        // "Change Proposal Is" only makes sense as a decision — Approved when
+        // the record has closed or moved into Implementation, Rejected when
+        // rejected. In-flight statuses do not belong here.
+        String decision = terminalDecision(cc.getStatus());
+        if (decision != null) {
+            addLabeled(t, "Change Proposal Is", decision);
+        }
+        addLabeled(t, "Head QA / Designee", safe(cc.getApprovedByName())
+                + "  ·  " + DT_FMT.format(cc.getApprovedAt()));
+        doc.add(t);
+    }
+
     private void renderVerification(Document doc, ChangeControlResponse cc) throws DocumentException {
-        boolean any = (cc.getVerificationActionTaken() != null && !cc.getVerificationActionTaken().isBlank())
+        boolean populated = (cc.getVerificationActionTaken() != null && !cc.getVerificationActionTaken().isBlank())
                 || cc.getVerificationEffectiveOn() != null
-                || (cc.getVerificationOtherComments() != null && !cc.getVerificationOtherComments().isBlank());
-        if (!any) return;
+                || (cc.getVerificationOtherComments() != null && !cc.getVerificationOtherComments().isBlank())
+                || cc.getClosedDate() != null;
+        // Also gate on the workflow having actually reached verification.
+        if (!populated && !hasReached(cc, QmsStatus.PENDING_VERIFICATION)) return;
+
         sectionBanner(doc, "Verification Of Change Implementation");
         PdfPTable t = singleColTable();
         addLabeled(t, "Action Taken / Documents Closed", safe(cc.getVerificationActionTaken()));
@@ -337,146 +391,77 @@ public class ChangeControlPdfReportService {
         doc.add(t);
     }
 
-    // ── Layout primitives ────────────────────────────────────
+    // ─── Stage-guard helpers ─────────────────────────────────
 
-    private PdfPTable twoColTable() {
-        PdfPTable t = new PdfPTable(new float[]{1.4f, 3f});
-        t.setWidthPercentage(100);
-        t.setSpacingBefore(2);
-        return t;
+    /** Any transition where the record left {@code stage}. */
+    private static Optional<StatusHistoryEntry> findTransition(ChangeControlResponse cc, QmsStatus stage) {
+        List<StatusHistoryEntry> log = cc.getStatusHistory();
+        if (log == null) return Optional.empty();
+        return log.stream()
+                .filter(e -> stage.equals(e.getFromStatus()))
+                .reduce((a, b) -> b); // last matching entry
     }
 
-    private PdfPTable singleColTable() {
-        PdfPTable t = new PdfPTable(1);
-        t.setWidthPercentage(100);
-        t.setSpacingBefore(2);
-        return t;
+    /** The record has visited {@code stage} at some point (fromStatus in any entry). */
+    private static boolean hasLeft(ChangeControlResponse cc, QmsStatus stage) {
+        return findTransition(cc, stage).isPresent();
     }
 
-    private void sectionBanner(Document doc, String text) throws DocumentException {
-        PdfPTable t = new PdfPTable(1);
-        t.setWidthPercentage(100);
-        t.setSpacingBefore(6);
-        PdfPCell c = new PdfPCell(new Phrase(text, FONT_SECTION));
-        c.setBackgroundColor(SECTION_BG);
-        c.setHorizontalAlignment(Element.ALIGN_CENTER);
-        c.setBorderColor(BORDER);
-        c.setPadding(4);
-        t.addCell(c);
-        doc.add(t);
+    /** The record has entered {@code stage} at some point (toStatus in any entry) OR is currently at it. */
+    private static boolean hasReached(ChangeControlResponse cc, QmsStatus stage) {
+        if (stage.equals(cc.getStatus())) return true;
+        List<StatusHistoryEntry> log = cc.getStatusHistory();
+        if (log == null) return false;
+        return log.stream().anyMatch(e -> stage.equals(e.getToStatus()));
     }
 
-    private void addKv(PdfPTable t, String label, String value) {
-        PdfPCell l = new PdfPCell(new Phrase(label, FONT_LABEL));
-        l.setPadding(3); l.setBorderColor(BORDER);
-        t.addCell(l);
-        PdfPCell v = new PdfPCell(new Phrase(": " + safe(value), FONT_BODY));
-        v.setPadding(3); v.setBorderColor(BORDER);
-        t.addCell(v);
+    /** {@link #hasLeft(ChangeControlResponse, QmsStatus)} — clearer name at call sites. */
+    private static boolean hasPassed(ChangeControlResponse cc, QmsStatus stage) {
+        return hasLeft(cc, stage);
     }
 
-    private void addKvSpan(PdfPTable t, String label, String value) {
-        PdfPCell l = new PdfPCell(new Phrase(label, FONT_LABEL));
-        l.setPadding(3); l.setBorderColor(BORDER); l.setColspan(1);
-        t.addCell(l);
-        PdfPCell v = new PdfPCell(new Phrase(": " + safe(value), FONT_BODY));
-        v.setPadding(3); v.setBorderColor(BORDER); v.setColspan(1);
-        t.addCell(v);
+    /**
+     * Look up the comment that was captured on the transition FROM
+     * {@code stage}. Falls back to {@code fallback} when the record has
+     * either never been at that stage or the log is missing. This is how we
+     * pull the accurate Site-Head / Customer / QA-Phase-2 remark instead of
+     * whatever happens to be in cc.comments right now.
+     */
+    private static String findTransitionComment(ChangeControlResponse cc, QmsStatus stage, String fallback) {
+        return findTransition(cc, stage)
+                .map(StatusHistoryEntry::getComment)
+                .filter(s -> s != null && !s.isBlank())
+                .orElse(safe(fallback));
     }
 
-    private void addLabeled(PdfPTable t, String label, String value) {
-        Phrase p = new Phrase();
-        p.add(new Chunk(label + " : ", FONT_LABEL));
-        p.add(new Chunk(safe(value), FONT_BODY));
-        PdfPCell c = new PdfPCell(p);
-        c.setPadding(4); c.setBorderColor(BORDER);
-        t.addCell(c);
-    }
-
-    private void addHeader(PdfPTable t, String txt) {
-        PdfPCell c = new PdfPCell(new Phrase(txt, FONT_LABEL));
-        c.setBackgroundColor(SECTION_BG);
-        c.setPadding(4);
-        c.setHorizontalAlignment(Element.ALIGN_CENTER);
-        c.setBorderColor(BORDER);
-        t.addCell(c);
-    }
-
-    private void addBody(PdfPTable t, String txt) {
-        PdfPCell c = new PdfPCell(new Phrase(safe(txt), FONT_BODY));
-        c.setPadding(3);
-        c.setBorderColor(BORDER);
-        t.addCell(c);
-    }
-
-    private void addSpanCell(PdfPTable t, String txt, int span) {
-        PdfPCell c = new PdfPCell(new Phrase(txt, FONT_BODY));
-        c.setPadding(3);
-        c.setColspan(span);
-        c.setBorderColor(BORDER);
-        c.setHorizontalAlignment(Element.ALIGN_CENTER);
-        t.addCell(c);
-    }
-
-    private PdfPCell cell(String txt, Color bg) {
-        PdfPCell c = new PdfPCell(new Phrase(txt, FONT_BODY));
-        if (bg != null) c.setBackgroundColor(bg);
-        c.setPadding(3);
-        c.setBorderColor(BORDER);
-        return c;
-    }
-
-    // ── Utilities ────────────────────────────────────────────
-
-    private static String safe(String s) {
-        return (s == null || s.isBlank()) ? "—" : s;
-    }
-    private static String bold(String s) { return s; } // placeholder for future markup
-    private static void appendIfTrue(StringBuilder sb, Boolean flag, String label) {
-        if (Boolean.TRUE.equals(flag)) {
-            if (sb.length() > 0) sb.append(", ");
-            sb.append(label);
+    private static String humanStatus(QmsStatus s) {
+        if (s == null) return "—";
+        switch (s) {
+            case DRAFT:                     return "Draft";
+            case PENDING_REVIEW:            return "Awaiting Peer Review";
+            case PENDING_HOD:               return "Awaiting HOD Review";
+            case PENDING_QA_REVIEW:         return "Under QA Evaluation";
+            case PENDING_DEPT_COMMENT:      return "Awaiting Department Comments";
+            case PENDING_RA_REVIEW:         return "Awaiting Regulatory Affairs";
+            case PENDING_SITE_HEAD:         return "Awaiting Site Head Concurrence";
+            case PENDING_CUSTOMER_COMMENT:  return "Awaiting Customer Comment";
+            case PENDING_HEAD_QA:           return "Awaiting Head-QA Approval";
+            case PENDING_VERIFICATION:      return "Awaiting Verification";
+            case CLOSED:                    return "Closed";
+            case REJECTED:                  return "Rejected";
+            case CANCELLED:                 return "Cancelled";
+            default:                        return s.name();
         }
     }
 
-    // ── Page footer ──────────────────────────────────────────
-
-    private class PageFooter extends PdfPageEventHelper {
-        private final String recordNumber;
-        private final String user;
-        private BaseFont     footerFont;
-
-        PageFooter(String recordNumber, String user) {
-            this.recordNumber = recordNumber;
-            this.user = user;
-        }
-
-        @Override
-        public void onOpenDocument(PdfWriter writer, Document doc) {
-            // Round-N follow-up: mirrors PdfExporter — resolve BaseFont
-            // directly rather than via FontFactory.getFont().getBaseFont(),
-            // which can return null and NPE the footer.
-            try {
-                footerFont = BaseFont.createFont(
-                        BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
-            } catch (Exception e) {
-                log.warn("Footer BaseFont init failed: {}", e.getMessage());
-            }
-        }
-
-        @Override
-        public void onEndPage(PdfWriter writer, Document doc) {
-            if (footerFont == null) return;
-            String left = companyName + " · " + safe(recordNumber);
-            String right = safe(user) + " · " + DT_FMT.format(LocalDateTime.now())
-                    + " · Page " + writer.getPageNumber();
-            PdfContentByte cb = writer.getDirectContent();
-            cb.beginText();
-            cb.setFontAndSize(footerFont, 7);
-            cb.setColorFill(Color.DARK_GRAY);
-            cb.showTextAligned(Element.ALIGN_LEFT, left, 30, 20, 0);
-            cb.showTextAligned(Element.ALIGN_RIGHT, right, doc.getPageSize().getWidth() - 30, 20, 0);
-            cb.endText();
+    /** "Approved" only when the record actually cleared approval. */
+    private static String terminalDecision(QmsStatus s) {
+        if (s == null) return null;
+        switch (s) {
+            case CLOSED:    return "Approved";
+            case REJECTED:  return "Rejected";
+            case CANCELLED: return "Cancelled";
+            default:        return null; // in-flight: do not render the line
         }
     }
 }
