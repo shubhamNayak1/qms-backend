@@ -15,6 +15,7 @@ import com.qms.module.qms.common.dto.response.QmsDepartmentActionItemResponse;
 import com.qms.module.qms.common.dto.response.QmsDepartmentCommentResponse;
 import com.qms.module.qms.common.dto.response.QmsLineItemResponse;
 import com.qms.module.qms.common.export.QmsPdfReportSupport;
+import com.qms.module.qms.common.repository.QmsRecordAttachmentRepository;
 import com.qms.module.qms.common.service.QmsDepartmentActionItemService;
 import com.qms.module.qms.common.service.QmsDepartmentCommentService;
 import com.qms.module.qms.common.service.QmsLineItemService;
@@ -25,6 +26,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -71,6 +73,7 @@ public class ChangeControlPdfReportService {
     private final QmsLineItemService              lineItemService;
     private final QmsDepartmentCommentService     deptCommentService;
     private final QmsDepartmentActionItemService  actionItemService;
+    private final QmsRecordAttachmentRepository   attachmentRepository;
 
     @Value("${reports.export.company-name:QMS Organisation}")
     private String companyName;
@@ -88,13 +91,15 @@ public class ChangeControlPdfReportService {
 
             renderCoverHeader(doc, cc);
             renderInitiation(doc, cc);
-            renderReview(doc, cc);
+            renderPeerReview(doc, cc);          // S1 + S7 — was rolled into HOD before
+            renderHodAssessment(doc, cc);       // S1 — banner renamed "Review" → "HOD Assessment"
             renderQaEvaluation(doc, cc);
             renderDepartmentComments(doc, cc);
-            renderSiteHead(doc, cc);
-            renderCustomer(doc, cc);
-            renderRegulatoryAffairs(doc, cc);
+            // RED-2 — Site Head / RA / Customer render in the order they actually
+            // occurred, not the fixed sequence I was using before.
+            renderPostQaStagesChronologically(doc, cc);
             renderHeadQaApproval(doc, cc);
+            renderExtensionRequest(doc, cc);    // RED-4 — extension raised by / decided
             renderVerification(doc, cc);
 
             doc.close();
@@ -118,11 +123,36 @@ public class ChangeControlPdfReportService {
         title.setSpacingAfter(6);
         doc.add(title);
 
+        // S6 — Number-of-attachments alongside the record number in the header.
+        long attachmentCount = attachmentRepository
+                .findAllByRecordTypeAndRecordIdAndIsDeletedFalseOrderByUploadedAtAsc(
+                        QmsRecordType.CHANGE_CONTROL, cc.getId())
+                .size();
         PdfPTable no = new PdfPTable(1);
         no.setWidthPercentage(100);
         no.addCell(cell("Change Control No. : " + safe(cc.getRecordNumber())
-                + "     Current Status : " + humanStatus(cc.getStatus()), null));
+                + "        Number of Attachment : " + attachmentCount
+                + "        Current Status : " + humanStatus(cc.getStatus()), null));
         doc.add(no);
+    }
+
+    /**
+     * S1 + S7 — Peer Review is a distinct step in the reference layout, not a
+     * sub-block of HOD Assessment. Rendered only once peer review actually
+     * happened (record left PENDING_REVIEW). Reviewer name, timestamp, and
+     * remark come from the transition entry that took the record out.
+     */
+    private void renderPeerReview(Document doc, ChangeControlResponse cc) throws DocumentException {
+        Optional<StatusHistoryEntry> pr = findTransition(cc, QmsStatus.PENDING_REVIEW);
+        if (pr.isEmpty()) return;
+        sectionBanner(doc, "Review");
+        PdfPTable t = singleColTable();
+        addLabeled(t, "Peer Review", safe(pr.get().getComment()));
+        addLabeled(t, "Review By",
+                safe(pr.get().getChangedByUsername())
+                        + (pr.get().getChangedAt() != null
+                            ? "  ·  " + DT_FMT.format(pr.get().getChangedAt()) : ""));
+        doc.add(t);
     }
 
     private void renderInitiation(Document doc, ChangeControlResponse cc) throws DocumentException {
@@ -178,14 +208,29 @@ public class ChangeControlPdfReportService {
         doc.add(footer);
     }
 
-    private void renderReview(Document doc, ChangeControlResponse cc) throws DocumentException {
-        // Only render once HOD has actually completed the review (record is at
-        // or past QA Review). Otherwise the Impact checkboxes / Initial Risk
-        // are undefined and the PDF misleads the reader.
+    /**
+     * S1 — Was called "Review" until 2026-07-12 — renamed to match the
+     * reference layout the tester supplied. HOD Assessment now also shows
+     * the HOD's forward/reject decision at the top of the section (S2).
+     */
+    private void renderHodAssessment(Document doc, ChangeControlResponse cc) throws DocumentException {
+        // Only render once HOD has actually completed the review (record left
+        // PENDING_HOD). Otherwise the Impact checkboxes / Initial Risk are
+        // undefined and the PDF misleads the reader.
         if (!hasPassed(cc, QmsStatus.PENDING_HOD)) return;
 
-        sectionBanner(doc, "Review");
+        Optional<StatusHistoryEntry> hodTransition = findTransition(cc, QmsStatus.PENDING_HOD);
+
+        sectionBanner(doc, "HOD Assessment");
         PdfPTable t = singleColTable();
+
+        // S2 — HOD's decision at the top: Approved (forwarded to QA), Sent
+        // Back (resent to Initiator), or Rejected. Blank when the transition
+        // log doesn't tell us where the record went.
+        String hodDecision = hodTransition.map(e -> hodOutcomeLabel(e.getToStatus())).orElse(null);
+        if (hodDecision != null) {
+            addLabeled(t, "Change Proposal Is", hodDecision);
+        }
 
         StringBuilder impacts = new StringBuilder();
         appendIfTrue(impacts, cc.getImpactOnQualification(),    "Impact on Qualification");
@@ -201,11 +246,21 @@ public class ChangeControlPdfReportService {
                 && cc.getImpactOtherComment() != null && !cc.getImpactOtherComment().isBlank()) {
             addLabeled(t, "Any-Other Comment", cc.getImpactOtherComment());
         }
+        addLabeled(t, "Initial Assessment", safe(cc.getInitialAssessment()));
+        addLabeled(t, "Initial Risk Assessment Required",
+                Boolean.TRUE.equals(cc.getInitialRiskAssessmentRequired())
+                        ? "Required" : "Not Required");
         if (Boolean.TRUE.equals(cc.getInitialRiskAssessmentRequired())) {
             addLabeled(t, "Initial Risk Assessment",
                     safe(cc.getInitialRiskAssessment()));
         }
-        addLabeled(t, "Initial Assessment", safe(cc.getInitialAssessment()));
+        // HOD's remark + name/date come from the transition entry.
+        addLabeled(t, "Remark / Justification",
+                safe(hodTransition.map(StatusHistoryEntry::getComment).orElse(null)));
+        addLabeled(t, "Dept. Head / Designee",
+                safe(hodTransition.map(StatusHistoryEntry::getChangedByUsername).orElse(null))
+                        + hodTransition.filter(e -> e.getChangedAt() != null)
+                            .map(e -> "  ·  " + DT_FMT.format(e.getChangedAt())).orElse(""));
         doc.add(t);
     }
 
@@ -289,6 +344,52 @@ public class ChangeControlPdfReportService {
         }
     }
 
+    /**
+     * RED-2 — Site Head, Customer Rep, and RA can each be Required=Yes/No
+     * independently, and any combination is valid. The reference PDF asks
+     * that the sections appear in the order the comments were captured, not
+     * a fixed Site-Head → Customer → RA order. Each of the three per-stage
+     * renderers is a no-op when the stage never ran, so this orchestrator
+     * only needs to call them in the right sequence.
+     */
+    private void renderPostQaStagesChronologically(Document doc, ChangeControlResponse cc)
+            throws DocumentException {
+        // We render at most three stages here: Site Head, Customer, RA.
+        // Sort them into the order they were actually completed by comparing
+        // their outgoing-transition timestamps. Each renderer is a no-op when
+        // that stage never ran, so it's safe to call all three in a
+        // deterministic-but-arbitrary order when no history exists.
+        LocalDateTime siteAt = findTransition(cc, QmsStatus.PENDING_SITE_HEAD)
+                .map(StatusHistoryEntry::getChangedAt).orElse(null);
+        LocalDateTime custAt = findTransition(cc, QmsStatus.PENDING_CUSTOMER_COMMENT)
+                .map(StatusHistoryEntry::getChangedAt).orElse(null);
+        LocalDateTime raAt   = findTransition(cc, QmsStatus.PENDING_RA_REVIEW)
+                .map(StatusHistoryEntry::getChangedAt).orElse(null);
+        if (siteAt == null && custAt == null && raAt == null) {
+            renderSiteHead(doc, cc);
+            renderCustomer(doc, cc);
+            renderRegulatoryAffairs(doc, cc);
+            return;
+        }
+        // Order values assigned so the tuple with the smaller (site,cust,ra)
+        // triple prints first. Null stages go to the end.
+        int siteRank = rank(siteAt), custRank = rank(custAt), raRank = rank(raAt);
+        for (int step = 0; step < 3; step++) {
+            int lowest = Math.min(siteRank, Math.min(custRank, raRank));
+            if (lowest == Integer.MAX_VALUE) break;
+            if (siteRank == lowest) { renderSiteHead(doc, cc); siteRank = Integer.MAX_VALUE; }
+            else if (custRank == lowest) { renderCustomer(doc, cc); custRank = Integer.MAX_VALUE; }
+            else { renderRegulatoryAffairs(doc, cc); raRank = Integer.MAX_VALUE; }
+        }
+    }
+
+    /** Rank helper for the three-stage chronological sort. Null → Integer.MAX. */
+    private static int rank(LocalDateTime at) {
+        if (at == null) return Integer.MAX_VALUE;
+        // Second-precision fits well inside int for any realistic timestamp.
+        return (int) (at.toEpochSecond(java.time.ZoneOffset.UTC) & 0x7FFFFFFF);
+    }
+
     private void renderSiteHead(Document doc, ChangeControlResponse cc) throws DocumentException {
         // ONLY render if Site Head has actually acted — i.e. the record has
         // moved OUT of PENDING_SITE_HEAD. The old code guarded on "required =
@@ -366,6 +467,43 @@ public class ChangeControlPdfReportService {
         }
         addLabeled(t, "Head QA / Designee", safe(cc.getApprovedByName())
                 + "  ·  " + DT_FMT.format(cc.getApprovedAt()));
+        doc.add(t);
+    }
+
+    /**
+     * RED-4 — Extension of the closure target date. Rendered whenever any of
+     * the extension fields on the record are populated. Fields all live on
+     * QmsBaseResponse (targetDateExtension*).
+     */
+    private void renderExtensionRequest(Document doc, ChangeControlResponse cc)
+            throws DocumentException {
+        boolean any = cc.getTargetDateExtensionDate() != null
+                || (cc.getTargetDateExtensionReason() != null && !cc.getTargetDateExtensionReason().isBlank())
+                || (cc.getTargetDateExtensionStatus() != null && !cc.getTargetDateExtensionStatus().isBlank())
+                || cc.getTargetDateExtensionRequestedAt() != null
+                || cc.getTargetDateExtensionDecidedAt() != null;
+        if (!any) return;
+
+        sectionBanner(doc, "Closure Target Date — Extension");
+        PdfPTable t = singleColTable();
+        if (cc.getTargetCompletionDate() != null) {
+            addLabeled(t, "Original Closure Target Date",
+                    DATE_FMT.format(cc.getTargetCompletionDate()));
+        }
+        if (cc.getTargetDateExtensionDate() != null) {
+            addLabeled(t, "Requested New Target Date",
+                    DATE_FMT.format(cc.getTargetDateExtensionDate()));
+        }
+        addLabeled(t, "Reason", safe(cc.getTargetDateExtensionReason()));
+        addLabeled(t, "Status", safe(cc.getTargetDateExtensionStatus()));
+        if (cc.getTargetDateExtensionRequestedAt() != null) {
+            addLabeled(t, "Requested On",
+                    DT_FMT.format(cc.getTargetDateExtensionRequestedAt()));
+        }
+        if (cc.getTargetDateExtensionDecidedAt() != null) {
+            addLabeled(t, "Decided On",
+                    DT_FMT.format(cc.getTargetDateExtensionDecidedAt()));
+        }
         doc.add(t);
     }
 
@@ -451,6 +589,22 @@ public class ChangeControlPdfReportService {
             case REJECTED:                  return "Rejected";
             case CANCELLED:                 return "Cancelled";
             default:                        return s.name();
+        }
+    }
+
+    /**
+     * S2 — Where the HOD sent the record maps to the outcome we print in
+     * the HOD Assessment section. Forward-to-QA = Approved; Resend to
+     * Initiator = Sent Back; explicit Reject = Rejected. Any other target
+     * status yields null so the line is omitted rather than misleading.
+     */
+    private static String hodOutcomeLabel(QmsStatus toStatus) {
+        if (toStatus == null) return null;
+        switch (toStatus) {
+            case PENDING_QA_REVIEW: return "Approved";
+            case DRAFT:             return "Sent Back to Initiator";
+            case REJECTED:          return "Rejected";
+            default:                return null;
         }
     }
 
