@@ -12,9 +12,14 @@ import com.qms.module.org.repository.DepartmentRepository;
 import com.qms.module.org.service.OrgSecurityService;
 import com.qms.module.qms.common.dto.request.QmsDepartmentAttachmentDecision;
 import com.qms.module.qms.common.dto.request.QmsDepartmentAttachmentRequest;
+import com.qms.module.qms.common.dto.response.QmsDepartmentActionItemResponse;
 import com.qms.module.qms.common.dto.response.QmsDepartmentAttachmentResponse;
+import com.qms.module.qms.common.entity.QmsDepartmentActionItem;
 import com.qms.module.qms.common.entity.QmsDepartmentAttachment;
+import com.qms.module.qms.common.entity.QmsDepartmentComment;
+import com.qms.module.qms.common.repository.QmsDepartmentActionItemRepository;
 import com.qms.module.qms.common.repository.QmsDepartmentAttachmentRepository;
+import com.qms.module.qms.common.repository.QmsDepartmentCommentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -22,6 +27,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -55,10 +61,13 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class QmsDepartmentAttachmentService {
 
-    private final QmsDepartmentAttachmentRepository attachmentRepository;
-    private final DepartmentRepository              departmentRepository;
-    private final DocumentRepository                documentRepository;
-    private final OrgSecurityService                orgSecurity;
+    private final QmsDepartmentAttachmentRepository  attachmentRepository;
+    // Batch C RED-5 — action-item-linked attachments.
+    private final QmsDepartmentActionItemRepository  actionItemRepository;
+    private final QmsDepartmentCommentRepository     deptCommentRepository;
+    private final DepartmentRepository               departmentRepository;
+    private final DocumentRepository                 documentRepository;
+    private final OrgSecurityService                 orgSecurity;
 
     public List<QmsDepartmentAttachmentResponse> list(QmsRecordType recordType, Long recordId) {
         return attachmentRepository
@@ -129,19 +138,107 @@ public class QmsDepartmentAttachmentService {
             throw AppException.badRequest("attachmentRef is required.");
         }
 
-        row.setAttachmentRef(req.getAttachmentRef().trim());
-        row.setAttachmentNote(req.getAttachmentNote());
-        // Reset prior decision so Head QA's queue picks it up again.
-        row.setStatus("PENDING");
-        row.setDecidedById(null);
-        row.setDecidedByName(null);
-        row.setDecidedAt(null);
-        row.setDecisionNote(null);
+        // Batch C RED-5: if the request names an action_item, link it and
+        // enforce the overdue-guard against the item's effective deadline.
+        Long actionItemId = req.getActionItemId() != null
+                ? req.getActionItemId() : row.getActionItemId();
+        if (actionItemId != null) {
+            QmsDepartmentActionItem item = actionItemRepository
+                    .findByIdAndIsDeletedFalse(actionItemId)
+                    .orElseThrow(() -> AppException.notFound("Department Action Item", actionItemId));
+            enforceNotOverdue(item);
+            row.setActionItemId(actionItemId);
+        }
 
-        QmsDepartmentAttachment saved = attachmentRepository.save(row);
-        log.info("Dept attachment row {} uploaded by {}",
-                rowId, saved.getDepartmentName());
+        // Batch C RED-5: multiple attachments per action item. If the row
+        // being uploaded to is already filled and belongs to an action item,
+        // spawn a fresh row rather than overwriting — the reference doc says
+        // one action plan may have multiple supporting docs.
+        boolean rowAlreadyFilled = row.getAttachmentRef() != null
+                && !row.getAttachmentRef().isBlank();
+        QmsDepartmentAttachment target;
+        if (rowAlreadyFilled && actionItemId != null) {
+            target = QmsDepartmentAttachment.builder()
+                    .recordType(row.getRecordType())
+                    .recordId(row.getRecordId())
+                    .departmentId(row.getDepartmentId())
+                    .departmentName(row.getDepartmentName())
+                    .actionItemId(actionItemId)
+                    .status("PENDING")
+                    .build();
+        } else {
+            target = row;
+            // Reset prior decision so Head QA's queue picks it up again.
+            target.setStatus("PENDING");
+            target.setDecidedById(null);
+            target.setDecidedByName(null);
+            target.setDecidedAt(null);
+            target.setDecisionNote(null);
+        }
+        target.setAttachmentRef(req.getAttachmentRef().trim());
+        target.setAttachmentNote(req.getAttachmentNote());
+        // Stamp who uploaded, when — distinct from BaseEntity's createdAt on
+        // auto-spawned placeholders.
+        target.setUploadedById(orgSecurity.currentUser().map(u -> u.getId()).orElse(null));
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        target.setUploadedByName(auth != null ? auth.getName() : null);
+        target.setUploadedAt(LocalDateTime.now());
+
+        QmsDepartmentAttachment saved = attachmentRepository.save(target);
+        log.info("Dept attachment row {} uploaded by {} (action item {})",
+                saved.getId(), saved.getDepartmentName(), actionItemId);
         return toResponse(saved);
+    }
+
+    /**
+     * Batch C RED-5: block uploads when an action item's effective deadline
+     * (extension_date if set, else target_date) is in the past. Enforced
+     * server-side even though the UI hides the upload button in that state.
+     */
+    private void enforceNotOverdue(QmsDepartmentActionItem item) {
+        LocalDate deadline = item.getExtensionDate() != null
+                ? item.getExtensionDate() : item.getTargetDate();
+        if (deadline != null && deadline.isBefore(LocalDate.now())) {
+            throw AppException.badRequest(
+                    "Action item is overdue — record a new extension date before uploading.");
+        }
+    }
+
+    /**
+     * Batch C RED-5 — list the action items belonging to a specific
+     * department on a record. The UI presents these in the upload dialog's
+     * "pick an action plan" dropdown. Callable by the dept HOD or a QA
+     * reviewer; permission is not stricter than the existing list().
+     */
+    public List<QmsDepartmentActionItemResponse> listActionItemsForDept(
+            QmsRecordType recordType, Long recordId, Long departmentId) {
+        return deptCommentRepository
+                .findAllByRecordTypeAndRecordIdAndIsDeletedFalseOrderByCreatedAtAsc(
+                        recordType, recordId)
+                .stream()
+                .filter(c -> departmentId.equals(c.getDepartmentId()))
+                .flatMap(c -> actionItemRepository
+                        .findAllByDeptCommentIdAndIsDeletedFalseOrderByCreatedAtAsc(c.getId())
+                        .stream())
+                .map(this::toActionItemResponse)
+                .toList();
+    }
+
+    private QmsDepartmentActionItemResponse toActionItemResponse(QmsDepartmentActionItem r) {
+        return QmsDepartmentActionItemResponse.builder()
+                .id(r.getId())
+                .deptCommentId(r.getDeptCommentId())
+                .description(r.getDescription())
+                .targetDate(r.getTargetDate())
+                .status(r.getStatus())
+                .extensionDate(r.getExtensionDate())
+                .extensionReason(r.getExtensionReason())
+                .completedAt(r.getCompletedAt())
+                .completedById(r.getCompletedById())
+                .completedByName(r.getCompletedByName())
+                .createdAt(r.getCreatedAt())
+                .updatedAt(r.getUpdatedAt())
+                .build();
     }
 
     /**
@@ -225,7 +322,18 @@ public class QmsDepartmentAttachmentService {
                 .decidedAt(r.getDecidedAt())
                 .decisionNote(r.getDecisionNote())
                 .createdAt(r.getCreatedAt())
-                .createdBy(r.getCreatedBy());
+                .createdBy(r.getCreatedBy())
+                // Batch C RED-5 — action-item linkage + uploader stamps
+                .actionItemId(r.getActionItemId())
+                .uploadedById(r.getUploadedById())
+                .uploadedByName(r.getUploadedByName())
+                .uploadedAt(r.getUploadedAt());
+        if (r.getActionItemId() != null) {
+            actionItemRepository.findByIdAndIsDeletedFalse(r.getActionItemId())
+                    .ifPresent(a -> b.actionItemDescription(a.getDescription())
+                                     .actionItemTargetDate(a.getTargetDate())
+                                     .actionItemExtensionDate(a.getExtensionDate()));
+        }
 
         // DMS resolution — best-effort, never blocks the response.
         if (r.getAttachmentRef() != null && !r.getAttachmentRef().isBlank()) {

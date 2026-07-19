@@ -174,6 +174,54 @@ public class QmsDepartmentActionItemService {
                 .completedByName(r.getCompletedByName())
                 .createdAt(r.getCreatedAt())
                 .updatedAt(r.getUpdatedAt())
+                .extensionDate(r.getExtensionDate())
+                .extensionReason(r.getExtensionReason())
                 .build();
+    }
+
+    // ─── Batch C RED-5 — extension of an overdue action item ────
+
+    /**
+     * Record (or overwrite) a dept-declared extension on an action item
+     * whose original {@code targetDate} has passed. Only the HOD of the
+     * parent dept-comment's department can call this — same authority as
+     * the update / delete methods above. The extension is optional but
+     * the new date must be in the future.
+     */
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.QMS,
+             entityType = "QmsDepartmentActionItem", entityIdArgIndex = 0,
+             description = "Action-item extension recorded")
+    @Transactional
+    public QmsDepartmentActionItemResponse recordExtension(Long id,
+                                                            LocalDate newDate,
+                                                            String reason) {
+        QmsDepartmentActionItem row = requireRow(id);
+        QmsDepartmentComment parent = requireParent(row.getDeptCommentId());
+        if (!orgSecurity.isSuperAdmin()
+                && !orgSecurity.isCurrentUserHodOf(parent.getDepartmentId())) {
+            throw AppException.forbidden(
+                    "Only the HOD of the responsible department can record an extension.");
+        }
+        if (newDate == null) {
+            throw AppException.badRequest("Extension date is required.");
+        }
+        if (newDate.isBefore(LocalDate.now())) {
+            throw AppException.badRequest("Extension date must be today or later.");
+        }
+        row.setExtensionDate(newDate);
+        row.setExtensionReason(reason);
+        repository.save(row);
+        return toResponse(row);
+    }
+
+    /**
+     * Effective deadline of the action item — the extension if one is
+     * recorded, otherwise the original target date. Null when neither
+     * is set (rare — the record-level target date still applies).
+     */
+    public static LocalDate effectiveDeadline(QmsDepartmentActionItem row) {
+        return row.getExtensionDate() != null
+                ? row.getExtensionDate()
+                : row.getTargetDate();
     }
 }

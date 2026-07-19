@@ -36,4 +36,17 @@ public class QmsDepartmentAttachmentResponse {
 
     private LocalDateTime createdAt;
     private String    createdBy;
+
+    // ── Batch C RED-5 (2026-07-19) ───────────────────────────
+
+    /** FK to qms_department_action_items.id — the action plan this attachment satisfies. */
+    private Long          actionItemId;
+    /** Denormalised for the report / dropdown display. */
+    private String        actionItemDescription;
+    private java.time.LocalDate actionItemTargetDate;
+    private java.time.LocalDate actionItemExtensionDate;
+
+    private Long          uploadedById;
+    private String        uploadedByName;
+    private LocalDateTime uploadedAt;
 }

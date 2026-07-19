@@ -18,4 +18,8 @@ public class QmsDepartmentActionItemResponse {
     private String        completedByName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    // Batch C RED-5 — dept-declared extension used when the action item
+    // is overdue and the dept still needs to upload evidence.
+    private LocalDate     extensionDate;
+    private String        extensionReason;
 }

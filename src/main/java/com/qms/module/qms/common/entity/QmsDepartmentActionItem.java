@@ -60,6 +60,21 @@ public class QmsDepartmentActionItem {
     @Builder.Default
     private Boolean isDeleted = false;
 
+    // ── Batch C RED-5 (2026-07-19) ───────────────────────────
+
+    /**
+     * Optional dept-declared extension of {@link #targetDate}. When the
+     * action item is overdue (targetDate &lt; today) the dept HOD must
+     * fill this before they can upload a related attachment. The
+     * extension is dept-side self-declared — no separate Head-QA
+     * approval workflow.
+     */
+    @Column(name = "extension_date")
+    private LocalDate extensionDate;
+
+    @Column(name = "extension_reason", columnDefinition = "TEXT")
+    private String extensionReason;
+
     @PrePersist
     private void onPersist() {
         if (createdAt == null) createdAt = LocalDateTime.now();

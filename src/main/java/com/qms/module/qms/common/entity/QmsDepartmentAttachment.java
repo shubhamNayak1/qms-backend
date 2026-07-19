@@ -78,4 +78,25 @@ public class QmsDepartmentAttachment extends BaseEntity {
 
     @Column(name = "decision_note", columnDefinition = "TEXT")
     private String decisionNote;
+
+    // ── Batch C RED-5 (2026-07-19) ───────────────────────────
+
+    /**
+     * FK to {@code qms_department_action_items.id}. Nullable — legacy
+     * per-department rows created before V32 leave this null. New-shape
+     * rows created on Head-QA approval carry the id of the specific
+     * action plan the attachment relates to.
+     */
+    @Column(name = "action_item_id")
+    private Long actionItemId;
+
+    /** User id who uploaded this attachment (distinct from the row's creator, which for auto-spawned placeholders is the workflow engine). */
+    @Column(name = "uploaded_by_id")
+    private Long uploadedById;
+
+    @Column(name = "uploaded_by_name", length = 150)
+    private String uploadedByName;
+
+    @Column(name = "uploaded_at")
+    private LocalDateTime uploadedAt;
 }

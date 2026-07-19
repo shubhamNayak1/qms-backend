@@ -270,6 +270,33 @@ public class QmsCommonController {
         return ApiResponse.noContent("Attachment row removed");
     }
 
+    // ── Batch C RED-5 (2026-07-19) ──────────────────────────
+
+    @GetMapping("/department-attachments/action-items")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "List action items belonging to a specific department for the attachment upload picker")
+    public ResponseEntity<ApiResponse<List<com.qms.module.qms.common.dto.response.QmsDepartmentActionItemResponse>>>
+    listActionItemsForDept(
+            @PathVariable String recordType,
+            @PathVariable Long   recordId,
+            @org.springframework.web.bind.annotation.RequestParam Long departmentId) {
+        return ApiResponse.ok(deptAttachmentService
+                .listActionItemsForDept(parseType(recordType), recordId, departmentId));
+    }
+
+    @PostMapping("/department-action-items/{itemId}/extension")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Dept HOD records / overwrites the extension date on an overdue action item")
+    public ResponseEntity<ApiResponse<com.qms.module.qms.common.dto.response.QmsDepartmentActionItemResponse>>
+    recordActionItemExtension(
+            @PathVariable String recordType,
+            @PathVariable Long   recordId,
+            @PathVariable Long   itemId,
+            @Valid @RequestBody  com.qms.module.qms.common.dto.request.QmsActionItemExtensionRequest req) {
+        return ApiResponse.ok("Extension recorded",
+                deptActionItemService.recordExtension(itemId, req.getExtensionDate(), req.getExtensionReason()));
+    }
+
     // ─────────────────────────────────────────────────────────
     //  Target-date extension — inline approval workflow
     // ─────────────────────────────────────────────────────────

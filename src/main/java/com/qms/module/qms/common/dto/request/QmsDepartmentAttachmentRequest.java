@@ -17,4 +17,12 @@ public class QmsDepartmentAttachmentRequest {
 
     @Schema(description = "Optional note from the uploading department alongside the attachment.")
     private String attachmentNote;
+
+    /**
+     * Batch C RED-5 (2026-07-19): the action plan this attachment satisfies.
+     * Required on the new flow (upload) so the dept picks an action plan
+     * before selecting the file. Legacy per-dept invites may leave this null.
+     */
+    @Schema(description = "FK to the action item this attachment satisfies. Required on upload.")
+    private Long actionItemId;
 }

@@ -49,6 +49,9 @@ public class QmsWorkflowEngine {
     private final OrgSecurityService                orgSecurity;
     private final QmsDepartmentCommentRepository    deptCommentRepository;
     private final QmsDepartmentAttachmentRepository deptAttachmentRepository;
+    // Batch C RED-5 — dept attachments now spawn per action-item.
+    private final com.qms.module.qms.common.repository.QmsDepartmentActionItemRepository
+            deptActionItemRepository;
 
     private static final TypeReference<List<StatusHistoryEntry>> HISTORY_TYPE =
             new TypeReference<>() {};
@@ -285,6 +288,11 @@ public class QmsWorkflowEngine {
     }
 
     private void autoSpawnActionRequiredDeptAttachmentRows(QmsRecord record) {
+        // Batch C RED-5 (2026-07-19): spawn one placeholder attachment row
+        // per action item rather than per action-required dept. Falls back
+        // to the old per-dept behaviour when a dept flagged action_required
+        // = TRUE but did not add any action items (backwards-compat with
+        // records raised before V30).
         var actionRequiredComments = deptCommentRepository
                 .findAllByRecordTypeAndRecordIdAndIsDeletedFalseOrderByCreatedAtAsc(
                         record.getRecordType(), record.getId())
@@ -296,9 +304,14 @@ public class QmsWorkflowEngine {
         var existingRows = deptAttachmentRepository
                 .findAllByRecordTypeAndRecordIdAndIsDeletedFalseOrderByCreatedAtAsc(
                         record.getRecordType(), record.getId());
-        var existingOpenDeptIds = new java.util.HashSet<Long>();
+        var existingActionItemIds = new java.util.HashSet<Long>();
+        var existingOpenDeptIds   = new java.util.HashSet<Long>();
         for (var r : existingRows) {
-            if (!"APPROVED".equalsIgnoreCase(r.getStatus())) {
+            if (r.getActionItemId() != null) {
+                existingActionItemIds.add(r.getActionItemId());
+            }
+            if (r.getActionItemId() == null
+                    && !"APPROVED".equalsIgnoreCase(r.getStatus())) {
                 existingOpenDeptIds.add(r.getDepartmentId());
             }
         }
@@ -306,16 +319,35 @@ public class QmsWorkflowEngine {
         int created = 0;
         for (var c : actionRequiredComments) {
             if (c.getDepartmentId() == null) continue;
-            if (existingOpenDeptIds.contains(c.getDepartmentId())) continue;
-            var row = com.qms.module.qms.common.entity.QmsDepartmentAttachment.builder()
-                    .recordType(record.getRecordType())
-                    .recordId(record.getId())
-                    .departmentId(c.getDepartmentId())
-                    .departmentName(c.getDepartmentName())
-                    .status("PENDING")
-                    .build();
-            deptAttachmentRepository.save(row);
-            created++;
+            var items = deptActionItemRepository
+                    .findAllByDeptCommentIdAndIsDeletedFalseOrderByCreatedAtAsc(c.getId());
+            if (items.isEmpty()) {
+                // Fallback for pre-V30 records: one placeholder per dept.
+                if (existingOpenDeptIds.contains(c.getDepartmentId())) continue;
+                var row = com.qms.module.qms.common.entity.QmsDepartmentAttachment.builder()
+                        .recordType(record.getRecordType())
+                        .recordId(record.getId())
+                        .departmentId(c.getDepartmentId())
+                        .departmentName(c.getDepartmentName())
+                        .status("PENDING")
+                        .build();
+                deptAttachmentRepository.save(row);
+                created++;
+                continue;
+            }
+            for (var it : items) {
+                if (existingActionItemIds.contains(it.getId())) continue;
+                var row = com.qms.module.qms.common.entity.QmsDepartmentAttachment.builder()
+                        .recordType(record.getRecordType())
+                        .recordId(record.getId())
+                        .departmentId(c.getDepartmentId())
+                        .departmentName(c.getDepartmentName())
+                        .actionItemId(it.getId())
+                        .status("PENDING")
+                        .build();
+                deptAttachmentRepository.save(row);
+                created++;
+            }
         }
         if (created > 0) {
             log.info("Auto-created {} dept-attachment-request row(s) on {} record id={}",
