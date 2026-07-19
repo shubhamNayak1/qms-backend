@@ -18,9 +18,11 @@ import com.qms.module.qms.changecontrol.dto.response.ChangeControlResponse;
 import com.qms.module.qms.common.dto.response.QmsDepartmentActionItemResponse;
 import com.qms.module.qms.common.dto.response.QmsDepartmentCommentResponse;
 import com.qms.module.qms.common.dto.response.QmsLineItemResponse;
+import com.qms.module.qms.common.dto.response.QmsDepartmentAttachmentResponse;
 import com.qms.module.qms.common.export.QmsPdfReportSupport;
 import com.qms.module.qms.common.repository.QmsRecordAttachmentRepository;
 import com.qms.module.qms.common.service.QmsDepartmentActionItemService;
+import com.qms.module.qms.common.service.QmsDepartmentAttachmentService;
 import com.qms.module.qms.common.service.QmsDepartmentCommentService;
 import com.qms.module.qms.common.service.QmsLineItemService;
 import com.qms.module.qms.common.workflow.StatusHistoryEntry;
@@ -77,6 +79,7 @@ public class ChangeControlPdfReportService {
     private final QmsLineItemService              lineItemService;
     private final QmsDepartmentCommentService     deptCommentService;
     private final QmsDepartmentActionItemService  actionItemService;
+    private final QmsDepartmentAttachmentService  deptAttachmentService;
     private final QmsRecordAttachmentRepository   attachmentRepository;
 
     @Value("${reports.export.company-name:QMS Organisation}")
@@ -104,6 +107,7 @@ public class ChangeControlPdfReportService {
             renderPostQaStagesChronologically(doc, cc);
             renderHeadQaApproval(doc, cc);
             renderExtensionRequest(doc, cc);    // RED-4 — extension raised by / decided
+            renderDeptAttachmentTable(doc, cc); // Batch C RED-5 — per-action-item table
             renderVerification(doc, cc);
 
             doc.close();
@@ -549,6 +553,58 @@ public class ChangeControlPdfReportService {
         doc.add(t);
     }
 
+    /**
+     * Batch C RED-5 (2026-07-19): "Verification of Implementation of Change
+     * (Department Attachment)" table from the reference doc. Rendered with
+     * the columns Department | Action Plan | Status | DMS Attachment/Name |
+     * Done By/Date. One row per attachment (multiple attachments per action
+     * plan render as multiple rows). Action plans still awaiting an upload
+     * render as a single "Pending" row. Skips itself when the record has no
+     * dept attachments (nothing to say).
+     */
+    private void renderDeptAttachmentTable(Document doc, ChangeControlResponse cc)
+            throws DocumentException {
+        List<QmsDepartmentAttachmentResponse> rows = deptAttachmentService.list(
+                QmsRecordType.CHANGE_CONTROL, cc.getId());
+        if (rows.isEmpty()) return;
+
+        sectionBanner(doc,
+                "Verification Of Implementation Of Change (Department Attachment)");
+        PdfPTable t = new PdfPTable(new float[]{2.2f, 4f, 1.4f, 3f, 2.4f});
+        t.setWidthPercentage(100);
+        addHeader(t, "Department");
+        addHeader(t, "Action Plan / Activity");
+        addHeader(t, "Status");
+        addHeader(t, "DMS Attachment / Name");
+        addHeader(t, "Done By / Date");
+        for (QmsDepartmentAttachmentResponse a : rows) {
+            addBody(t, safe(a.getDepartmentName()));
+            addBody(t, safe(a.getActionItemDescription()));
+            boolean uploaded = a.getAttachmentRef() != null
+                    && !a.getAttachmentRef().isBlank();
+            addBody(t, uploaded ? safe(a.getStatus()) : "PENDING");
+            // Prefer the DMS-resolved title; fall back to raw ref.
+            String name;
+            if (uploaded && a.getDmsDocumentTitle() != null) {
+                name = a.getDmsDocumentTitle()
+                        + (a.getDmsDocumentVersion() != null
+                            ? "  ·  v" + a.getDmsDocumentVersion() : "");
+            } else if (uploaded) {
+                name = a.getAttachmentRef();
+            } else {
+                name = "—";
+            }
+            addBody(t, name);
+            String who = a.getUploadedByName() != null
+                    ? a.getUploadedByName() : safe(a.getCreatedBy());
+            String when = a.getUploadedAt() != null
+                    ? DT_FMT.format(a.getUploadedAt())
+                    : a.getCreatedAt() != null ? DT_FMT.format(a.getCreatedAt()) : "—";
+            addBody(t, uploaded ? who + " / " + when : "—");
+        }
+        doc.add(t);
+    }
+
     private void renderVerification(Document doc, ChangeControlResponse cc) throws DocumentException {
         boolean populated = (cc.getVerificationActionTaken() != null && !cc.getVerificationActionTaken().isBlank())
                 || cc.getVerificationEffectiveOn() != null
@@ -557,7 +613,7 @@ public class ChangeControlPdfReportService {
         // Also gate on the workflow having actually reached verification.
         if (!populated && !hasReached(cc, QmsStatus.PENDING_VERIFICATION)) return;
 
-        sectionBanner(doc, "Verification Of Change Implementation");
+        sectionBanner(doc, "Verification Review Of Change Implementation");
         PdfPTable t = singleColTable();
         addLabeled(t, "Action Taken / Documents Closed", safe(cc.getVerificationActionTaken()));
         addLabeled(t, "Effective / Implemented On",
