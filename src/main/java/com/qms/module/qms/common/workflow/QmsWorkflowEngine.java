@@ -193,10 +193,12 @@ public class QmsWorkflowEngine {
                     || newStatus == QmsStatus.PENDING_ATTACHMENTS
                     || newStatus == QmsStatus.CLOSED)
                 && record.getTargetCompletionDate() == null && record.getCategory() != null) {
+            // Batch B RED-3 (2026-07-19): tester reference doc revises the day
+            // counts. Minor was 30 → 90; Major was 90 → 180; Critical stays 365.
             int days = switch (record.getCategory().trim().toLowerCase()) {
                 case "critical" -> 365;
-                case "major"    -> 90;
-                case "minor"    -> 30;
+                case "major"    -> 180;
+                case "minor"    -> 90;
                 default          -> 0;
             };
             if (days > 0) {

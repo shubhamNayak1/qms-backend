@@ -5,8 +5,12 @@ import com.lowagie.text.DocumentException;
 import com.lowagie.text.Element;
 import com.lowagie.text.PageSize;
 import com.lowagie.text.Paragraph;
+import com.lowagie.text.Phrase;
+import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
+
+import java.awt.Color;
 import com.qms.common.enums.QmsRecordType;
 import com.qms.common.enums.QmsStatus;
 import com.qms.common.exception.AppException;
@@ -281,6 +285,10 @@ public class ChangeControlPdfReportService {
         if (phase2Done) {
             addLabeled(t, "Post Remark/Justification",
                     findTransitionComment(cc, QmsStatus.PENDING_QA_REVIEW, cc.getComments()));
+            // Batch B S4 — separate QA Evaluation Remark, distinct from Post-Remark.
+            if (cc.getQaEvaluationRemark() != null && !cc.getQaEvaluationRemark().isBlank()) {
+                addLabeled(t, "QA Evaluation Remark", cc.getQaEvaluationRemark());
+            }
             if (cc.getRiskAssessment() != null && !cc.getRiskAssessment().isBlank()) {
                 addLabeled(t, "Risk Assessment", safe(cc.getRiskAssessment()));
             }
@@ -288,6 +296,8 @@ public class ChangeControlPdfReportService {
             addLabeled(t, "Customer Communication Required",
                     Boolean.TRUE.equals(cc.getCustomerCommunicationRequired())
                             || Boolean.TRUE.equals(cc.getCustomerCommentRequired()) ? "Yes" : "No");
+            addLabeled(t, "Regulatory Affairs Required",
+                    yesNo(cc.getRegulatorySubmissionRequired()));
             // Category is set by QA at Phase 2 (Head QA can confirm at approval).
             if (cc.getCategory() != null && !cc.getCategory().isBlank()) {
                 addLabeled(t, "Category / Risk Level", safe(cc.getCategory()));
@@ -296,51 +306,80 @@ public class ChangeControlPdfReportService {
         doc.add(t);
     }
 
+    /**
+     * Batch B RED-1 (2026-07-19): rewritten to Option B per-department blocks,
+     * matching the tester's reference doc. Each requested department gets its
+     * own labelled block:
+     *   {Department Name} Department
+     *     Remark/Feedback   : ...
+     *     Action/Activity   : Required / Not Required
+     *     Action Items      : desc / target date  (repeated per item)
+     *     Review By         : ... · date
+     * Sections are still guarded — we render only depts that have actually
+     * responded (r.getDoneAt() != null).
+     */
     private void renderDepartmentComments(Document doc, ChangeControlResponse cc) throws DocumentException {
         List<QmsDepartmentCommentResponse> rows = deptCommentService.list(
                 QmsRecordType.CHANGE_CONTROL, cc.getId());
         if (rows.isEmpty()) return;
 
-        sectionBanner(doc, "Evaluation & Concurrence Of Proposed Change By Concerned Head/Designee Of The Department");
-        PdfPTable t = new PdfPTable(new float[]{2f, 4f, 1.5f, 2f});
-        t.setWidthPercentage(100);
-        addHeader(t, "Department");
-        addHeader(t, "Comment");
-        addHeader(t, "Target Date");
-        addHeader(t, "Done By/Date");
+        sectionBanner(doc, "Department Comment");
         for (QmsDepartmentCommentResponse r : rows) {
-            addBody(t, safe(r.getDepartmentName()));
-            addBody(t, safe(r.getComment()));
-            addBody(t, r.getTargetDate() != null ? DATE_FMT.format(r.getTargetDate()) : "—");
-            addBody(t, safe(r.getDoneByName())
-                    + (r.getDoneAt() != null ? " / " + DT_FMT.format(r.getDoneAt()) : ""));
-        }
-        doc.add(t);
+            // Per-dept sub-banner using the section-header cell style.
+            PdfPTable head = new PdfPTable(1);
+            head.setWidthPercentage(100);
+            head.setSpacingBefore(6);
+            PdfPCell hc = new PdfPCell(new Phrase(
+                    safe(r.getDepartmentName()) + " Department", FONT_SECTION));
+            hc.setBackgroundColor(new Color(240, 240, 240));
+            hc.setPadding(4);
+            hc.setBorderColor(new Color(140, 140, 140));
+            head.addCell(hc);
+            doc.add(head);
 
-        for (QmsDepartmentCommentResponse r : rows) {
+            PdfPTable t = singleColTable();
+            addLabeled(t, "Remark / Feedback", safe(r.getComment()));
+
             List<QmsDepartmentActionItemResponse> items = actionItemService.list(r.getId());
-            if (items.isEmpty()) continue;
-            Paragraph p = new Paragraph(safe(r.getDepartmentName()) + " — Action Items", FONT_SECTION);
-            p.setSpacingBefore(4);
-            p.setSpacingAfter(2);
-            doc.add(p);
-            PdfPTable ait = new PdfPTable(new float[]{0.6f, 6f, 1.4f, 1.4f, 2f});
-            ait.setWidthPercentage(100);
-            addHeader(ait, "#");
-            addHeader(ait, "Description");
-            addHeader(ait, "Target Date");
-            addHeader(ait, "Status");
-            addHeader(ait, "Completed By/On");
-            int i = 1;
-            for (QmsDepartmentActionItemResponse a : items) {
-                addBody(ait, String.valueOf(i++));
-                addBody(ait, safe(a.getDescription()));
-                addBody(ait, a.getTargetDate() != null ? DATE_FMT.format(a.getTargetDate()) : "—");
-                addBody(ait, safe(a.getStatus()));
-                addBody(ait, (a.getCompletedByName() != null ? safe(a.getCompletedByName()) : "—")
-                        + (a.getCompletedAt() != null ? " / " + DT_FMT.format(a.getCompletedAt()) : ""));
+            boolean actionRequired = Boolean.TRUE.equals(r.getActionRequired())
+                    || !items.isEmpty();
+            addLabeled(t, "Action / Activity",
+                    actionRequired ? "Required" : "Not Required");
+
+            if (r.getTargetDate() != null && items.isEmpty()) {
+                addLabeled(t, "Target Date", DATE_FMT.format(r.getTargetDate()));
             }
-            doc.add(ait);
+            doc.add(t);
+
+            // Action items block — one row per item so the "Action Items /
+            // Target Date" pattern from the reference doc reads naturally.
+            if (!items.isEmpty()) {
+                PdfPTable ait = new PdfPTable(new float[]{0.5f, 6f, 1.5f, 1.5f, 2f});
+                ait.setWidthPercentage(100);
+                ait.setSpacingBefore(2);
+                addHeader(ait, "#");
+                addHeader(ait, "Action Item");
+                addHeader(ait, "Target Date");
+                addHeader(ait, "Status");
+                addHeader(ait, "Completed By/On");
+                int i = 1;
+                for (QmsDepartmentActionItemResponse a : items) {
+                    addBody(ait, String.valueOf(i++));
+                    addBody(ait, safe(a.getDescription()));
+                    addBody(ait, a.getTargetDate() != null ? DATE_FMT.format(a.getTargetDate()) : "—");
+                    addBody(ait, safe(a.getStatus()));
+                    addBody(ait, (a.getCompletedByName() != null ? safe(a.getCompletedByName()) : "—")
+                            + (a.getCompletedAt() != null ? " / " + DT_FMT.format(a.getCompletedAt()) : ""));
+                }
+                doc.add(ait);
+            }
+
+            // Review-by line at the bottom of the block.
+            PdfPTable foot = singleColTable();
+            addLabeled(foot, "Review By",
+                    (r.getDoneByName() != null ? safe(r.getDoneByName()) : "—")
+                    + (r.getDoneAt() != null ? "  ·  " + DT_FMT.format(r.getDoneAt()) : ""));
+            doc.add(foot);
         }
     }
 
@@ -437,6 +476,9 @@ public class ChangeControlPdfReportService {
                 yesNo(cc.getRegulatorySubmissionRequired()));
         addLabeled(t, "Dossier Details With No.",
                 safe(cc.getRegulatorySubmissionReference()));
+        // Batch B S3 — country / territory (optional).
+        addLabeled(t, "Any Specify Country",
+                safe(cc.getRegulatorySubmissionCountry()));
         if (ra.isPresent()) {
             addLabeled(t, "RA Comment", safe(ra.get().getComment()));
             addLabeled(t, "RA Officer",

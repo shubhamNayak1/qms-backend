@@ -47,6 +47,10 @@ public class ChangeControlRequest extends QmsBaseRequest {
     private LocalDate validationCompletionDate;
     private Boolean   regulatorySubmissionRequired;
     private String    regulatorySubmissionReference;
+    /** Batch B S3 — free-text country / territory of the RA submission. */
+    private String    regulatorySubmissionCountry;
+    /** Batch B S4 — QA's summary verdict at Phase 2, distinct from Post-Remark. */
+    private String    qaEvaluationRemark;
     private String    rollbackPlan;
 
     @Schema(description = "Whether Site Head approval is required — routes through PENDING_SITE_HEAD step")

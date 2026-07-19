@@ -32,6 +32,10 @@ public class ChangeControlResponse extends QmsBaseResponse {
     private LocalDate validationCompletionDate;
     private Boolean   regulatorySubmissionRequired;
     private String    regulatorySubmissionReference;
+    /** Batch B S3 — free-text country / territory of the RA submission. */
+    private String    regulatorySubmissionCountry;
+    /** Batch B S4 — QA's summary verdict at Phase 2, distinct from Post-Remark. */
+    private String    qaEvaluationRemark;
     private String    rollbackPlan;
     private Boolean siteHeadRequired;
     private Boolean customerCommentRequired;

@@ -254,6 +254,9 @@ public class ChangeControlService {
         if (req.getValidationCompletionDate()      != null) cc.setValidationCompletionDate(req.getValidationCompletionDate());
         if (req.getRegulatorySubmissionRequired()  != null) cc.setRegulatorySubmissionRequired(req.getRegulatorySubmissionRequired());
         if (req.getRegulatorySubmissionReference() != null) cc.setRegulatorySubmissionReference(req.getRegulatorySubmissionReference());
+        // Batch B S3 / S4
+        if (req.getRegulatorySubmissionCountry()   != null) cc.setRegulatorySubmissionCountry(req.getRegulatorySubmissionCountry());
+        if (req.getQaEvaluationRemark()            != null) cc.setQaEvaluationRemark(req.getQaEvaluationRemark());
         if (req.getRollbackPlan()                  != null) cc.setRollbackPlan(req.getRollbackPlan());
         if (req.getSiteHeadRequired()              != null) cc.setSiteHeadRequired(req.getSiteHeadRequired());
         if (req.getCustomerCommentRequired()       != null) cc.setCustomerCommentRequired(req.getCustomerCommentRequired());
@@ -325,6 +328,9 @@ public class ChangeControlService {
         r.setValidationCompletionDate(cc.getValidationCompletionDate());
         r.setRegulatorySubmissionRequired(cc.getRegulatorySubmissionRequired());
         r.setRegulatorySubmissionReference(cc.getRegulatorySubmissionReference());
+        // Batch B S3 / S4
+        r.setRegulatorySubmissionCountry(cc.getRegulatorySubmissionCountry());
+        r.setQaEvaluationRemark(cc.getQaEvaluationRemark());
         r.setRollbackPlan(cc.getRollbackPlan());
         r.setSiteHeadRequired(cc.getSiteHeadRequired());
         r.setCustomerCommentRequired(cc.getCustomerCommentRequired());

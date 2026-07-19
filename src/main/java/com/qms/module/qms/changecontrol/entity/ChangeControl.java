@@ -96,6 +96,24 @@ public class ChangeControl extends QmsRecord {
     @Column(name = "regulatory_submission_reference", length = 100)
     private String regulatorySubmissionReference;
 
+    /**
+     * Batch B S3 (2026-07-19): free-text country / territory of the
+     * regulatory submission. Captured by RA at PENDING_RA_REVIEW alongside
+     * the Dossier reference. Optional — some submissions are multi-region
+     * and RA leaves this blank.
+     */
+    @Column(name = "regulatory_submission_country", columnDefinition = "TEXT")
+    private String regulatorySubmissionCountry;
+
+    /**
+     * Batch B S4 (2026-07-19): QA's summary verdict at Phase 2, captured
+     * alongside the Post-Remark. The tester's reference doc lists this as
+     * a distinct field ("QA Evaluation Remark") and the old code was
+     * conflating it with Post-Remark.
+     */
+    @Column(name = "qa_evaluation_remark", columnDefinition = "TEXT")
+    private String qaEvaluationRemark;
+
     @Column(name = "rollback_plan", columnDefinition = "TEXT")
     private String rollbackPlan;
 
