@@ -1,5 +1,18 @@
 server:
   port: 8080
+  # 2026-09-14 — Render Starter (512 MB) was hitting the memory ceiling
+  # roughly hourly. Tomcat's default pool = 200 threads × 1 MB stack =
+  # ~200 MB reserved just to idle. Cutting to 25 (with 3 warm) sheds
+  # ~175 MB of thread-stack overhead; combined with the -Xss256k in the
+  # Dockerfile this is roughly 194 MB reclaimed. QMS traffic pattern
+  # is human-driven — 25 concurrent workers is far more than we ever
+  # actually need.
+  tomcat:
+    threads:
+      max: 25
+      min-spare: 3
+    accept-count: 30
+    connection-timeout: 20000
 
 spring:
   main:
