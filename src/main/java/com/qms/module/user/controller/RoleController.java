@@ -22,7 +22,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Tag(name = "Role Management", description = "Create and manage roles, assign permissions to roles")
 @SecurityRequirement(name = "bearerAuth")
-@PreAuthorize("hasRole('SUPER_ADMIN')")   // all endpoints in this controller require SUPER_ADMIN
+@PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")   // Phase-1 admin consolidation: SUPER_ADMIN or ADMIN
 public class RoleController {
 
     private final RoleService roleService;

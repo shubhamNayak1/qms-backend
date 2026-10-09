@@ -22,7 +22,7 @@ import java.util.List;
 @Tag(name = "Permission Management",
      description = "Registry of fine-grained permissions assigned to roles")
 @SecurityRequirement(name = "bearerAuth")
-@PreAuthorize("hasRole('SUPER_ADMIN')")
+@PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
 public class PermissionController {
 
     private final PermissionService permissionService;
