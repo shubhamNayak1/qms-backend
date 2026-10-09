@@ -9,9 +9,11 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Stream;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Getter
 @AllArgsConstructor
@@ -33,16 +35,33 @@ public class UserPrincipal implements UserDetails {
     // ─── Factory ────────────────────────────────────────────
 
     public static UserPrincipal create(User user) {
-        // Role authorities — prefixed with ROLE_
+        // Role-granted permissions only. CustomUserDetailsService calls
+        // the overload below when it has user_permissions overrides on
+        // hand; this one-arg entry point stays for callers that don't.
+        Set<String> rolePerms = user.getRoles().stream()
+                .flatMap(r -> r.getPermissions().stream())
+                .map(p -> p.getName())
+                .collect(Collectors.toCollection(HashSet::new));
+        return create(user, rolePerms);
+    }
+
+    /**
+     * Build the principal with the final effective permission set
+     * already computed by the caller — i.e. role permissions ∪ grants
+     * \ revokes. CustomUserDetailsService resolves user_permissions
+     * rows against the permissions table and passes the result in,
+     * which keeps this factory free of any DB access.
+     */
+    public static UserPrincipal create(User user, Set<String> effectivePermissions) {
         Set<GrantedAuthority> roleAuthorities = user.getRoles().stream()
                 .map(r -> new SimpleGrantedAuthority("ROLE_" + r.getName()))
                 .collect(Collectors.toSet());
 
-        // Permission authorities — no prefix, used with hasAuthority()
-        Set<GrantedAuthority> permissionAuthorities = user.getRoles().stream()
-                .flatMap(r -> r.getPermissions().stream())
-                .map(p -> new SimpleGrantedAuthority(p.getName()))
-                .collect(Collectors.toSet());
+        Set<GrantedAuthority> permissionAuthorities =
+                (effectivePermissions == null ? Collections.<String>emptySet() : effectivePermissions)
+                        .stream()
+                        .map(SimpleGrantedAuthority::new)
+                        .collect(Collectors.toSet());
 
         Set<GrantedAuthority> allAuthorities = Stream
                 .concat(roleAuthorities.stream(), permissionAuthorities.stream())

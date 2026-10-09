@@ -305,7 +305,7 @@ public class DocumentController {
     // ═══════════════════════════════════════════════════════════
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('DMS_HARD_DELETE')")
     @Operation(summary = "Soft-delete a document",
                description = "EFFECTIVE documents cannot be deleted — obsolete them first. "
                            + "The file is retained in storage for audit purposes.")

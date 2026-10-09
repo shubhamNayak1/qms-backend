@@ -139,7 +139,7 @@ public class ChangeControlController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('QMS_HARD_DELETE')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         changeControlService.delete(id);
         return ApiResponse.noContent("Change Control deleted");

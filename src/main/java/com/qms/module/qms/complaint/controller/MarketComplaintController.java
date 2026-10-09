@@ -119,7 +119,7 @@ public class MarketComplaintController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('QMS_HARD_DELETE')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         complaintService.delete(id);
         return ApiResponse.noContent("Complaint deleted");

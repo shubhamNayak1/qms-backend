@@ -39,7 +39,7 @@ public class DepartmentController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    @PreAuthorize("hasAuthority('DEPT_MANAGE')")
     @Operation(summary = "Create a new department or sub-department")
     public ResponseEntity<ApiResponse<DepartmentResponse>> create(
             @Valid @RequestBody DepartmentRequest req) {
@@ -47,7 +47,7 @@ public class DepartmentController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    @PreAuthorize("hasAuthority('DEPT_MANAGE')")
     @Operation(summary = "Update department (name, code, HOD, parent, type)")
     public ResponseEntity<ApiResponse<DepartmentResponse>> update(
             @PathVariable Long id,
@@ -56,7 +56,7 @@ public class DepartmentController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    @PreAuthorize("hasAuthority('DEPT_MANAGE')")
     @Operation(summary = "Soft-delete a department",
                description = "Sub-departments are re-parented to this dept's parent.")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {

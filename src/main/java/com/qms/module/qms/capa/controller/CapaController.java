@@ -160,7 +160,7 @@ public class CapaController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('QMS_HARD_DELETE')")
     @Operation(summary = "Soft-delete a CAPA (data retained for audit)")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         capaService.delete(id);

@@ -37,21 +37,21 @@ public class TcdPolicyController {
     private final TcdPolicyService service;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','QA_MANAGER')")
+    @PreAuthorize("hasAuthority('TCD_POLICY_MANAGE') or isAuthenticated()")
     @Operation(summary = "List every module's TCD policy row")
     public ResponseEntity<ApiResponse<List<TcdPolicyResponse>>> list() {
         return ApiResponse.ok(service.list());
     }
 
     @GetMapping("/{moduleKey}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','QA_MANAGER')")
+    @PreAuthorize("hasAuthority('TCD_POLICY_MANAGE') or isAuthenticated()")
     @Operation(summary = "Get one module's TCD policy row")
     public ResponseEntity<ApiResponse<TcdPolicyResponse>> getOne(@PathVariable String moduleKey) {
         return ApiResponse.ok(service.getByModule(moduleKey.toUpperCase()));
     }
 
     @PutMapping("/{moduleKey}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    @PreAuthorize("hasAuthority('TCD_POLICY_MANAGE')")
     @Operation(summary = "Update one module's TCD policy row")
     public ResponseEntity<ApiResponse<TcdPolicyResponse>> update(
             @PathVariable String moduleKey,

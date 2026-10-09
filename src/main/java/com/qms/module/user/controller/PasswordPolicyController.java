@@ -52,7 +52,7 @@ public class PasswordPolicyController {
 
     // ─── GET all ─────────────────────────────────────────────
     @GetMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','QA_MANAGER')")
+    @PreAuthorize("hasAuthority('PASSWORD_POLICY_MANAGE') or isAuthenticated()")
     @Operation(
         summary = "List all password policies",
         description = "Returns all non-deleted policies ordered by effectiveDate descending. " +
@@ -64,7 +64,7 @@ public class PasswordPolicyController {
 
     // ─── GET by ID ───────────────────────────────────────────
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','QA_MANAGER')")
+    @PreAuthorize("hasAuthority('PASSWORD_POLICY_MANAGE') or isAuthenticated()")
     @Operation(summary = "Get a password policy by ID")
     public ResponseEntity<ApiResponse<PasswordPolicyResponse>> getById(@PathVariable Long id) {
         return ApiResponse.ok(policyService.getById(id));
@@ -72,7 +72,7 @@ public class PasswordPolicyController {
 
     // ─── POST create ─────────────────────────────────────────
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    @PreAuthorize("hasAuthority('PASSWORD_POLICY_MANAGE')")
     @Operation(
         summary = "Create a new password policy",
         description = """
@@ -88,7 +88,7 @@ public class PasswordPolicyController {
 
     // ─── PUT update ──────────────────────────────────────────
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    @PreAuthorize("hasAuthority('PASSWORD_POLICY_MANAGE')")
     @Operation(
         summary = "Update an existing password policy",
         description = "Updates any field, including effectiveDate. " +
@@ -102,7 +102,7 @@ public class PasswordPolicyController {
 
     // ─── DELETE ──────────────────────────────────────────────
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    @PreAuthorize("hasAuthority('PASSWORD_POLICY_MANAGE')")
     @Operation(
         summary = "Soft-delete a password policy",
         description = "Marks the policy as deleted. It will no longer appear in listings " +

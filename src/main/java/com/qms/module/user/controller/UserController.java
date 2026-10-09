@@ -53,7 +53,7 @@ public class UserController {
     // GET /api/v1/users/{id}
     // ─────────────────────────────────────────────────────────
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','QA_MANAGER') or #id == authentication.principal.id")
+    @PreAuthorize("hasAuthority('USER_VIEW') or #id == authentication.principal.id")
     @Operation(summary = "Get a user by ID",
                description = "Admins can view any user. Regular users can only view themselves.")
     public ResponseEntity<ApiResponse<UserResponse>> getById(@PathVariable Long id) {
@@ -64,7 +64,7 @@ public class UserController {
     // POST /api/v1/users
     // ─────────────────────────────────────────────────────────
     @PostMapping
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    @PreAuthorize("hasAuthority('USER_MANAGE_ROLES') or hasAuthority('USER_UPDATE') or hasAuthority('USER_DELETE')")
     @Operation(summary = "Create a new user",
                description = "Only SUPER_ADMIN can create users. Password is BCrypt-hashed.")
     public ResponseEntity<ApiResponse<UserResponse>> create(
@@ -77,7 +77,7 @@ public class UserController {
     // POST /api/v1/users/bulk
     // ─────────────────────────────────────────────────────────
     @PostMapping("/bulk")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    @PreAuthorize("hasAuthority('USER_MANAGE_ROLES') or hasAuthority('USER_UPDATE') or hasAuthority('USER_DELETE')")
     @Operation(summary = "Bulk-create users (CSV/JSON import)",
                description = """
                    Each row is created in its own transaction so a single
@@ -95,7 +95,7 @@ public class UserController {
     // PUT /api/v1/users/{id}
     // ─────────────────────────────────────────────────────────
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN','QA_MANAGER') or #id == authentication.principal.id")
+    @PreAuthorize("hasAuthority('USER_VIEW') or #id == authentication.principal.id")
     @Operation(summary = "Update user profile",
                description = "Null fields are ignored. Use PATCH /users/{id}/roles to change roles.")
     public ResponseEntity<ApiResponse<UserResponse>> update(
@@ -109,7 +109,7 @@ public class UserController {
     // PATCH /api/v1/users/{id}/roles
     // ─────────────────────────────────────────────────────────
     @PatchMapping("/{id}/roles")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    @PreAuthorize("hasAuthority('USER_MANAGE_ROLES') or hasAuthority('USER_UPDATE') or hasAuthority('USER_DELETE')")
     @Operation(summary = "Assign (replace) roles for a user",
                description = """
                    Replaces the user's entire role set atomically.
@@ -126,7 +126,7 @@ public class UserController {
     // PATCH /api/v1/users/{id}/change-password
     // ─────────────────────────────────────────────────────────
     @PatchMapping("/{id}/change-password")
-    @PreAuthorize("#id == authentication.principal.id or hasAnyRole('SUPER_ADMIN','ADMIN')")
+    @PreAuthorize("#id == authentication.principal.id or hasAuthority('USER_UPDATE')")
     @Operation(summary = "Change own password",
                description = "Requires current password verification. SUPER_ADMIN can use admin-reset instead.")
     public ResponseEntity<ApiResponse<Void>> changePassword(
@@ -140,7 +140,7 @@ public class UserController {
     // PATCH /api/v1/users/{id}/admin-reset-password
     // ─────────────────────────────────────────────────────────
     @PatchMapping("/{id}/admin-reset-password")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    @PreAuthorize("hasAuthority('USER_MANAGE_ROLES') or hasAuthority('USER_UPDATE') or hasAuthority('USER_DELETE')")
     @Operation(summary = "Admin reset of another user's password",
                description = """
                    SUPER_ADMIN-only. Sets a temporary password and flags the
@@ -159,7 +159,7 @@ public class UserController {
     // PATCH /api/v1/users/{id}/activate
     // ─────────────────────────────────────────────────────────
     @PatchMapping("/{id}/activate")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    @PreAuthorize("hasAuthority('USER_MANAGE_ROLES') or hasAuthority('USER_UPDATE') or hasAuthority('USER_DELETE')")
     @Operation(summary = "Activate a deactivated user account")
     public ResponseEntity<ApiResponse<Void>> activate(@PathVariable Long id) {
         userService.activateUser(id);
@@ -170,7 +170,7 @@ public class UserController {
     // PATCH /api/v1/users/{id}/deactivate
     // ─────────────────────────────────────────────────────────
     @PatchMapping("/{id}/deactivate")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    @PreAuthorize("hasAuthority('USER_MANAGE_ROLES') or hasAuthority('USER_UPDATE') or hasAuthority('USER_DELETE')")
     @Operation(summary = "Deactivate a user account (preserves data)")
     public ResponseEntity<ApiResponse<Void>> deactivate(@PathVariable Long id) {
         userService.deactivateUser(id);
@@ -181,7 +181,7 @@ public class UserController {
     // DELETE /api/v1/users/{id}
     // ─────────────────────────────────────────────────────────
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN','ADMIN')")
+    @PreAuthorize("hasAuthority('USER_MANAGE_ROLES') or hasAuthority('USER_UPDATE') or hasAuthority('USER_DELETE')")
     @Operation(summary = "Soft-delete a user",
                description = "Sets is_deleted=true. Data is retained for audit purposes.")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {

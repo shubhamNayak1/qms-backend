@@ -43,7 +43,16 @@ import java.util.Optional;
 @Transactional(readOnly = true)
 public class OrgSecurityService {
 
-    private static final String SUPER_ADMIN = "ROLE_SUPER_ADMIN";
+    // Phase 2 (2026-10-09) — hasSystemOverride() replaces the historical
+    // "is user SUPER_ADMIN by role name" check. SYSTEM_OVERRIDE is a
+    // permission granted only to the SUPER_ADMIN role (see V35), so the
+    // behaviour is semantically identical. Workflow predicates below
+    // still delegate to this method via isSuperAdmin().
+    private static final String SYSTEM_OVERRIDE = "SYSTEM_OVERRIDE";
+    // Kept for backward-compat with any @PreAuthorize string that still
+    // references the role-prefixed authority — JwtAuthenticationFilter
+    // continues to emit ROLE_* authorities alongside the permission ones.
+    private static final String SUPER_ADMIN_ROLE = "ROLE_SUPER_ADMIN";
 
     private final UserRepository       userRepository;
     private final DepartmentRepository departmentRepository;
@@ -60,11 +69,20 @@ public class OrgSecurityService {
         return userRepository.findByUsernameAndIsDeletedFalse(auth.getName());
     }
 
+    /**
+     * God-mode check used by every contextual predicate below as the
+     * short-circuit exit. True when the authenticated user carries the
+     * SYSTEM_OVERRIDE permission (Phase 2) or the legacy
+     * ROLE_SUPER_ADMIN authority (kept for during the rollout window
+     * before every user's JWT is re-issued).
+     */
     public boolean isSuperAdmin() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null) return false;
         for (GrantedAuthority a : auth.getAuthorities()) {
-            if (SUPER_ADMIN.equals(a.getAuthority())) return true;
+            String v = a.getAuthority();
+            if (SYSTEM_OVERRIDE.equals(v))   return true;
+            if (SUPER_ADMIN_ROLE.equals(v))  return true;
         }
         return false;
     }

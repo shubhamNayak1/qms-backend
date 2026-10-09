@@ -119,7 +119,7 @@ public class DeviationController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAuthority('QMS_HARD_DELETE')")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         deviationService.delete(id);
         return ApiResponse.noContent("Deviation deleted");
