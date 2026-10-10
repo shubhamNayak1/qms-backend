@@ -4,6 +4,7 @@ import com.qms.common.enums.Priority;
 import com.qms.common.enums.QmsRecordType;
 import com.qms.common.enums.QmsStatus;
 import com.qms.common.exception.AppException;
+import com.qms.common.util.HtmlSanitizer;
 import com.qms.common.response.PageResponse;
 import com.qms.module.qms.capa.entity.Capa;
 import com.qms.module.qms.capa.repository.CapaSpecification;
@@ -226,15 +227,15 @@ public class MarketComplaintService {
         if (req.getReportableToAuthority()     != null) mc.setReportableToAuthority(req.getReportableToAuthority());
         if (req.getAuthorityReportReference()  != null) mc.setAuthorityReportReference(req.getAuthorityReportReference());
         if (req.getAuthorityReportDate()       != null) mc.setAuthorityReportDate(req.getAuthorityReportDate());
-        if (req.getResolutionDetails()         != null) mc.setResolutionDetails(req.getResolutionDetails());
-        if (req.getCustomerResponse()          != null) mc.setCustomerResponse(req.getCustomerResponse());
+        if (req.getResolutionDetails()         != null) mc.setResolutionDetails(HtmlSanitizer.sanitize(req.getResolutionDetails()));
+        if (req.getCustomerResponse()          != null) mc.setCustomerResponse(HtmlSanitizer.sanitize(req.getCustomerResponse()));
         if (req.getCustomerNotifiedDate()      != null) mc.setCustomerNotifiedDate(req.getCustomerNotifiedDate());
         if (req.getCustomerSatisfied()         != null) mc.setCustomerSatisfied(req.getCustomerSatisfied());
         if (req.getCapaReference()             != null) mc.setCapaReference(req.getCapaReference());
         if (req.getCapaRequired()              != null) mc.setCapaRequired(req.getCapaRequired());
         if (req.getSampleReturned()            != null) mc.setSampleReturned(req.getSampleReturned());
-        if (req.getInvestigationFindings()     != null) mc.setInvestigationFindings(req.getInvestigationFindings());
-        if (req.getImpactAssessment()          != null) mc.setImpactAssessment(req.getImpactAssessment());
+        if (req.getInvestigationFindings()     != null) mc.setInvestigationFindings(HtmlSanitizer.sanitize(req.getInvestigationFindings()));
+        if (req.getImpactAssessment()          != null) mc.setImpactAssessment(HtmlSanitizer.sanitize(req.getImpactAssessment()));
     }
 
     private MarketComplaintResponse toResponse(MarketComplaint mc) {

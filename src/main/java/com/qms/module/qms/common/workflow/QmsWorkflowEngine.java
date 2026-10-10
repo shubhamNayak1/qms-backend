@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.qms.common.enums.QmsStatus;
 import com.qms.common.exception.AppException;
+import com.qms.common.util.HtmlSanitizer;
 import com.qms.module.audit.context.AuditContext;
 import com.qms.module.audit.context.AuditContextHolder;
 import com.qms.module.org.service.OrgSecurityService;
@@ -161,7 +162,7 @@ public class QmsWorkflowEngine {
                 record.setAssignedToId(record.getRaisedById());
                 record.setAssignedToName(record.getRaisedByName());
             }
-            record.setApprovalComments(comment);
+            record.setApprovalComments(HtmlSanitizer.sanitize(comment));
         }
 
         // Set approval metadata when reaching certain statuses
@@ -173,7 +174,7 @@ public class QmsWorkflowEngine {
             }
             if (newStatus == QmsStatus.CLOSED) {
                 record.setClosedDate(LocalDate.now());
-                record.setApprovalComments(comment);
+                record.setApprovalComments(HtmlSanitizer.sanitize(comment));
             }
         }
 
@@ -390,7 +391,7 @@ public class QmsWorkflowEngine {
                     "Cannot reject a record in status " + record.getStatus());
         }
         transition(record, QmsStatus.REJECTED, comment);
-        record.setApprovalComments(comment);
+        record.setApprovalComments(HtmlSanitizer.sanitize(comment));
     }
 
     /**

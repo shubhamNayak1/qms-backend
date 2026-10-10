@@ -4,6 +4,7 @@ import com.qms.common.enums.Priority;
 import com.qms.common.enums.QmsRecordType;
 import com.qms.common.enums.QmsStatus;
 import com.qms.common.exception.AppException;
+import com.qms.common.util.HtmlSanitizer;
 import com.qms.common.response.PageResponse;
 import com.qms.module.qms.capa.entity.Capa;
 import com.qms.module.qms.capa.repository.CapaSpecification;
@@ -211,14 +212,14 @@ public class DeviationService {
         if (req.getDeviationType()           != null) d.setDeviationType(req.getDeviationType());
         if (req.getProductBatch()            != null) d.setProductBatch(req.getProductBatch());
         if (req.getProcessArea()             != null) d.setProcessArea(req.getProcessArea());
-        if (req.getImpactAssessment()        != null) d.setImpactAssessment(req.getImpactAssessment());
+        if (req.getImpactAssessment()        != null) d.setImpactAssessment(HtmlSanitizer.sanitize(req.getImpactAssessment()));
         if (req.getCapaRequired()            != null) d.setCapaRequired(req.getCapaRequired());
         if (req.getCapaReference()           != null) d.setCapaReference(req.getCapaReference());
         if (req.getLinkedCapaNumber()        != null) d.setLinkedCapaNumber(req.getLinkedCapaNumber());
         if (req.getRegulatoryReportable()    != null) d.setRegulatoryReportable(req.getRegulatoryReportable());
         if (req.getSiteHeadRequired()        != null) d.setSiteHeadRequired(req.getSiteHeadRequired());
         if (req.getCustomerCommentRequired() != null) d.setCustomerCommentRequired(req.getCustomerCommentRequired());
-        if (req.getInvestigationSummary()    != null) d.setInvestigationSummary(req.getInvestigationSummary());
+        if (req.getInvestigationSummary()    != null) d.setInvestigationSummary(HtmlSanitizer.sanitize(req.getInvestigationSummary()));
     }
 
     private DeviationResponse toResponse(Deviation d) {

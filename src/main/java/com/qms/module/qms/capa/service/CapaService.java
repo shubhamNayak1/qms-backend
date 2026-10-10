@@ -6,6 +6,7 @@ import com.qms.common.enums.Priority;
 import com.qms.common.enums.QmsRecordType;
 import com.qms.common.enums.QmsStatus;
 import com.qms.common.exception.AppException;
+import com.qms.common.util.HtmlSanitizer;
 import com.qms.common.response.PageResponse;
 import com.qms.module.audit.annotation.Audited;
 import com.qms.module.audit.context.AuditContext;
@@ -318,7 +319,7 @@ public class CapaService {
         if (req.getParentRecordNumber()      != null) capa.setParentRecordNumber(req.getParentRecordNumber());
         if (req.getSource()                  != null) capa.setSource(req.getSource());
         if (req.getCapaType()                != null) capa.setCapaType(req.getCapaType());
-        if (req.getPreventiveAction()        != null) capa.setPreventiveAction(req.getPreventiveAction());
+        if (req.getPreventiveAction()        != null) capa.setPreventiveAction(HtmlSanitizer.sanitize(req.getPreventiveAction()));
         if (req.getSiteHeadRequired()        != null) capa.setSiteHeadRequired(req.getSiteHeadRequired());
         if (req.getVerificationReviewComment()!= null) capa.setVerificationReviewComment(req.getVerificationReviewComment());
         if (req.getEffectivenessCheckDate()  != null) capa.setEffectivenessCheckDate(req.getEffectivenessCheckDate());

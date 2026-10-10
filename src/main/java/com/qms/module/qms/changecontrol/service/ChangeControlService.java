@@ -4,6 +4,7 @@ import com.qms.common.enums.Priority;
 import com.qms.common.enums.QmsRecordType;
 import com.qms.common.enums.QmsStatus;
 import com.qms.common.exception.AppException;
+import com.qms.common.util.HtmlSanitizer;
 import com.qms.common.response.PageResponse;
 import com.qms.module.dms.repository.DocumentRepository;
 import com.qms.module.qms.changecontrol.dto.request.ChangeControlRequest;
@@ -238,11 +239,11 @@ public class ChangeControlService {
 
     private void applyFields(ChangeControlRequest req, ChangeControl cc) {
         if (req.getChangeType()                    != null) cc.setChangeType(req.getChangeType());
-        if (req.getChangeReason()                  != null) cc.setChangeReason(req.getChangeReason());
+        if (req.getChangeReason()                  != null) cc.setChangeReason(HtmlSanitizer.sanitize(req.getChangeReason()));
         if (req.getProductMaterial()               != null) cc.setProductMaterial(req.getProductMaterial());
         if (req.getProductMaterialCode()           != null) cc.setProductMaterialCode(req.getProductMaterialCode());
         if (req.getMarketDetails()                 != null) cc.setMarketDetails(req.getMarketDetails());
-        if (req.getPreRemark()                     != null) cc.setPreRemark(req.getPreRemark());
+        if (req.getPreRemark()                     != null) cc.setPreRemark(HtmlSanitizer.sanitize(req.getPreRemark()));
         if (req.getInitialAttachmentRef()          != null) cc.setInitialAttachmentRef(req.getInitialAttachmentRef());
         if (req.getLinkedCapaNumber()              != null) cc.setLinkedCapaNumber(req.getLinkedCapaNumber());
         if (req.getRiskLevel()                     != null) cc.setRiskLevel(req.getRiskLevel());
@@ -256,7 +257,7 @@ public class ChangeControlService {
         if (req.getRegulatorySubmissionReference() != null) cc.setRegulatorySubmissionReference(req.getRegulatorySubmissionReference());
         // Batch B S3 / S4
         if (req.getRegulatorySubmissionCountry()   != null) cc.setRegulatorySubmissionCountry(req.getRegulatorySubmissionCountry());
-        if (req.getQaEvaluationRemark()            != null) cc.setQaEvaluationRemark(req.getQaEvaluationRemark());
+        if (req.getQaEvaluationRemark()            != null) cc.setQaEvaluationRemark(HtmlSanitizer.sanitize(req.getQaEvaluationRemark()));
         if (req.getRollbackPlan()                  != null) cc.setRollbackPlan(req.getRollbackPlan());
         if (req.getSiteHeadRequired()              != null) cc.setSiteHeadRequired(req.getSiteHeadRequired());
         if (req.getCustomerCommentRequired()       != null) cc.setCustomerCommentRequired(req.getCustomerCommentRequired());

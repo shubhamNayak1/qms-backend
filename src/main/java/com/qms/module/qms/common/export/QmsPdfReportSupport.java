@@ -131,8 +131,20 @@ public final class QmsPdfReportSupport {
 
     // ── Utilities ────────────────────────────────────────────
 
+    /**
+     * Render a field value safely for the PDF body.
+     *
+     * R.3 — rich-text fields are stored as HTML (Quill output). The
+     * PDF uses OpenPDF's basic text cells, which cannot interpret HTML
+     * markup. Running every value through HtmlSanitizer.toPlainText()
+     * strips tags, preserves list structure as "- " bullets, and keeps
+     * paragraph breaks as newlines. Plain-text fields pass through
+     * unchanged because they contain no HTML to strip.
+     */
     public static String safe(String s) {
-        return (s == null || s.isBlank()) ? "—" : s;
+        if (s == null || s.isBlank()) return "—";
+        String stripped = com.qms.common.util.HtmlSanitizer.toPlainText(s);
+        return stripped.isBlank() ? "—" : stripped;
     }
 
     public static String yesNo(Boolean b) {

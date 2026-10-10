@@ -3,6 +3,7 @@ package com.qms.module.qms.common.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.qms.common.util.HtmlSanitizer;
 import com.qms.module.qms.common.dto.request.QmsBaseRequest;
 import com.qms.module.qms.common.dto.response.QmsBaseResponse;
 import com.qms.module.qms.common.entity.QmsRecord;
@@ -25,34 +26,42 @@ public class QmsRecordMapper {
     private static final TypeReference<List<StatusHistoryEntry>> HISTORY_TYPE =
             new TypeReference<>() {};
 
-    /** Copy all shared QmsBaseRequest fields onto a QmsRecord entity. */
+    /**
+     * Copy all shared QmsBaseRequest fields onto a QmsRecord entity.
+     *
+     * Rich-text fields are run through {@link HtmlSanitizer} on their
+     * way in so no client HTML — including inline event handlers,
+     * javascript: links, or style payloads outside the allowlist — ever
+     * lands in the DB. See docs/permissions.md § compliance context
+     * and R.4 commit for the full allowlist.
+     */
     public void applyRequest(QmsBaseRequest req, QmsRecord record) {
         if (req.getTitle()                       != null) record.setTitle(req.getTitle());
-        if (req.getDescription()                 != null) record.setDescription(req.getDescription());
+        if (req.getDescription()                 != null) record.setDescription(HtmlSanitizer.sanitize(req.getDescription()));
         if (req.getPriority()                    != null) record.setPriority(req.getPriority());
         if (req.getAssignedToId()                != null) record.setAssignedToId(req.getAssignedToId());
         if (req.getDepartment()                  != null) record.setDepartment(req.getDepartment());
         if (req.getDepartmentId()                != null) record.setDepartmentId(req.getDepartmentId());
         if (req.getDueDate()                     != null) record.setDueDate(req.getDueDate());
         if (req.getTargetCompletionDate()        != null) record.setTargetCompletionDate(req.getTargetCompletionDate());
-        if (req.getRootCause()                   != null) record.setRootCause(req.getRootCause());
-        if (req.getCorrectiveAction()            != null) record.setCorrectiveAction(req.getCorrectiveAction());
-        if (req.getComments()                    != null) record.setComments(req.getComments());
+        if (req.getRootCause()                   != null) record.setRootCause(HtmlSanitizer.sanitize(req.getRootCause()));
+        if (req.getCorrectiveAction()            != null) record.setCorrectiveAction(HtmlSanitizer.sanitize(req.getCorrectiveAction()));
+        if (req.getComments()                    != null) record.setComments(HtmlSanitizer.sanitize(req.getComments()));
         // Shared common fields lifted to QmsRecord (V19) — let HOD review,
         // RA evaluation, customer comment, verification stages all update
         // their dedicated fields via the per-module PUT endpoint.
-        if (req.getInitialAssessment()           != null) record.setInitialAssessment(req.getInitialAssessment());
-        if (req.getRiskAssessment()              != null) record.setRiskAssessment(req.getRiskAssessment());
+        if (req.getInitialAssessment()           != null) record.setInitialAssessment(HtmlSanitizer.sanitize(req.getInitialAssessment()));
+        if (req.getRiskAssessment()              != null) record.setRiskAssessment(HtmlSanitizer.sanitize(req.getRiskAssessment()));
         if (req.getCategory()                    != null) record.setCategory(req.getCategory());
         if (req.getCustomerCommunicationRequired() != null)
             record.setCustomerCommunicationRequired(req.getCustomerCommunicationRequired());
         if (req.getCustomerRepresentative()      != null) record.setCustomerRepresentative(req.getCustomerRepresentative());
-        if (req.getCustomerComment()             != null) record.setCustomerComment(req.getCustomerComment());
-        if (req.getVerificationActionTaken()       != null) record.setVerificationActionTaken(req.getVerificationActionTaken());
+        if (req.getCustomerComment()             != null) record.setCustomerComment(HtmlSanitizer.sanitize(req.getCustomerComment()));
+        if (req.getVerificationActionTaken()       != null) record.setVerificationActionTaken(HtmlSanitizer.sanitize(req.getVerificationActionTaken()));
         if (req.getVerificationEffectiveOn()       != null) record.setVerificationEffectiveOn(req.getVerificationEffectiveOn());
         if (req.getVerificationDocumentsReissue()  != null) record.setVerificationDocumentsReissue(req.getVerificationDocumentsReissue());
-        if (req.getVerificationOtherComments()     != null) record.setVerificationOtherComments(req.getVerificationOtherComments());
-        if (req.getVerificationRegCommunication()  != null) record.setVerificationRegCommunication(req.getVerificationRegCommunication());
+        if (req.getVerificationOtherComments()     != null) record.setVerificationOtherComments(HtmlSanitizer.sanitize(req.getVerificationOtherComments()));
+        if (req.getVerificationRegCommunication()  != null) record.setVerificationRegCommunication(HtmlSanitizer.sanitize(req.getVerificationRegCommunication()));
     }
 
     /** Copy all shared QmsRecord fields into a QmsBaseResponse DTO. */

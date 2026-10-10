@@ -4,6 +4,7 @@ import com.qms.common.enums.Priority;
 import com.qms.common.enums.QmsRecordType;
 import com.qms.common.enums.QmsStatus;
 import com.qms.common.exception.AppException;
+import com.qms.common.util.HtmlSanitizer;
 import com.qms.common.response.PageResponse;
 import com.qms.module.qms.capa.entity.Capa;
 import com.qms.module.qms.capa.repository.CapaSpecification;
@@ -313,7 +314,7 @@ public class IncidentService {
         if (req.getLocation()                 != null) i.setLocation(req.getLocation());
         if (req.getOccurrenceDate()           != null) i.setOccurrenceDate(req.getOccurrenceDate());
         if (req.getReportedBy()               != null) i.setReportedBy(req.getReportedBy());
-        if (req.getImmediateAction()          != null) i.setImmediateAction(req.getImmediateAction());
+        if (req.getImmediateAction()          != null) i.setImmediateAction(HtmlSanitizer.sanitize(req.getImmediateAction()));
         if (req.getInvestigationDetails()     != null) i.setInvestigationDetails(req.getInvestigationDetails());
         if (req.getCapaReference()            != null) i.setCapaReference(req.getCapaReference());
         if (req.getCapaRequired()             != null) i.setCapaRequired(req.getCapaRequired());
@@ -325,7 +326,7 @@ public class IncidentService {
         if (req.getDeviationRequired()        != null) i.setDeviationRequired(req.getDeviationRequired());
         if (req.getSiteHeadRequired()         != null) i.setSiteHeadRequired(req.getSiteHeadRequired());
         if (req.getAbnormalityRemedialAction()!= null) i.setAbnormalityRemedialAction(req.getAbnormalityRemedialAction());
-        if (req.getVerificationNarrative()    != null) i.setVerificationNarrative(req.getVerificationNarrative());
+        if (req.getVerificationNarrative()    != null) i.setVerificationNarrative(HtmlSanitizer.sanitize(req.getVerificationNarrative()));
     }
 
     private IncidentResponse toResponse(Incident i) {

@@ -4,6 +4,7 @@ import com.qms.common.enums.AuditAction;
 import com.qms.common.enums.AuditModule;
 import com.qms.common.enums.QmsRecordType;
 import com.qms.common.exception.AppException;
+import com.qms.common.util.HtmlSanitizer;
 import com.qms.module.audit.annotation.Audited;
 import com.qms.module.org.service.OrgSecurityService;
 import com.qms.module.qms.common.dto.request.QmsLineItemRequest;
@@ -86,9 +87,10 @@ public class QmsLineItemService {
     @Transactional
     public QmsLineItemResponse update(Long lineItemId, QmsLineItemRequest req) {
         QmsLineItem item = require(lineItemId);
-        if (req.getExistingSystem() != null) item.setExistingSystem(req.getExistingSystem());
-        if (req.getProposedSystem() != null) item.setProposedSystem(req.getProposedSystem());
-        if (req.getJustification()  != null) item.setJustification(req.getJustification());
+        // R.4 — rich-text line-item narratives are Jsoup-cleaned on save.
+        if (req.getExistingSystem() != null) item.setExistingSystem(HtmlSanitizer.sanitize(req.getExistingSystem()));
+        if (req.getProposedSystem() != null) item.setProposedSystem(HtmlSanitizer.sanitize(req.getProposedSystem()));
+        if (req.getJustification()  != null) item.setJustification(HtmlSanitizer.sanitize(req.getJustification()));
         if (req.getProposedDate()   != null) item.setProposedDate(req.getProposedDate());
         if (req.getStatus()         != null) {
             item.setStatus(req.getStatus());
@@ -98,7 +100,7 @@ public class QmsLineItemService {
                 item.setCheckedByName(actor.getFullName());
             }
         }
-        if (req.getRemark()         != null) item.setRemark(req.getRemark());
+        if (req.getRemark()         != null) item.setRemark(HtmlSanitizer.sanitize(req.getRemark()));
         return toResponse(repository.save(item));
     }
 
