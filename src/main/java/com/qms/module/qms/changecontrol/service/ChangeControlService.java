@@ -107,6 +107,17 @@ public class ChangeControlService {
         cc.setRecordNumber(recordNumberGenerator.generate(QmsRecordType.CHANGE_CONTROL, TABLE));
         cc.setStatus(QmsStatus.DRAFT);
         cc.setRaisedByName(username);
+        // L5 — Draft-first Initiate: when the request leaves title /
+        // priority null (minimal POST from the Initiate button), fill in
+        // sensible defaults so the DB NOT-NULL constraints are satisfied
+        // and the DRAFT row persists. A full Create payload overwrites
+        // these via applyRequest() below.
+        if (req.getTitle() == null || req.getTitle().isBlank()) {
+            cc.setTitle("Untitled Draft - " + cc.getRecordNumber());
+        }
+        if (req.getPriority() == null) {
+            cc.setPriority(Priority.MEDIUM);
+        }
         recordMapper.applyRequest(req, cc);
         applyFields(req, cc);
 

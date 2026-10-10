@@ -74,7 +74,16 @@ public class IncidentController {
         return ApiResponse.ok(incidentService.getById(id));
     }
 
-    @PostMapping
+
+    @PostMapping("/initiate-draft")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Create a bare DRAFT record and return its id; use with the detail-drawer draft flow (L5)")
+    public ResponseEntity<ApiResponse<IncidentResponse>> initiateDraft() {
+        return ApiResponse.created("Incident draft initiated",
+                incidentService.create(new IncidentRequest()));
+    }
+
+        @PostMapping
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Report a new incident — any authenticated user can report")
     public ResponseEntity<ApiResponse<IncidentResponse>> create(@Valid @RequestBody IncidentRequest req) {

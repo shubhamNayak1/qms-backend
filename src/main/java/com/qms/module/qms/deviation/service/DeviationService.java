@@ -85,6 +85,17 @@ public class DeviationService {
         d.setRecordNumber(recordNumberGenerator.generate(QmsRecordType.DEVIATION, TABLE));
         d.setStatus(QmsStatus.DRAFT);
         d.setRaisedByName(username);
+        // L5 — Draft-first Initiate: when the request leaves title /
+        // priority null (minimal POST from the Initiate button), fill in
+        // sensible defaults so the DB NOT-NULL constraints are satisfied
+        // and the DRAFT row persists. A full Create payload overwrites
+        // these via applyRequest() below.
+        if (req.getTitle() == null || req.getTitle().isBlank()) {
+            d.setTitle("Untitled Draft - " + d.getRecordNumber());
+        }
+        if (req.getPriority() == null) {
+            d.setPriority(Priority.MEDIUM);
+        }
         recordMapper.applyRequest(req, d);
         applyFields(req, d);
 

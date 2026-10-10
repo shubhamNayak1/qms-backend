@@ -87,6 +87,17 @@ public class MarketComplaintService {
         mc.setRecordNumber(recordNumberGenerator.generate(QmsRecordType.MARKET_COMPLAINT, TABLE));
         mc.setStatus(QmsStatus.DRAFT);
         mc.setRaisedByName(username);
+        // L5 — Draft-first Initiate: when the request leaves title /
+        // priority null (minimal POST from the Initiate button), fill in
+        // sensible defaults so the DB NOT-NULL constraints are satisfied
+        // and the DRAFT row persists. A full Create payload overwrites
+        // these via applyRequest() below.
+        if (req.getTitle() == null || req.getTitle().isBlank()) {
+            mc.setTitle("Untitled Draft - " + mc.getRecordNumber());
+        }
+        if (req.getPriority() == null) {
+            mc.setPriority(Priority.MEDIUM);
+        }
         if (req.getReceivedDate() == null) mc.setReceivedDate(LocalDate.now());
         recordMapper.applyRequest(req, mc);
         applyFields(req, mc);
