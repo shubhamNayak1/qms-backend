@@ -16,6 +16,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import com.qms.common.enums.QmsRecordType;
+import com.qms.module.qms.common.export.GenericQmsPdfReportService;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/qms/incidents")
@@ -26,7 +30,29 @@ public class IncidentController {
 
     private final IncidentService incidentService;
 
-    @GetMapping
+
+    @GetMapping(value = "/{id}/report.pdf", produces = "application/pdf")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Download the Incident record as a PDF report")
+    public ResponseEntity<byte[]> reportPdf(@PathVariable Long id) {
+        IncidentResponse inc = incidentService.getById(id);
+        Map<String, String> extras = new LinkedHashMap<>();
+        extras.put("Incident Type", inc.getIncidentType());
+        extras.put("Severity", inc.getSeverity());
+        extras.put("Location", inc.getLocation());
+        extras.put("Immediate Action", inc.getImmediateAction());
+        extras.put("Investigation", inc.getInvestigationDetails());
+        byte[] pdf = pdfReportService.render(inc, "Incident", QmsRecordType.INCIDENT, extras);
+        String filename = "Incident-" + (inc.getRecordNumber() != null
+                ? inc.getRecordNumber().replaceAll("[^A-Za-z0-9_-]", "_")
+                : String.valueOf(id)) + ".pdf";
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                .header("Content-Type", "application/pdf")
+                .body(pdf);
+    }
+
+        @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PageResponse<IncidentResponse>>> search(
             @RequestParam(required = false) QmsStatus status,

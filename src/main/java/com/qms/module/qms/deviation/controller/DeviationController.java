@@ -16,6 +16,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import com.qms.common.enums.QmsRecordType;
+import com.qms.module.qms.common.export.GenericQmsPdfReportService;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/qms/deviations")
@@ -26,7 +30,30 @@ public class DeviationController {
 
     private final DeviationService deviationService;
 
-    @GetMapping
+
+    @GetMapping(value = "/{id}/report.pdf", produces = "application/pdf")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Download the Deviation record as a PDF report")
+    public ResponseEntity<byte[]> reportPdf(@PathVariable Long id) {
+        DeviationResponse dev = deviationService.getById(id);
+        Map<String, String> extras = new LinkedHashMap<>();
+        extras.put("Deviation Type", dev.getDeviationType());
+        extras.put("Product / Batch", dev.getProductBatch());
+        extras.put("Process Area", dev.getProcessArea());
+        extras.put("Impact Assessment", dev.getImpactAssessment());
+        extras.put("CAPA Required", Boolean.TRUE.equals(dev.getCapaRequired()) ? "Yes" : "No");
+        extras.put("Linked CAPA", dev.getLinkedCapaNumber());
+        byte[] pdf = pdfReportService.render(dev, "Deviation", QmsRecordType.DEVIATION, extras);
+        String filename = "Deviation-" + (dev.getRecordNumber() != null
+                ? dev.getRecordNumber().replaceAll("[^A-Za-z0-9_-]", "_")
+                : String.valueOf(id)) + ".pdf";
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                .header("Content-Type", "application/pdf")
+                .body(pdf);
+    }
+
+        @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PageResponse<DeviationResponse>>> search(
             @RequestParam(required = false) QmsStatus status,

@@ -16,6 +16,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import com.qms.common.enums.QmsRecordType;
+import com.qms.module.qms.common.export.GenericQmsPdfReportService;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/qms/complaints")
@@ -26,7 +30,29 @@ public class MarketComplaintController {
 
     private final MarketComplaintService complaintService;
 
-    @GetMapping
+
+    @GetMapping(value = "/{id}/report.pdf", produces = "application/pdf")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Download the Market Complaint record as a PDF report")
+    public ResponseEntity<byte[]> reportPdf(@PathVariable Long id) {
+        MarketComplaintResponse mc = complaintService.getById(id);
+        Map<String, String> extras = new LinkedHashMap<>();
+        extras.put("Complaint Origin", mc.getComplaintOrigin());
+        extras.put("Complaint Subject", mc.getComplaintSubject());
+        extras.put("Customer", mc.getCustomerName());
+        extras.put("Product", mc.getProductName());
+        extras.put("Batch", mc.getBatchNumber());
+        byte[] pdf = pdfReportService.render(mc, "Market Complaint", QmsRecordType.MARKET_COMPLAINT, extras);
+        String filename = "Market-Complaint-" + (mc.getRecordNumber() != null
+                ? mc.getRecordNumber().replaceAll("[^A-Za-z0-9_-]", "_")
+                : String.valueOf(id)) + ".pdf";
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                .header("Content-Type", "application/pdf")
+                .body(pdf);
+    }
+
+        @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<PageResponse<MarketComplaintResponse>>> search(
             @RequestParam(required = false) QmsStatus status,

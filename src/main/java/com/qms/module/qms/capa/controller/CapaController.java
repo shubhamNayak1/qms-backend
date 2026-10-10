@@ -20,6 +20,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.qms.common.enums.QmsRecordType;
+import com.qms.module.qms.common.export.GenericQmsPdfReportService;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/qms/capa")
@@ -30,7 +34,30 @@ public class CapaController {
 
     private final CapaService capaService;
 
-    @GetMapping
+
+    @GetMapping(value = "/{id}/report.pdf", produces = "application/pdf")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Download the CAPA record as a PDF report")
+    public ResponseEntity<byte[]> reportPdf(@PathVariable Long id) {
+        CapaResponse capa = capaService.getById(id);
+        Map<String, String> extras = new LinkedHashMap<>();
+        extras.put("CAPA Type", capa.getCapaType());
+        extras.put("Source", capa.getSource());
+        extras.put("CAPA Origin", capa.getCapaOrigin());
+        extras.put("Parent Record", capa.getParentRecordNumber());
+        extras.put("Site Head Required", capa.getSiteHeadRequired() == null ? "No" : (Boolean.TRUE.equals(capa.getSiteHeadRequired()) ? "Yes" : "No"));
+        extras.put("Preventive Action", capa.getPreventiveAction());
+        byte[] pdf = pdfReportService.render(capa, "CAPA", QmsRecordType.CAPA, extras);
+        String filename = "CAPA-" + (capa.getRecordNumber() != null
+                ? capa.getRecordNumber().replaceAll("[^A-Za-z0-9_-]", "_")
+                : String.valueOf(id)) + ".pdf";
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                .header("Content-Type", "application/pdf")
+                .body(pdf);
+    }
+
+        @GetMapping
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Search / list CAPAs with optional filters")
     public ResponseEntity<ApiResponse<PageResponse<CapaResponse>>> search(
