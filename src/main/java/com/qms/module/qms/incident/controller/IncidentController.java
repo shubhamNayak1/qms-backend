@@ -29,6 +29,7 @@ import java.util.Map;
 public class IncidentController {
 
     private final IncidentService incidentService;
+    private final GenericQmsPdfReportService pdfReportService;
 
 
     @GetMapping(value = "/{id}/report.pdf", produces = "application/pdf")

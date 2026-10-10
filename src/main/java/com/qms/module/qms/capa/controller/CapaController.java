@@ -33,6 +33,7 @@ import java.util.Map;
 public class CapaController {
 
     private final CapaService capaService;
+    private final GenericQmsPdfReportService pdfReportService;
 
 
     @GetMapping(value = "/{id}/report.pdf", produces = "application/pdf")

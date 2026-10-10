@@ -6,7 +6,6 @@ import com.qms.module.user.dto.response.TcdPolicyResponse;
 import com.qms.module.user.entity.TcdPolicy;
 import com.qms.module.user.repository.TcdPolicyRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,14 +34,14 @@ public class TcdPolicyService {
     public TcdPolicyResponse getByModule(String moduleKey) {
         return repository.findByModuleKeyAndIsDeletedFalse(moduleKey)
                 .map(this::toResponse)
-                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> AppException.notFound(
                         "No TCD policy row for module: " + moduleKey));
     }
 
     @Transactional
     public TcdPolicyResponse update(String moduleKey, TcdPolicyRequest req) {
         TcdPolicy row = repository.findByModuleKeyAndIsDeletedFalse(moduleKey)
-                .orElseThrow(() -> new AppException(HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> AppException.notFound(
                         "No TCD policy row for module: " + moduleKey));
         row.setMaxDays(req.getMaxDays());
         row.setWarningDays(req.getWarningDays());

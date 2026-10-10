@@ -29,6 +29,7 @@ import java.util.Map;
 public class MarketComplaintController {
 
     private final MarketComplaintService complaintService;
+    private final GenericQmsPdfReportService pdfReportService;
 
 
     @GetMapping(value = "/{id}/report.pdf", produces = "application/pdf")

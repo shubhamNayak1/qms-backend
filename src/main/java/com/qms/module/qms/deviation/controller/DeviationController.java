@@ -29,6 +29,7 @@ import java.util.Map;
 public class DeviationController {
 
     private final DeviationService deviationService;
+    private final GenericQmsPdfReportService pdfReportService;
 
 
     @GetMapping(value = "/{id}/report.pdf", produces = "application/pdf")
