@@ -30,7 +30,7 @@ public class SiteController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('SITE_MANAGE')")
+    @PreAuthorize("hasAuthority('SITE_MANAGE') or hasRole('SUPER_ADMIN')")
     @Operation(summary = "Update site name / address / Site Head")
     public ResponseEntity<ApiResponse<SiteResponse>> update(
             @PathVariable Long id,

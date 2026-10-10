@@ -37,7 +37,7 @@ public class UserPermissionController {
     private final UserPermissionService service;
 
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('PERM_VIEW','PERM_MANAGE')")
+    @PreAuthorize("hasAnyAuthority('PERM_VIEW','PERM_MANAGE') or hasRole('SUPER_ADMIN')")
     @Operation(summary = "List the user's permission overrides")
     public ResponseEntity<ApiResponse<List<UserPermissionOverrideResponse>>> list(
             @PathVariable Long userId) {
@@ -45,7 +45,7 @@ public class UserPermissionController {
     }
 
     @PutMapping
-    @PreAuthorize("hasAuthority('PERM_MANAGE')")
+    @PreAuthorize("hasAuthority('PERM_MANAGE') or hasRole('SUPER_ADMIN')")
     @Operation(summary = "Grant or revoke a permission for the user (idempotent upsert)")
     public ResponseEntity<ApiResponse<UserPermissionOverrideResponse>> upsert(
             @PathVariable Long userId,
@@ -54,7 +54,7 @@ public class UserPermissionController {
     }
 
     @DeleteMapping("/{permissionId}")
-    @PreAuthorize("hasAuthority('PERM_MANAGE')")
+    @PreAuthorize("hasAuthority('PERM_MANAGE') or hasRole('SUPER_ADMIN')")
     @Operation(summary = "Remove the override row, letting the user's effective perms fall back to their role")
     public ResponseEntity<ApiResponse<Void>> remove(
             @PathVariable Long userId, @PathVariable Long permissionId) {

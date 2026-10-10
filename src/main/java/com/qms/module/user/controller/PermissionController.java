@@ -22,7 +22,7 @@ import java.util.List;
 @Tag(name = "Permission Management",
      description = "Registry of fine-grained permissions assigned to roles")
 @SecurityRequirement(name = "bearerAuth")
-@PreAuthorize("hasAuthority('PERM_VIEW')")   // Phase-2: class-level VIEW; writes override to PERM_MANAGE.
+@PreAuthorize("hasAuthority('PERM_VIEW') or hasRole('SUPER_ADMIN')")   // Phase-2: class-level VIEW; writes override to PERM_MANAGE.
 public class PermissionController {
 
     private final PermissionService permissionService;

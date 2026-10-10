@@ -72,7 +72,7 @@ public class PasswordPolicyController {
 
     // ─── POST create ─────────────────────────────────────────
     @PostMapping
-    @PreAuthorize("hasAuthority('PASSWORD_POLICY_MANAGE')")
+    @PreAuthorize("hasAuthority('PASSWORD_POLICY_MANAGE') or hasRole('SUPER_ADMIN')")
     @Operation(
         summary = "Create a new password policy",
         description = """
@@ -88,7 +88,7 @@ public class PasswordPolicyController {
 
     // ─── PUT update ──────────────────────────────────────────
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('PASSWORD_POLICY_MANAGE')")
+    @PreAuthorize("hasAuthority('PASSWORD_POLICY_MANAGE') or hasRole('SUPER_ADMIN')")
     @Operation(
         summary = "Update an existing password policy",
         description = "Updates any field, including effectiveDate. " +
@@ -102,7 +102,7 @@ public class PasswordPolicyController {
 
     // ─── DELETE ──────────────────────────────────────────────
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('PASSWORD_POLICY_MANAGE')")
+    @PreAuthorize("hasAuthority('PASSWORD_POLICY_MANAGE') or hasRole('SUPER_ADMIN')")
     @Operation(
         summary = "Soft-delete a password policy",
         description = "Marks the policy as deleted. It will no longer appear in listings " +

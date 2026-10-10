@@ -51,7 +51,7 @@ public class TcdPolicyController {
     }
 
     @PutMapping("/{moduleKey}")
-    @PreAuthorize("hasAuthority('TCD_POLICY_MANAGE')")
+    @PreAuthorize("hasAuthority('TCD_POLICY_MANAGE') or hasRole('SUPER_ADMIN')")
     @Operation(summary = "Update one module's TCD policy row")
     public ResponseEntity<ApiResponse<TcdPolicyResponse>> update(
             @PathVariable String moduleKey,

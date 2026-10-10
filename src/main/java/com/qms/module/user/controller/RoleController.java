@@ -22,7 +22,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Tag(name = "Role Management", description = "Create and manage roles, assign permissions to roles")
 @SecurityRequirement(name = "bearerAuth")
-@PreAuthorize("hasAuthority('ROLE_MANAGE')")   // Phase-2: class-level MANAGE; GETs below downgrade to ROLE_VIEW.
+@PreAuthorize("hasAuthority('ROLE_MANAGE') or hasRole('SUPER_ADMIN')")   // Phase-2: class-level MANAGE; GETs below downgrade to ROLE_VIEW.
 public class RoleController {
 
     private final RoleService roleService;
@@ -31,7 +31,7 @@ public class RoleController {
     // GET /api/v1/roles
     // ─────────────────────────────────────────────────────────
     @GetMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_VIEW','ROLE_MANAGE')")
+    @PreAuthorize("hasAnyAuthority('ROLE_VIEW','ROLE_MANAGE') or hasRole('SUPER_ADMIN')")
     @Operation(summary = "List all roles (paginated)",
                description = "Returns each role with its permissions and active user count.")
     public ResponseEntity<ApiResponse<PageResponse<RoleResponse>>> getAll(
@@ -45,7 +45,7 @@ public class RoleController {
     // GET /api/v1/roles/all
     // ─────────────────────────────────────────────────────────
     @GetMapping("/all")
-    @PreAuthorize("hasAnyAuthority('ROLE_VIEW','ROLE_MANAGE')")
+    @PreAuthorize("hasAnyAuthority('ROLE_VIEW','ROLE_MANAGE') or hasRole('SUPER_ADMIN')")
     @Operation(summary = "Get all roles as a flat list (for dropdowns)")
     public ResponseEntity<ApiResponse<List<RoleResponse>>> getAllFlat() {
         return ApiResponse.ok(roleService.getAllFlat());
@@ -55,7 +55,7 @@ public class RoleController {
     // GET /api/v1/roles/{id}
     // ─────────────────────────────────────────────────────────
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_VIEW','ROLE_MANAGE')")
+    @PreAuthorize("hasAnyAuthority('ROLE_VIEW','ROLE_MANAGE') or hasRole('SUPER_ADMIN')")
     @Operation(summary = "Get role details including all assigned permissions")
     public ResponseEntity<ApiResponse<RoleResponse>> getById(@PathVariable Long id) {
         return ApiResponse.ok(roleService.getById(id));
