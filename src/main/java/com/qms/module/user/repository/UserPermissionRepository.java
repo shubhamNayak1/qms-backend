@@ -17,6 +17,8 @@ public interface UserPermissionRepository
 
     List<UserPermission> findByUserIdAndGrantType(Long userId, UserPermission.GrantType grantType);
 
+    List<UserPermission> findByUserIdIn(List<Long> userIds);
+
     @Modifying
     @Query("DELETE FROM UserPermission up WHERE up.userId = :userId AND up.permissionId = :permissionId")
     void deleteByUserIdAndPermissionId(@Param("userId") Long userId,

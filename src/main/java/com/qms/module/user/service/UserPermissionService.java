@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -42,6 +44,33 @@ public class UserPermissionService {
                 .findAllById(rows.stream().map(UserPermission::getPermissionId).toList())
                 .stream().collect(Collectors.toMap(Permission::getId, p -> p));
         return rows.stream().map(r -> toResponse(r, byId.get(r.getPermissionId()))).toList();
+    }
+
+    /**
+     * Bulk variant for the Permission matrix (User × Permission tab). Fetches
+     * every override row for the given userIds in a single query and groups
+     * the results by user id, so the frontend can render N users without N
+     * network round-trips.
+     *
+     * Users with no override rows still appear in the returned map with an
+     * empty list — the client can tell "no overrides" apart from "user not
+     * loaded yet".
+     */
+    @Transactional(readOnly = true)
+    public Map<Long, List<UserPermissionOverrideResponse>> listForUsers(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) return Map.of();
+        List<UserPermission> rows = userPermissionRepository.findByUserIdIn(userIds);
+        Map<Long, List<UserPermissionOverrideResponse>> result = new HashMap<>();
+        for (Long id : userIds) result.put(id, new ArrayList<>());
+        if (rows.isEmpty()) return result;
+        Map<Long, Permission> permsById = permissionRepository
+                .findAllById(rows.stream().map(UserPermission::getPermissionId).distinct().toList())
+                .stream().collect(Collectors.toMap(Permission::getId, p -> p));
+        for (UserPermission r : rows) {
+            result.computeIfAbsent(r.getUserId(), k -> new ArrayList<>())
+                  .add(toResponse(r, permsById.get(r.getPermissionId())));
+        }
+        return result;
     }
 
     @Transactional
