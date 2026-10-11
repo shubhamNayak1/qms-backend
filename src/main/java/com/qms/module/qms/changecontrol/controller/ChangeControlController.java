@@ -70,15 +70,6 @@ public class ChangeControlController {
                 .body(pdf);
     }
 
-
-    @PostMapping("/initiate-draft")
-    @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Create a bare DRAFT record and return its id; use with the detail-drawer draft flow (L5)")
-    public ResponseEntity<ApiResponse<ChangeControlResponse>> initiateDraft() {
-        return ApiResponse.created("Change Control draft initiated",
-                changeControlService.create(new ChangeControlRequest()));
-    }
-
         @PostMapping
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Raise a new Change Control request")

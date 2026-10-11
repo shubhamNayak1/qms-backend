@@ -89,15 +89,6 @@ public class CapaController {
         return ApiResponse.ok(capaService.getByRecordNumber(recordNumber));
     }
 
-
-    @PostMapping("/initiate-draft")
-    @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Create a bare DRAFT record and return its id; use with the detail-drawer draft flow (L5)")
-    public ResponseEntity<ApiResponse<CapaResponse>> initiateDraft() {
-        return ApiResponse.created("CAPA draft initiated",
-                capaService.create(new CapaRequest()));
-    }
-
         @PostMapping
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Open a new CAPA record")

@@ -89,17 +89,6 @@ public class IncidentService {
         i.setRecordNumber(recordNumberGenerator.generate(QmsRecordType.INCIDENT, TABLE));
         i.setStatus(QmsStatus.DRAFT);
         i.setRaisedByName(username);
-        // L5 — Draft-first Initiate: when the request leaves title /
-        // priority null (minimal POST from the Initiate button), fill in
-        // sensible defaults so the DB NOT-NULL constraints are satisfied
-        // and the DRAFT row persists. A full Create payload overwrites
-        // these via applyRequest() below.
-        if (req.getTitle() == null || req.getTitle().isBlank()) {
-            i.setTitle("Untitled Draft - " + i.getRecordNumber());
-        }
-        if (req.getPriority() == null) {
-            i.setPriority(Priority.MEDIUM);
-        }
         recordMapper.applyRequest(req, i);
         applyFields(req, i);
 

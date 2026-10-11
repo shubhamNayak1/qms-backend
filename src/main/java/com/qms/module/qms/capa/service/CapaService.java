@@ -100,17 +100,6 @@ public class CapaService {
         capa.setRecordNumber(recordNumberGenerator.generate(QmsRecordType.CAPA, TABLE));
         capa.setStatus(QmsStatus.DRAFT);
         capa.setRaisedByName(username);
-        // L5 — Draft-first Initiate: when the request leaves title /
-        // priority null (minimal POST from the Initiate button), fill in
-        // sensible defaults so the DB NOT-NULL constraints are satisfied
-        // and the DRAFT row persists. A full Create payload overwrites
-        // these via applyRequest() below.
-        if (req.getTitle() == null || req.getTitle().isBlank()) {
-            capa.setTitle("Untitled Draft - " + capa.getRecordNumber());
-        }
-        if (req.getPriority() == null) {
-            capa.setPriority(Priority.MEDIUM);
-        }
         recordMapper.applyRequest(req, capa);
         applyCapaFields(req, capa);
 

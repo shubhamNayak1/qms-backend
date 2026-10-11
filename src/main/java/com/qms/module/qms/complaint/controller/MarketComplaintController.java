@@ -74,15 +74,6 @@ public class MarketComplaintController {
         return ApiResponse.ok(complaintService.getById(id));
     }
 
-
-    @PostMapping("/initiate-draft")
-    @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Create a bare DRAFT record and return its id; use with the detail-drawer draft flow (L5)")
-    public ResponseEntity<ApiResponse<MarketComplaintResponse>> initiateDraft() {
-        return ApiResponse.created("Market Complaint draft initiated",
-                complaintService.create(new MarketComplaintRequest()));
-    }
-
         @PostMapping
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Log a new market complaint received from a customer")

@@ -74,15 +74,6 @@ public class DeviationController {
         return ApiResponse.ok(deviationService.getById(id));
     }
 
-
-    @PostMapping("/initiate-draft")
-    @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Create a bare DRAFT record and return its id; use with the detail-drawer draft flow (L5)")
-    public ResponseEntity<ApiResponse<DeviationResponse>> initiateDraft() {
-        return ApiResponse.created("Deviation draft initiated",
-                deviationService.create(new DeviationRequest()));
-    }
-
         @PostMapping
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Report a new deviation")
