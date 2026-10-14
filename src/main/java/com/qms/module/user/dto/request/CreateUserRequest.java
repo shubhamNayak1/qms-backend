@@ -45,12 +45,11 @@ public class CreateUserRequest {
     @Schema(example = "+91-9876543210", description = "Mobile number — required")
     private String phone;
 
-    @NotBlank(message = "Initials are required")
     @Size(max = 10, message = "Initials must not exceed 10 characters")
-    @Pattern(regexp = "^[A-Za-z]{1,10}$",
+    @Pattern(regexp = "^[A-Za-z]{0,10}$",
              message = "Initials may only contain letters (e.g. JKD)")
     @Schema(example = "JKD",
-            description = "Short identifier used on signed pharma documents")
+            description = "Optional short identifier used on signed pharma documents")
     private String initials;
 
     @NotNull(message = "Joining date is required")
