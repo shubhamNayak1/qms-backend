@@ -150,6 +150,15 @@ public class User extends BaseEntity {
     @Builder.Default
     private Boolean mustChangePassword = false;
 
+    /**
+     * True for system/bootstrap accounts (SUPER_ADMIN). These rows exist to
+     * manage the installation itself and are hidden from every listing API,
+     * from the audit trail and from dashboard counts. Login still works.
+     */
+    @Column(name = "is_system", nullable = false)
+    @Builder.Default
+    private Boolean isSystem = false;
+
     // ─── Roles (Many-to-Many owner side) ──────────────────────
     /**
      * A user can hold multiple roles.

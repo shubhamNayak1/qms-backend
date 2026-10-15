@@ -21,6 +21,11 @@ public final class UserSpecification {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
+            // System/bootstrap accounts (SUPER_ADMIN) are hidden from every
+            // listing API by design — login still works via UserRepository
+            // paths that don't go through this spec.
+            predicates.add(cb.isFalse(root.get("isSystem")));
+
             if (search != null && !search.isBlank()) {
                 String pattern = "%" + search.toLowerCase() + "%";
                 predicates.add(cb.or(

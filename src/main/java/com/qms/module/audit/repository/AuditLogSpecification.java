@@ -4,7 +4,10 @@ import com.qms.common.enums.AuditAction;
 import com.qms.common.enums.AuditModule;
 import com.qms.common.enums.AuditOutcome;
 import com.qms.module.audit.entity.AuditLog;
+import com.qms.module.user.entity.User;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
@@ -22,6 +25,20 @@ public final class AuditLogSpecification {
                                                   LocalDateTime from, LocalDateTime to) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+
+            // Hide actions performed by system/bootstrap users (SUPER_ADMIN).
+            // audit_logs has no FK to users, so we subquery by user_id. Rows
+            // without a user_id (anonymous events like LOGIN_FAILED attempts)
+            // stay visible.
+            Subquery<Long> systemUserIds = query.subquery(Long.class);
+            Root<User> systemUserRoot = systemUserIds.from(User.class);
+            systemUserIds.select(systemUserRoot.get("id"))
+                         .where(cb.isTrue(systemUserRoot.get("isSystem")));
+            predicates.add(cb.or(
+                root.get("userId").isNull(),
+                cb.not(root.get("userId").in(systemUserIds))
+            ));
+
             if (userId != null) {
                 predicates.add(cb.equal(root.get("userId"), userId));
             }

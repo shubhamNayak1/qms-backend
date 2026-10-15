@@ -49,6 +49,13 @@ public interface UserRepository extends JpaRepository<User, Long>, JpaSpecificat
     /** All QA reviewers across QA departments. Used by OrgSecurityService. */
     List<User> findAllByIsQaReviewerTrueAndIsDeletedFalse();
 
+    // ─── System-user aware counts ────────────────────────────
+    // SUPER_ADMIN rows (is_system = true) are hidden from dashboards and
+    // audit — these counts exclude them.
+    long countByIsSystemFalseAndIsDeletedFalse();
+
+    long countByIsSystemFalseAndIsDeletedFalseAndIsActive(boolean isActive);
+
     // ─── Paginated search ─────────────────────────────────────
     // Filtering is handled via JpaSpecificationExecutor (see UserSpecification).
     // The old JPQL searchUsers query used "IS NULL" parameter checks which fail
