@@ -86,6 +86,26 @@ public class DepartmentService {
         return toResponse(departmentRepository.save(d));
     }
 
+    /**
+     * Enable or disable a department. Disabling just flips `isActive = false`
+     * — the department row stays in the database so QMS records that
+     * reference it keep working, and it can be reactivated at any time.
+     *
+     * We no longer expose the old hard-ish softDelete flow; the dept action
+     * menu uses this instead.
+     */
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.ORG,
+             entityType = "Department", entityIdArgIndex = 0,
+             description = "Department active-flag toggled")
+    @Transactional
+    public DepartmentResponse setActive(Long id, boolean active) {
+        Department d = require(id);
+        d.setIsActive(active);
+        Department saved = departmentRepository.save(d);
+        log.info("Department {} ({}): isActive -> {}", d.getCode(), id, active);
+        return toResponse(saved);
+    }
+
     @Audited(action = AuditAction.DELETE, module = AuditModule.ORG,
              entityType = "Department", entityIdArgIndex = 0, captureNewValue = false,
              description = "Department soft-deleted (sub-depts re-parented)")

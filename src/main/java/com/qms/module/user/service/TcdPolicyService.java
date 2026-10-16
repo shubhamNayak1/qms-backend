@@ -1,6 +1,9 @@
 package com.qms.module.user.service;
 
+import com.qms.common.enums.AuditAction;
+import com.qms.common.enums.AuditModule;
 import com.qms.common.exception.AppException;
+import com.qms.module.audit.annotation.Audited;
 import com.qms.module.user.dto.request.TcdPolicyRequest;
 import com.qms.module.user.dto.response.TcdPolicyResponse;
 import com.qms.module.user.entity.TcdPolicy;
@@ -38,6 +41,9 @@ public class TcdPolicyService {
                         "No TCD policy row for module: " + moduleKey));
     }
 
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.SYSTEM,
+             entityType = "TcdPolicy",
+             description = "TCD policy updated")
     @Transactional
     public TcdPolicyResponse update(String moduleKey, TcdPolicyRequest req) {
         TcdPolicy row = repository.findByModuleKeyAndIsDeletedFalse(moduleKey)

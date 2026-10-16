@@ -1,6 +1,9 @@
 package com.qms.module.user.service;
 
+import com.qms.common.enums.AuditAction;
+import com.qms.common.enums.AuditModule;
 import com.qms.common.exception.AppException;
+import com.qms.module.audit.annotation.Audited;
 import com.qms.module.user.dto.request.UserPermissionOverrideRequest;
 import com.qms.module.user.dto.response.UserPermissionOverrideResponse;
 import com.qms.module.user.entity.Permission;
@@ -73,6 +76,9 @@ public class UserPermissionService {
         return result;
     }
 
+    @Audited(action = AuditAction.UPDATE, module = AuditModule.PERMISSION,
+             entityType = "UserPermissionOverride", entityIdArgIndex = 0,
+             description = "User permission override granted / revoked")
     @Transactional
     public UserPermissionOverrideResponse upsert(Long userId, UserPermissionOverrideRequest req) {
         requireUser(userId);
@@ -98,6 +104,10 @@ public class UserPermissionService {
         return toResponse(userPermissionRepository.save(row), perm);
     }
 
+    @Audited(action = AuditAction.DELETE, module = AuditModule.PERMISSION,
+             entityType = "UserPermissionOverride", entityIdArgIndex = 0,
+             captureNewValue = false,
+             description = "User permission override removed")
     @Transactional
     public void remove(Long userId, Long permissionId) {
         requireUser(userId);

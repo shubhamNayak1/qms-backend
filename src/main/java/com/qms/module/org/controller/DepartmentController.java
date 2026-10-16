@@ -55,9 +55,21 @@ public class DepartmentController {
         return ApiResponse.ok("Department updated", departmentService.update(id, req));
     }
 
+    @PatchMapping("/{id}/active")
+    @PreAuthorize("hasAuthority('DEPT_MANAGE') or hasRole('SUPER_ADMIN')")
+    @Operation(summary = "Enable or disable a department",
+               description = "Toggles isActive — the row is preserved so records still resolve its name.")
+    public ResponseEntity<ApiResponse<DepartmentResponse>> setActive(
+            @PathVariable Long id,
+            @RequestParam boolean active) {
+        return ApiResponse.ok(
+                active ? "Department enabled" : "Department disabled",
+                departmentService.setActive(id, active));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAuthority('DEPT_MANAGE') or hasRole('SUPER_ADMIN')")
-    @Operation(summary = "Soft-delete a department",
+    @Operation(summary = "Soft-delete a department (deprecated — use PATCH /active instead)",
                description = "Sub-departments are re-parented to this dept's parent.")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         departmentService.softDelete(id);
